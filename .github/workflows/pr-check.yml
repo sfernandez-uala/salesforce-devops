@@ -35,8 +35,5 @@ jobs:
           sf plugins install sfdx-hardis sfdx-git-delta
       - name: JWT auth to target org
         run: sf hardis auth login
-        env:
-          SF_CLIENT_ID: ${{ secrets.SF_CLIENT_ID }}
-          SF_JWT_KEY: ${{ secrets.SF_JWT_KEY }}
       - name: Delta validate + specified tests
         run: sf hardis project deploy smart --check
