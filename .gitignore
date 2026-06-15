@@ -1,12 +1,19 @@
 # Salesforce CLI
 .sf/
 .sfdx/
-
 # macOS
 .DS_Store
-
 # Local tooling
 .atl/
-
 # Plan docs (local only)
 plan/
+.cache/
+config/user/
+hardis-report/
+tmp/
+**/__tests__/**
+**/cleanDataServices/
+**/siteDotComSites/*.site
+**/data/**/source/**
+**/data/**/target/**
+force-app/main/default/appMenus/AppSwitcher.appMenu-meta.xml
