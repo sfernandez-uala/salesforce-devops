@@ -1,0 +1,17 @@
+developmentBranch: dev
+allowedOrgTypes:
+  - sandbox
+
+# Permission sets auto-assigned when initializing an org/sandbox
+initPermissionSets:
+  - Test_Httpbin_Access
+
+# SFDMU data packages seeded on init
+dataPackages:
+  - dataPath: data/ReferenceData
+    importInScratchOrgs: true
+
+# Keep diffs clean
+autoCleanTypes:
+  - destructivechanges
+  - flowPositions

@@ -1,0 +1,3 @@
+# Branch-specific config for: main → PRODUCTION
+instanceUrl: https://login.salesforce.com
+targetOrg: PROD

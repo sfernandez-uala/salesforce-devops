@@ -1,0 +1,9 @@
+{
+  "objects": [
+    {
+      "query": "SELECT Name, Industry FROM Account WHERE RecordType.DeveloperName = 'Reference'",
+      "operation": "Upsert",
+      "externalId": "Name"
+    }
+  ]
+}

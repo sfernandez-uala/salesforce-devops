@@ -1,0 +1,3 @@
+# Branch-specific config for: dev → DEV org
+instanceUrl: https://test.salesforce.com
+targetOrg: DEV

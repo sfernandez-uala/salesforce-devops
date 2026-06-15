@@ -1,0 +1,42 @@
+name: PR Quality Gate
+on:
+  pull_request:
+    branches: [dev, uat, main]
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install CLI + Code Analyzer
+        run: npm install --global @salesforce/cli && sf plugins install code-analyzer
+      - name: PMD on delta files only
+        run: |
+          CHANGED=$(git diff --name-only --diff-filter=ACMRT \
+            origin/${{ github.base_ref }}...HEAD \
+            | grep -E '\.cls$|\.trigger$|\.page$' | paste -sd, -)
+          if [ -n "$CHANGED" ]; then
+            sf code-analyzer run --workspace "$CHANGED" \
+              --rule-selector pmd --severity-threshold 3
+          fi
+
+  delta-check-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install CLI + plugins
+        run: |
+          npm install --global @salesforce/cli
+          sf plugins install sfdx-hardis sfdx-git-delta
+      - name: JWT auth to target org
+        run: sf hardis auth login
+        env:
+          SF_CLIENT_ID: ${{ secrets.SF_CLIENT_ID }}
+          SF_JWT_KEY: ${{ secrets.SF_JWT_KEY }}
+      - name: Delta validate + specified tests
+        run: sf hardis project deploy smart --check

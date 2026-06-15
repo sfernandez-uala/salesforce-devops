@@ -1,0 +1,2 @@
+# All workflow changes require a senior dev review
+.github/workflows/ @org/senior-devs
