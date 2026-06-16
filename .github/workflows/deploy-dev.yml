@@ -14,7 +14,7 @@ jobs:
       - name: Install CLI + plugins
         run: |
           npm install --global @salesforce/cli
-          sf plugins install sfdx-hardis sfdx-git-delta
+          sf plugins install sfdx-hardis --no-prompt && sf plugins install sfdx-git-delta --no-prompt
       - name: JWT auth to DEV org
         run: sf hardis auth login
       - name: Delta deploy (Quick Deploy)

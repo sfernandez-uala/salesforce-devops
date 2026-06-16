@@ -11,7 +11,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install CLI + Code Analyzer
-        run: npm install --global @salesforce/cli && sf plugins install code-analyzer
+        run: npm install --global @salesforce/cli && sf plugins install code-analyzer --no-prompt
       - name: PMD on delta files only
         run: |
           CHANGED=$(git diff --name-only --diff-filter=ACMRT \
@@ -32,7 +32,7 @@ jobs:
       - name: Install CLI + plugins
         run: |
           npm install --global @salesforce/cli
-          sf plugins install sfdx-hardis sfdx-git-delta
+          sf plugins install sfdx-hardis --no-prompt && sf plugins install sfdx-git-delta --no-prompt
       - name: JWT auth to target org
         run: sf hardis auth login
       - name: Delta validate + specified tests
