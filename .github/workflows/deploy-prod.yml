@@ -14,7 +14,7 @@ jobs:
       - name: Install CLI + plugins
         run: |
           npm install --global @salesforce/cli
-          sf plugins install sfdx-hardis --no-prompt && sf plugins install sfdx-git-delta --no-prompt
+          echo y | sf plugins install sfdx-hardis && echo y | sf plugins install sfdx-git-delta
       - name: JWT auth to PROD org
         run: sf hardis auth login
       - name: Delta deploy + RunLocalTests
