@@ -33,11 +33,9 @@ jobs:
         run: |
           npm install --global @salesforce/cli
           echo y | sf plugins install sfdx-hardis && echo y | sf plugins install sfdx-git-delta
+      - name: Set branch name for hardis
+        run: git checkout -B ${{ github.base_ref }}
       - name: JWT auth to target org
-        env:
-          BRANCH_NAME: ${{ github.base_ref }}
         run: sf hardis auth login
       - name: Delta validate + specified tests
-        env:
-          BRANCH_NAME: ${{ github.base_ref }}
         run: sf hardis project deploy smart --check
