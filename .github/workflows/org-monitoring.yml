@@ -10,7 +10,7 @@ jobs:
     environment: dev
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --global @salesforce/cli && sf plugins install sfdx-hardis
+      - run: npm install --global @salesforce/cli && echo y | sf plugins install sfdx-hardis
       - name: JWT auth
         run: sf hardis auth login
         env:
@@ -24,7 +24,7 @@ jobs:
     environment: prod
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --global @salesforce/cli && sf plugins install sfdx-hardis
+      - run: npm install --global @salesforce/cli && echo y | sf plugins install sfdx-hardis
       - name: JWT auth
         run: sf hardis auth login
         env:
