@@ -25,5 +25,8 @@ private class SandboxDataSanitizerTest {
         Test.startTest();
         SandboxDataSanitizer.scrambleEmails();
         Test.stopTest();
+
+        Integer contacts = [SELECT COUNT() FROM Contact WHERE Email != null];
+        Assert.areEqual(0, contacts, 'No contacts should exist in this isolated test context');
     }
 }
