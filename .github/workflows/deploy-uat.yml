@@ -26,6 +26,7 @@ jobs:
           SFDX_CLIENT_ID_UAT:  ${{ secrets.SFDX_CLIENT_ID_UAT }}
           SFDX_CLIENT_KEY_UAT: ${{ secrets.SFDX_CLIENT_KEY_UAT }}
           GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          APEX_TEST_LEVEL:     RunSpecifiedTests
           FORCE_COLOR: "1"
         run: |
           sf hardis auth login
