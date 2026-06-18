@@ -3,3 +3,4 @@ targetOrg: UAT
 mergeTargets:
   - main
 targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.uat
+testLevel: RunSpecifiedTests
