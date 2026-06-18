@@ -10,25 +10,33 @@ jobs:
     environment: dev
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --global @salesforce/cli && echo y | sf plugins install sfdx-hardis
-      - name: JWT auth
-        run: sf hardis auth login
+      - name: Install CLI + plugins
+        run: |
+          npm install --global @salesforce/cli
+          echo y | sf plugins install sfdx-hardis
+      - name: Login & backup
         env:
-          SF_CLIENT_ID: ${{ secrets.SF_CLIENT_ID }}
-          SF_JWT_KEY: ${{ secrets.SF_JWT_KEY }}
-      - name: Backup + audit trail
-        run: sf hardis org monitor backup
+          SFDX_CLIENT_ID_DEV:  ${{ secrets.SFDX_CLIENT_ID_DEV }}
+          SFDX_CLIENT_KEY_DEV: ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          FORCE_COLOR: "1"
+        run: |
+          sf hardis auth login
+          sf hardis org monitor backup
 
   backup-prod:
     runs-on: ubuntu-latest
     environment: prod
     steps:
       - uses: actions/checkout@v4
-      - run: npm install --global @salesforce/cli && echo y | sf plugins install sfdx-hardis
-      - name: JWT auth
-        run: sf hardis auth login
+      - name: Install CLI + plugins
+        run: |
+          npm install --global @salesforce/cli
+          echo y | sf plugins install sfdx-hardis
+      - name: Login & backup
         env:
-          SF_CLIENT_ID: ${{ secrets.SF_CLIENT_ID }}
-          SF_JWT_KEY: ${{ secrets.SF_JWT_KEY }}
-      - name: Backup + audit trail
-        run: sf hardis org monitor backup
+          SFDX_CLIENT_ID_MAIN:  ${{ secrets.SFDX_CLIENT_ID_MAIN }}
+          SFDX_CLIENT_KEY_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
+          FORCE_COLOR: "1"
+        run: |
+          sf hardis auth login
+          sf hardis org monitor backup

@@ -7,20 +7,33 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: dev
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Install CLI + plugins
         run: |
           npm install --global @salesforce/cli
-          echo y | sf plugins install sfdx-hardis && echo y | sf plugins install sfdx-git-delta
-      - name: JWT auth to DEV org
-        run: sf hardis auth login
-      - name: Delta deploy (Quick Deploy)
-        run: sf hardis project deploy smart
+          echo y | sf plugins install sfdx-hardis
+          echo y | sf plugins install sfdx-git-delta
+      - name: Login & Deploy
+        env:
+          SFDX_CLIENT_ID_DEV:  ${{ secrets.SFDX_CLIENT_ID_DEV }}
+          SFDX_CLIENT_KEY_DEV: ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          FORCE_COLOR: "1"
+        run: |
+          sf hardis auth login
+          sf hardis project deploy smart
       - name: Inject Named Credential secret
         env:
+          SFDX_CLIENT_ID_DEV:  ${{ secrets.SFDX_CLIENT_ID_DEV }}
+          SFDX_CLIENT_KEY_DEV: ${{ secrets.SFDX_CLIENT_KEY_DEV }}
           SECRET: ${{ secrets.TEST_HTTPBIN_SECRET }}
         run: |
           sed "s|__SECRET__|$SECRET|" scripts/inject-named-credentials.json > /tmp/cred.json
