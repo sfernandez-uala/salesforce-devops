@@ -1,3 +1,5 @@
-# Branch-specific config for: main → PRODUCTION
-instanceUrl: https://login.salesforce.com
+instanceUrl: https://own11.my.salesforce.com
 targetOrg: PROD
+mergeTargets: []
+targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com
+testLevel: RunLocalTests
