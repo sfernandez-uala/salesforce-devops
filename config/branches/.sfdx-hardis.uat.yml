@@ -1,3 +1,6 @@
-# Branch-specific config for: uat → UAT org
-instanceUrl: https://test.salesforce.com
+instanceUrl: https://own11--uat.sandbox.my.salesforce.com
 targetOrg: UAT
+mergeTargets:
+  - main
+targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.uat
+testLevel: NoTestRun

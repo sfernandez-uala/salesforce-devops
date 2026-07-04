@@ -1,3 +1,6 @@
-# Branch-specific config for: dev → DEV org
-instanceUrl: https://test.salesforce.com
+instanceUrl: https://own11--dev.sandbox.my.salesforce.com
 targetOrg: DEV
+mergeTargets:
+  - uat
+targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.dev
+testLevel: NoTestRun
