@@ -3,6 +3,13 @@ on:
   push:
     branches: [uat]
 
+# Serialize deploys to the same environment so two pushes can never
+# interleave a half-applied metadata deploy. Never cancel an in-flight
+# deploy — queue the next one instead.
+concurrency:
+  group: deploy-uat
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -43,3 +50,24 @@ jobs:
           sed "s|__SECRET__|$SECRET|" scripts/inject-named-credentials.json > /tmp/cred.json
           sf api request rest "/services/data/v62.0/named-credentials/credential" \
             --method POST --body "$(cat /tmp/cred.json)"
+      - name: Upload deploy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-report-uat-${{ github.sha }}
+          path: hardis-report/
+          if-no-files-found: ignore
+          retention-days: 90
+      - name: Notify on failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not configured, skipping failure notification"
+            exit 0
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":rotating_light: Deploy to UAT FAILED — ${{ github.repository }}@${{ github.sha }} — $RUN_URL\"}" \
+            "$SLACK_WEBHOOK_URL"
