@@ -1,2 +1,13 @@
-# All workflow changes require a senior dev review
-.github/workflows/ @org/senior-devs
+# Code owners — GitHub requests review from these owners on matching changes.
+# NOTE: this repo is owned by a USER account, so only individual collaborators
+# (e.g. @sfernandez-uala) are valid here — @org/team references are silently
+# ignored. Point this at a real team once the repo moves under an org.
+
+# Pipeline definitions and CI config are high-risk: require owner review.
+/.github/            @sfernandez-uala
+
+# All Salesforce source requires owner review before it can be merged.
+/force-app/          @sfernandez-uala
+
+# Deployment / environment configuration.
+/config/             @sfernandez-uala

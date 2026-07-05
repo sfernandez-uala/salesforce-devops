@@ -1,0 +1,19 @@
+# gitleaks configuration for salesforce-devops
+#
+# Extends the built-in ruleset (all default secret detectors stay active) and
+# narrowly allowlists the encrypted JWT signing keys. Those .key files are
+# committed by design: they are openssl-encrypted and only usable with the
+# SFDX_CLIENT_KEY_* GitHub secrets at runtime. They are scheduled for rotation
+# and removal from git history in Phase 2 (migrate prod auth to OIDC /
+# External Client App); until then this keeps the scan focused on *new*,
+# genuinely plaintext secrets rather than these known-encrypted files.
+title = "salesforce-devops gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Encrypted JWT signing keys are committed by design (decrypted at runtime with SFDX_CLIENT_KEY_*)."
+paths = [
+  '''config/branches/\.jwt/.*\.key$''',
+]
