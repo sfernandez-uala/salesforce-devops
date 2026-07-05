@@ -4,6 +4,11 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:
 
+# Prevent an overlapping scheduled + manual run from racing the same backup.
+concurrency:
+  group: org-monitoring
+  cancel-in-progress: false
+
 jobs:
   backup-dev:
     runs-on: ubuntu-latest
