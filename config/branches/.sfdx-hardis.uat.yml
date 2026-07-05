@@ -3,4 +3,8 @@ targetOrg: UAT
 mergeTargets:
   - main
 targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.uat
-testLevel: NoTestRun
+# Shift Apex tests left: run the full local suite when validating/deploying to
+# UAT, so failures surface at the UAT boundary instead of only at the PROD gate.
+# RunLocalTests runs all org-local tests regardless of the delta, so it cannot
+# hit NoTestsSpecifiedError (that was a RunSpecifiedTests-only failure mode).
+testLevel: RunLocalTests
