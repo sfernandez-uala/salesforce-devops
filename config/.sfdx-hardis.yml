@@ -2,6 +2,14 @@ developmentBranch: dev
 allowedOrgTypes:
   - sandbox
 
+# Deploy only the git delta (and apply destructiveChanges) on minor->major
+# merges (feature->dev), so deletions actually propagate and deploys are faster.
+# NOTE: hardis intentionally keeps major->major (dev->uat->main) as FULL
+# deployments — delta between major branches is explicitly not recommended.
+# Getting deletions all the way to prod is handled by quick-deploy (Phase 2),
+# NOT by enableDeltaDeploymentBetweenMajorBranches.
+useDeltaDeployment: true
+
 # Permission sets auto-assigned when initializing an org/sandbox
 initPermissionSets:
   - Test_Httpbin_Access
