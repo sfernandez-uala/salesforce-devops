@@ -33,6 +33,12 @@ jobs:
           SFDX_CLIENT_ID_DEV:  ${{ secrets.SFDX_CLIENT_ID_DEV }}
           SFDX_CLIENT_KEY_DEV: ${{ secrets.SFDX_CLIENT_KEY_DEV }}
           GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
+          # Force delta (incl. destructiveChanges) on the merge deploy to dev.
+          # Without this, hardis falls back to a FULL additive deploy on merges
+          # (quick-deploy is unavailable for a NoTestRun sandbox), so deletions
+          # never reach the dev org. Only affects feature->dev; major->major
+          # stays full by hardis design.
+          USE_DELTA_DEPLOYMENT_AFTER_MERGE: "true"
           FORCE_COLOR: "1"
         run: |
           sf hardis auth login
