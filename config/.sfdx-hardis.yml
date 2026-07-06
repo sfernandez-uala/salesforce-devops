@@ -2,13 +2,16 @@ developmentBranch: dev
 allowedOrgTypes:
   - sandbox
 
-# Deploy only the git delta (and apply destructiveChanges) on minor->major
-# merges (feature->dev), so deletions actually propagate and deploys are faster.
-# NOTE: hardis intentionally keeps major->major (dev->uat->main) as FULL
-# deployments — delta between major branches is explicitly not recommended.
-# Getting deletions all the way to prod is handled by quick-deploy (Phase 2),
-# NOT by enableDeltaDeploymentBetweenMajorBranches.
-useDeltaDeployment: true
+# Delta deployment is DISABLED on purpose.
+# In delta mode, hardis intersects our manifest/destructiveChanges.xml with the
+# git-delta computed for the current push and keeps only the overlap. When a
+# class was removed from source in an earlier commit, the current delta no longer
+# contains it, so the intersection empties our manifest and NOTHING is deleted
+# ("Both package.xml and destructive changes files exist but are empty").
+# With full deploys, hardis applies manifest/destructiveChanges.xml directly as
+# --post-destructive-changes, which is deterministic and PR-reviewable — the
+# right deletion model for a regulated org.
+useDeltaDeployment: false
 
 # Permission sets auto-assigned when initializing an org/sandbox
 initPermissionSets:
