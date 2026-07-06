@@ -2,6 +2,17 @@ developmentBranch: dev
 allowedOrgTypes:
   - sandbox
 
+# Delta deployment is DISABLED on purpose.
+# In delta mode, hardis intersects our manifest/destructiveChanges.xml with the
+# git-delta computed for the current push and keeps only the overlap. When a
+# class was removed from source in an earlier commit, the current delta no longer
+# contains it, so the intersection empties our manifest and NOTHING is deleted
+# ("Both package.xml and destructive changes files exist but are empty").
+# With full deploys, hardis applies manifest/destructiveChanges.xml directly as
+# --post-destructive-changes, which is deterministic and PR-reviewable — the
+# right deletion model for a regulated org.
+useDeltaDeployment: false
+
 # Permission sets auto-assigned when initializing an org/sandbox
 initPermissionSets:
   - Test_Httpbin_Access
