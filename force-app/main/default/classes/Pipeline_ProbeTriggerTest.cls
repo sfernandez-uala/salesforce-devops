@@ -8,7 +8,7 @@ private class Pipeline_ProbeTriggerTest {
         Test.startTest();
         Pipeline_ProbeTriggerHandler.handleBeforeInsert(records);
         Test.stopTest();
-        Assert.areEqual('auto', records[0].Probe_Note__c, 'Handler should default a blank note to auto');
+        Assert.areEqual('auto-v2', records[0].Probe_Note__c, 'Handler should default a blank note to auto-v2 (C4 modification)');
     }
 
     @IsTest
