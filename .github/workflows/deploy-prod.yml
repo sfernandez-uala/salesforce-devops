@@ -48,7 +48,7 @@ jobs:
             exit 0
           fi
           sed "s|__SECRET__|$SECRET|" scripts/inject-named-credentials.json > /tmp/cred.json
-          sf api request rest "/services/data/v62.0/named-credentials/credential" \
+          sf api request rest "/services/data/v67.0/named-credentials/credential" \
             --method POST --body "$(cat /tmp/cred.json)"
       - name: Upload deploy report
         if: always()
