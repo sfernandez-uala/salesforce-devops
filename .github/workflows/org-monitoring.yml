@@ -23,6 +23,12 @@ jobs:
         env:
           SFDX_CLIENT_ID_DEV:  ${{ secrets.SFDX_CLIENT_ID_DEV }}
           SFDX_CLIENT_KEY_DEV: ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          # Scheduled/dispatch runs check out the default branch (main), so hardis
+          # would otherwise derive the org from "main" and demand SFDX_CLIENT_ID_MAIN.
+          # Pin the branch context so auth + backup target the DEV org.
+          CI_COMMIT_REF_NAME:  dev
+          CONFIG_BRANCH:       dev
+          ORG_ALIAS:           dev
           FORCE_COLOR: "1"
         run: |
           sf hardis auth login
@@ -41,6 +47,11 @@ jobs:
         env:
           SFDX_CLIENT_ID_MAIN:  ${{ secrets.SFDX_CLIENT_ID_MAIN }}
           SFDX_CLIENT_KEY_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
+          # Pin the branch context so auth + backup target the PROD org explicitly
+          # (rather than relying on the checked-out default branch).
+          CI_COMMIT_REF_NAME:   main
+          CONFIG_BRANCH:        main
+          ORG_ALIAS:            main
           FORCE_COLOR: "1"
         run: |
           sf hardis auth login
