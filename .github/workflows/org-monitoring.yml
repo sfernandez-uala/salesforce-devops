@@ -34,6 +34,30 @@ jobs:
           sf hardis auth login
           sf hardis org monitor backup
 
+  backup-uat:
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CLI + plugins
+        run: |
+          npm install --global @salesforce/cli
+          echo y | sf plugins install sfdx-hardis
+      - name: Login & backup
+        env:
+          SFDX_CLIENT_ID_UAT:  ${{ secrets.SFDX_CLIENT_ID_UAT }}
+          SFDX_CLIENT_KEY_UAT: ${{ secrets.SFDX_CLIENT_KEY_UAT }}
+          # Scheduled/dispatch runs check out the default branch (main), so hardis
+          # would otherwise derive the org from "main" and demand SFDX_CLIENT_ID_MAIN.
+          # Pin the branch context so auth + backup target the UAT org.
+          CI_COMMIT_REF_NAME:  uat
+          CONFIG_BRANCH:       uat
+          ORG_ALIAS:           uat
+          FORCE_COLOR: "1"
+        run: |
+          sf hardis auth login
+          sf hardis org monitor backup
+
   backup-prod:
     runs-on: ubuntu-latest
     environment: prod
