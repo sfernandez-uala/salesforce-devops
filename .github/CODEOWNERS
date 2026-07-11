@@ -1,7 +1,26 @@
 # Code owners — GitHub requests review from these owners on matching changes.
-# NOTE: this repo is owned by a USER account, so only individual collaborators
-# (e.g. @sfernandez-uala) are valid here — @org/team references are silently
-# ignored. Point this at a real team once the repo moves under an org.
+#
+# CURRENT STATE (user-owned pilot repo):
+#   - This repo is owned by a USER account (sfernandez-uala), so only individual
+#     collaborators (e.g. @sfernandez-uala) are valid owners. An @org/team
+#     reference is silently ignored on a user repo — it would fail OPEN, giving
+#     no protection. Teams only work on ORG-owned repos.
+#   - The code-owner gate is currently OFF (require_code_owner_reviews = false on
+#     dev/uat/main; required_approving_review_count = 0) — deferred to the cutover.
+#
+# IMPACT if the gate were enabled here as-is:
+#   - Bus factor = 1: @sfernandez-uala is the only designated reviewer.
+#   - A user CANNOT approve their own PR. In a solo pilot the owner authors every
+#     PR, so enabling "Require review from Code Owners" (+ required approvals >= 1)
+#     would DEADLOCK every PR. This is why the gate stays off during the pilot.
+#
+# MIGRATION CHECKLIST (org cutover):
+#   1. Move the repo under the target org.
+#   2. Repoint the rules below from @sfernandez-uala to a real team
+#      (e.g. @<org>/salesforce-platform).
+#   3. THEN enable branch protection: require_code_owner_reviews = true and
+#      required_approving_review_count >= 1. A team owner lets any member other
+#      than the author satisfy the gate → real 4-eyes review, no deadlock.
 
 # Pipeline definitions and CI config are high-risk: require owner review.
 /.github/            @sfernandez-uala
