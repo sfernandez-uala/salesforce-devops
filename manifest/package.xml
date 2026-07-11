@@ -28,5 +28,9 @@
         <members>*</members>
         <name>CustomField</name>
     </types>
+    <types>
+        <members>*</members>
+        <name>LightningComponentBundle</name>
+    </types>
     <version>62.0</version>
 </Package>
