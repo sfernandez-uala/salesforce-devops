@@ -10,17 +10,20 @@ concurrency:
 jobs:
   static-analysis:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Install CLI + Code Analyzer
         run: |
-          npm install --global @salesforce/cli
-          echo y | sf plugins install code-analyzer
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install @salesforce/plugin-code-analyzer@5.14.0
       - name: PMD on delta files only
         run: |
           CHANGED=$(git diff --name-only --diff-filter=ACMRT \
@@ -28,8 +31,18 @@ jobs:
             | grep -E '\.cls$|\.trigger$|\.page$' | paste -sd, -)
           if [ -n "$CHANGED" ]; then
             sf code-analyzer run --workspace "$CHANGED" \
-              --rule-selector pmd --severity-threshold 3
+              --rule-selector pmd --severity-threshold 3 \
+              --output-file results.sarif
           fi
+      # Publish findings to the Security -> Code scanning tab: persistent history
+      # + audit trail of accepted/dismissed findings + inline PR annotations.
+      # Runs even when the gate fails so red-gate findings are still recorded.
+      - name: Upload PMD findings to code scanning
+        if: always() && hashFiles('results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3.37.0
+        with:
+          sarif_file: results.sarif
+          category: pmd-delta
 
   delta-check-deploy:
     runs-on: ubuntu-latest
@@ -39,19 +52,19 @@ jobs:
       contents: write
       issues: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Install CLI + plugins
         run: |
-          npm install --global @salesforce/cli
-          echo y | sf plugins install sfdx-hardis
-          echo y | sf plugins install sfdx-git-delta
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install sfdx-hardis@7.20.0
+          echo y | sf plugins install sfdx-git-delta@6.45.1
       - name: Login & Simulate deployment
         env:
           SFDX_CLIENT_ID_DEV:   ${{ secrets.SFDX_CLIENT_ID_DEV }}
@@ -74,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Secret Scan
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
       # Run the gitleaks BINARY (MIT, free under any owner incl. private org
@@ -94,3 +107,56 @@ jobs:
           gitleaks version
       - name: Scan git history for secrets
         run: gitleaks git . --redact --verbose --no-banner
+
+  deletion-check:
+    runs-on: ubuntu-latest
+    name: Undeclared Deletion Check
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Install CLI + git-delta
+        run: |
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install sfdx-git-delta@6.45.1
+      # Full-deploy model: a metadata file removed from source is NOT deleted
+      # from the org unless it is explicitly listed in manifest/destructiveChanges.xml.
+      # sfdx-git-delta computes what git says was deleted; fail the PR if any of
+      # those deletions is not declared, so nothing silently orphans in the org.
+      - name: Detect undeclared metadata deletions
+        run: |
+          set -euo pipefail
+          # sgd requires the output dir to already exist; a genuine sgd failure
+          # must fail this job (no `|| true` masking) so the detector can't pass
+          # blindly.
+          mkdir -p sgd-out
+          sf sgd source delta \
+            --from "origin/${{ github.base_ref }}" --to HEAD \
+            --output-dir sgd-out
+          SGD_DESTR="sgd-out/destructiveChanges/destructiveChanges.xml"
+          if [ ! -f "$SGD_DESTR" ]; then
+            echo "git-delta produced no destructive manifest; nothing to check."
+            exit 0
+          fi
+          grep -oE '<members>[^<]+</members>' "$SGD_DESTR" | sort -u > git_deletions.txt || true
+          if [ ! -s git_deletions.txt ]; then
+            echo "No git-derived metadata deletions in this PR."
+            exit 0
+          fi
+          if [ -f manifest/destructiveChanges.xml ]; then
+            grep -oE '<members>[^<]+</members>' manifest/destructiveChanges.xml | sort -u > declared.txt || true
+          else
+            : > declared.txt
+          fi
+          UNDECLARED=$(comm -23 git_deletions.txt declared.txt || true)
+          if [ -n "$UNDECLARED" ]; then
+            echo "::error::Metadata was removed from source but is NOT declared in manifest/destructiveChanges.xml."
+            echo "Under the full-deploy model these would silently remain (orphaned) in the target org:"
+            echo "$UNDECLARED" | sed 's/<[^>]*>//g'
+            echo "Fix: add them to manifest/destructiveChanges.xml to delete them from the org, or restore the files."
+            exit 1
+          fi
+          echo "All git-derived deletions are declared in manifest/destructiveChanges.xml. OK."
