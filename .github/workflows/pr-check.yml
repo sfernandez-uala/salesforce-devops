@@ -11,16 +11,16 @@ jobs:
   static-analysis:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Install CLI + Code Analyzer
         run: |
-          npm install --global @salesforce/cli
-          echo y | sf plugins install code-analyzer
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install @salesforce/plugin-code-analyzer@5.14.0
       - name: PMD on delta files only
         run: |
           CHANGED=$(git diff --name-only --diff-filter=ACMRT \
@@ -39,19 +39,19 @@ jobs:
       contents: write
       issues: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
           persist-credentials: true
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
       - name: Install CLI + plugins
         run: |
-          npm install --global @salesforce/cli
-          echo y | sf plugins install sfdx-hardis
-          echo y | sf plugins install sfdx-git-delta
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install sfdx-hardis@7.20.0
+          echo y | sf plugins install sfdx-git-delta@6.45.1
       - name: Login & Simulate deployment
         env:
           SFDX_CLIENT_ID_DEV:   ${{ secrets.SFDX_CLIENT_ID_DEV }}
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Secret Scan
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
       # Run the gitleaks BINARY (MIT, free under any owner incl. private org
