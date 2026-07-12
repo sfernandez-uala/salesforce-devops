@@ -129,12 +129,16 @@ jobs:
       - name: Detect undeclared metadata deletions
         run: |
           set -euo pipefail
+          # sgd requires the output dir to already exist; a genuine sgd failure
+          # must fail this job (no `|| true` masking) so the detector can't pass
+          # blindly.
+          mkdir -p sgd-out
           sf sgd source delta \
             --from "origin/${{ github.base_ref }}" --to HEAD \
-            --output-dir sgd-out || true
+            --output-dir sgd-out
           SGD_DESTR="sgd-out/destructiveChanges/destructiveChanges.xml"
           if [ ! -f "$SGD_DESTR" ]; then
-            echo "No git-derived metadata deletions in this PR."
+            echo "git-delta produced no destructive manifest; nothing to check."
             exit 0
           fi
           grep -oE '<members>[^<]+</members>' "$SGD_DESTR" | sort -u > git_deletions.txt || true
