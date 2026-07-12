@@ -1,7 +1,8 @@
 public class SandboxAccessSetup {
-    private static final List<String> DEV_PERMISSION_SETS = new List<String>{
-        'Test_Httpbin_Access'
-    };
+    // Real developer permission sets to auto-assign on sandbox copy.
+    // Empty by default — populate with the org's actual dev permission sets.
+    // While empty, assignDeveloperPermissionSets() is a safe no-op.
+    private static final List<String> DEV_PERMISSION_SETS = new List<String>();
 
     public static void assignDeveloperPermissionSets() {
         List<PermissionSet> permSets = [

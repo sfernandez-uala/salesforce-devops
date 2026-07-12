@@ -6,7 +6,9 @@ global class SandboxSetup implements System.SandboxPostCopy {
         // 2) Permission sets — make the sandbox dev-ready immediately
         SandboxAccessSetup.assignDeveloperPermissionSets();
 
-        // 3) NOTE: NC secrets are injected by CI AFTER sandbox copy, not here.
-        // Apex cannot fetch external vault secrets — callout needs a credential (chicken & egg).
+        // 3) NOTE: External Credential secrets are NOT set here. Apex cannot fetch
+        // external vault secrets, and a callout needs a credential first (chicken &
+        // egg). Set them out-of-band after copy — manually in Setup, or via a
+        // dedicated secret-injection step with real secret names at the org cutover.
     }
 }
