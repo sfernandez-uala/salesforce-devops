@@ -91,8 +91,46 @@ sf hardis project deploy smart -o <your-sandbox>  # deploy the updated source to
 - **With per-developer sandboxes** (the real multi-dev setup), back-promote is the
   daily tool to sync your personal sandbox with what the team has merged.
 
-## Related: pipeline back-promotion (drift prevention)
+## Hotfix flow (urgent production fixes)
 
-Distinct from the per-developer flow: if an urgent fix ever lands directly on a
-higher branch (e.g. a hotfix straight to `main`), back-promote it **down**
-(`main → uat → dev`) so the lower branches don't drift. Same principle, branch level.
+A hotfix skips the normal `dev → uat → main` release train to patch prod fast.
+The half most teams get wrong is the **back-propagation**: a hotfix is not done
+until it has flowed back **down** to `uat` and `dev`. Otherwise the next normal
+promotion deploys `dev`'s version of the file — without the fix — and silently
+overwrites it (drift → the bug regresses in prod).
+
+### Steps
+
+```bash
+# 1. Branch from main (= what is actually live in prod), NOT from dev
+git checkout -b hotfix/<issue> origin/main
+
+# 2. Fix + test, then open a PR: hotfix/<issue> -> main
+#    The PR gate check-only-validates against the PROD org before merge.
+
+# 3. Merge -> "Deploy to PRODUCTION" ships the fix. Delete the hotfix branch.
+
+# 4. BACK-PROPAGATE so uat and dev don't drift. Cherry-pick keeps it to the single
+#    fix commit and avoids squash-scramble conflicts:
+git checkout uat && git cherry-pick <hotfix-sha>   # -> push/PR to uat (deploy-uat applies it)
+git checkout dev && git cherry-pick <hotfix-sha>   # -> push/PR to dev (deploy-dev applies it)
+```
+
+### Why branch from `main` (not `dev`)
+
+- **Isolation:** `main` is the exact prod state, so the hotfix carries *only* the
+  fix. Branching from `dev` would drag dev's unreleased work into prod.
+- **Speed:** it goes straight to prod instead of waiting in the `dev → uat → main` queue.
+
+### When to hotfix vs. normal flow
+
+- **Hotfix:** an urgent prod defect that cannot wait for the normal release train.
+- **Everything else:** the normal `dev → uat → main` flow.
+
+### Regulated-org note
+
+A hotfix still goes through the PR gate (check-only validation against prod) — it is
+never merged blind. With required reviewers enabled (org cutover), a hotfix still
+needs approval, typically via an expedited / on-call approver — never none.
+
+> **Golden rule:** a hotfix is not finished until it is back on `uat` and `dev`.
