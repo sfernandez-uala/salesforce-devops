@@ -19,3 +19,5 @@ global class SandboxSetup implements System.SandboxPostCopy {
         // dedicated secret-injection step with real secret names at the org cutover.
     }
 }
+
+// SARIF upload validation probe (PR closed, never merged).
