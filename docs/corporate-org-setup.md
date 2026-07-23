@@ -210,3 +210,38 @@ assumes). Then promote `dev → uat → main`.
 9. **New orgs default to External Client Apps**, not Connected Apps — same JWT
    capability, but Settings (what the app can do) and Policies (who can use it)
    are separate sections.
+10. **Dependabot runs on its own** once `.github/dependabot.yml` exists — no
+    workflow needed; it opens a PR per outdated action on its schedule. Gotcha: a
+    Dependabot PR is cut from the default branch **as it was when the PR opened**.
+    If you fix auth/config on the default branch afterwards, the open PR still
+    lacks that fix and its gate fails (a false negative — not a problem with the
+    bump). Rebase it (`@dependabot rebase`) or re-apply the same pinned SHA on a
+    fresh branch off the current default branch, so the gate validates green.
+    Note: `--admin` will **not** merge a PR whose required check is actively
+    *failing*, so fix the gate rather than trying to bypass it.
+
+---
+
+## Validation checkpoints (verify as you go — don't wire everything blind)
+
+Each of these catches a whole class of failure early. This is the order that
+would have saved the most time:
+
+1. **Per org, before touching CI** — run the JWT login locally:
+   ```bash
+   sf org login jwt --client-id <consumer-key> --jwt-key-file server.key \
+     --username <org-user> --instance-url <org-instance-url>
+   ```
+   "Successfully authorized" proves the cert → app → login chain for that org.
+   Decode failures here, not in CI:
+   - *"External client app is not installed in this org"* → wrong consumer key
+     (you used another org's — keys are per-org).
+   - *"Invalid key length"* → the private key is in the wrong variable (hardis
+     expects the raw PEM in `SFDX_CLIENT_CERT_<ORG>`; `SFDX_CLIENT_KEY_<ORG>` is a
+     passphrase in the encrypted model — see gotcha 3).
+2. **After wiring secrets + config** — open a trivial PR to `dev`; the gate's
+   "Simulate Deployment" must go green. If it authenticates to the *wrong* org or
+   with stale keys → secret scope (gotcha 2: repo-level vs. Environment).
+3. **First deploy per environment** — merge to each branch and confirm the deploy
+   is green **and the metadata actually landed** (query the org via the Tooling
+   API, not just "CI is green").
