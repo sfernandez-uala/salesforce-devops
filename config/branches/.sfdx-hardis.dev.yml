@@ -1,6 +1,6 @@
-instanceUrl: https://own11--dev.sandbox.my.salesforce.com
+instanceUrl: https://own46--dev.sandbox.my.salesforce.com
 targetOrg: DEV
 mergeTargets:
   - uat
-targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.dev
+targetUsername: sergio3886_qunmz3znwe@gmail.com.dev
 testLevel: NoTestRun
