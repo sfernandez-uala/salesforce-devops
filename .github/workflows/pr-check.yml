@@ -77,6 +77,13 @@ jobs:
           SFDX_CLIENT_KEY_UAT:  ${{ secrets.SFDX_CLIENT_KEY_UAT }}
           SFDX_CLIENT_ID_MAIN:  ${{ secrets.SFDX_CLIENT_ID_MAIN }}
           SFDX_CLIENT_KEY_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
+          # The SFDX_CLIENT_KEY_* secrets hold the raw PEM private key (server.key).
+          # hardis reads SFDX_CLIENT_CERT_<ORG> as the key content and, on detecting a
+          # raw PEM header, uses it directly with NO decryption — the supported path
+          # when the External Client App / certificate is created manually.
+          SFDX_CLIENT_CERT_DEV:  ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          SFDX_CLIENT_CERT_UAT:  ${{ secrets.SFDX_CLIENT_KEY_UAT }}
+          SFDX_CLIENT_CERT_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
           CI_COMMIT_REF_NAME:   ${{ github.event.pull_request.base.ref }}
           CONFIG_BRANCH:        ${{ github.event.pull_request.base.ref }}
           ORG_ALIAS:            ${{ github.event.pull_request.base.ref }}
