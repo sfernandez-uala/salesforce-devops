@@ -47,6 +47,10 @@ jobs:
   delta-check-deploy:
     runs-on: ubuntu-latest
     name: Simulate Deployment to Target Org
+    # Bind to the GitHub Environment of the target branch so the gate reads that
+    # environment's JWT secrets (single source of truth — no repo-level duplication).
+    # Branch name matches the environment except main, which maps to "prod".
+    environment: ${{ github.event.pull_request.base.ref == 'main' && 'prod' || github.event.pull_request.base.ref }}
     permissions:
       pull-requests: write
       contents: write
