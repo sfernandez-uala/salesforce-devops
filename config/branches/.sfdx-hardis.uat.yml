@@ -1,8 +1,8 @@
-instanceUrl: https://own11--uat.sandbox.my.salesforce.com
+instanceUrl: https://own46--uat.sandbox.my.salesforce.com
 targetOrg: UAT
 mergeTargets:
   - main
-targetUsername: sergio.noah.fernandez_0oqy1lv8dymzbo1ic7ap6@gmail.com.uat
+targetUsername: sergio3886_qunmz3znwe@gmail.com.uat
 # Shift Apex tests left: run the full local suite when validating/deploying to
 # UAT, so failures surface at the UAT boundary instead of only at the PROD gate.
 # RunLocalTests runs all org-local tests regardless of the delta, so it cannot
