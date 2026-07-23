@@ -32,6 +32,9 @@ jobs:
         env:
           SFDX_CLIENT_ID_UAT:  ${{ secrets.SFDX_CLIENT_ID_UAT }}
           SFDX_CLIENT_KEY_UAT: ${{ secrets.SFDX_CLIENT_KEY_UAT }}
+          # SFDX_CLIENT_KEY_UAT holds the raw PEM key; hardis reads SFDX_CLIENT_CERT_UAT
+          # as the key content and uses raw PEM directly (no decryption).
+          SFDX_CLIENT_CERT_UAT: ${{ secrets.SFDX_CLIENT_KEY_UAT }}
           GITHUB_TOKEN:        ${{ secrets.GITHUB_TOKEN }}
           FORCE_COLOR: "1"
         run: |
