@@ -181,6 +181,94 @@ assumes). Then promote `dev → uat → main`.
 
 ---
 
+## 10. Environment-specific configuration & safe production deploys
+
+**The problem.** A full deploy carries the source's value to every org. A value that
+must differ per environment (an endpoint `holauat.com` in a sandbox vs `hola.com` in
+prod, a Custom Metadata record, a feature toggle) will **clobber production** if it
+rides the same metadata file through `dev → uat → main`. Today Gearset prevents this
+with a human choosing what to carry vs. keep at deploy time; an automated pipeline
+removes that human, so the protection must be rebuilt as config-as-code **before the
+first production deploy**.
+
+> **Rule:** a value that differs per environment must NOT live as a single literal in
+> the metadata that flows to all three orgs.
+
+### Mechanisms (layered — no single one is enough)
+
+| Value type | Primary | Backup |
+|---|---|---|
+| Endpoints/URLs (NamedCredential, RemoteSiteSetting, CMDT) | `package-no-overwrite.xml` + DX `replacements` (first deploy) | manual seed |
+| Secrets / tokens / consumer keys | populate **per-org post-deploy** (External Credentials); never in git | `.forceignore` |
+| Feature flags / suffixes / toggles | **Custom Settings** — record data is NOT deployable, safe by design | Protected CMDT + `replacements` |
+| Business-owned config (Reports, Dashboards, ListViews) | `package-no-overwrite.xml` | comparison exclusion |
+
+- **`manifest/package-no-overwrite.xml`** (sfdx-hardis) — a listed component is deployed
+  the first time it doesn't exist in the target, then **never overwritten** by CI/CD. The
+  structural replacement for Gearset's human review and the highest-leverage protection;
+  it guards *existing* prod values perfectly. Per-branch via `packageNoOverwritePath`.
+- **DX `replacements`** (`sfdx-project.json`) — a token (`@@ENDPOINT@@`) is replaced at
+  deploy time from a per-branch env var (`replaceWithEnv`). Covers the *first* deploy of a
+  new env-specific component (which no-overwrite can't yet protect). `sf hardis project
+  deploy smart` runs `sf project deploy start` underneath, so replacements fire
+  automatically. Never commit the real values — inject via CI secrets.
+- **Custom Settings** — record data can't be deployed via Metadata API, so env-specific
+  values set once per org are inherently safe. **Custom Metadata *records* ARE deployable**
+  → a full deploy overwrites them; protect or tokenize env-specific ones.
+- **External Credentials** — metadata carries the structure, never the secrets; populate
+  principals/secrets per org after deploy.
+
+**What Gearset gives today (rebuild all four):** environment variables (→ `replacements`),
+comparison filters (→ `.forceignore` / no-overwrite), human diff review + problem
+analyzers (→ PR review + validate-only + required approval), static code analysis
+(→ PMD/Code Analyzer in CI).
+
+### Metadata most dangerous to deploy blindly (add to `package-no-overwrite.xml`)
+
+- **OmniChannel** (ServiceChannel, PresenceConfig, QueueRoutingConfig) — mis-routes or strands live work.
+- **Messaging / EmbeddedServiceConfig** (MIAW, chat) — can drop a live customer channel.
+- **Einstein / Agentforce** (Bot, BotVersion, GenAiPlanner) — highest dependency risk; deploy the set together, scripts as **drafts first**.
+- **Flows** — deploy inactive by default (or replace the active version if the org deploys-as-active); can't be deactivated via Metadata API. Verify active status post-deploy.
+- **NamedCredential / RemoteSiteSetting** (per-env endpoints), **ConnectedApp** (don't deploy the consumer key), **CustomMetadata records**, **EmailTemplate**.
+
+### Safe production deploy
+
+- **Validate-only → Quick Deploy.** `sf project deploy validate` returns a job id valid
+  **10 days**; `deploy quick <id>` deploys without re-running tests. Any deploy to the org
+  between the two invalidates the validation. In hardis: `deploy smart --check` on the PR,
+  Quick Deploy on merge.
+- **Test level `RunLocalTests`** for prod (restrict hardis test-skipping to dev/uat).
+- **Pre-deploy metadata backup** (snapshot prod to a `backup` branch) + keep the prior git
+  SHA — deploys aren't transactional, so this is the only reliable rollback point.
+- **Required manual approval** on the `prod` GitHub Environment — the "someone looked at
+  it" that replaces Gearset's operator.
+
+### Migration checklist (before the first prod deploy)
+
+1. Build `package-no-overwrite.xml` (the list above) — highest leverage.
+2. Tokenize genuinely-travelling values with `replacements` + per-branch secrets.
+3. Secrets → External Credentials post-deploy; flags → Custom Settings.
+4. Prod = validate-only → Quick Deploy + `RunLocalTests` + required approval.
+5. Pre-deploy backup + prior SHA for rollback.
+6. Agentforce/bots: deps together, drafts-first. Flows: verify active post-deploy.
+7. PMD / Code Analyzer in CI.
+
+### Sources
+
+- sfdx-hardis overwrite management — https://sfdx-hardis.cloudity.com/salesforce-ci-cd-config-overwrite/
+- sfdx-hardis smart deploy — https://sfdx-hardis.cloudity.com/hardis/project/deploy/smart/
+- Salesforce DX `replacements` — https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_string_replace.htm
+- validate / Quick Deploy — https://developer.salesforce.com/docs/platform/salesforce-cli-reference/guide/cli_reference_project_deploy_validate.html
+- Named Credentials packaging — https://developer.salesforce.com/docs/platform/named-credentials/guide/nc-populate-external-credentials.html
+- Gearset environment variables — https://docs.gearset.com/en/articles/5557015-using-environment-variables-in-gearset
+- Gearset Agentforce deploy — https://docs.gearset.com/en/articles/13700779-how-to-deploy-agentforce-agents
+- Flow deploy (active / v44) — https://help.salesforce.com/s/articleView?id=platform.flow_distribute_deploy_active.htm
+
+> **Caveats:** "MessagingChannel/EmbeddedService breaks on overwrite" is reasoned from
+> dependency behavior, not an explicit Salesforce doc — handle conservatively. The Quick
+> Deploy window is **10 days**; the `--use-most-recent` flag looks back ~3 days — don't
+> conflate them.
+
 ## Gotchas (read these — each one cost real time)
 
 1. **Consumer key is per-org.** Reusing prod's key for dev fails with *"External
