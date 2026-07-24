@@ -4,8 +4,11 @@
  */
 public with sharing class DemoGetSetConsumer {
     /**
-     * Builds a DemoGetSet from the two inputs and returns them combined as
-     * "campoUno - campoDos".
+     * Builds a DemoGetSet from the two inputs and returns them combined.
+     *
+     * @param uno value stored in campoUno
+     * @param dos value stored in campoDos
+     * @return the two fields combined as "campoUno - campoDos"
      */
     public static String buildLabel(String uno, String dos) {
         DemoGetSet demo = new DemoGetSet();
