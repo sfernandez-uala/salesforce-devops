@@ -33,6 +33,12 @@ jobs:
             sf code-analyzer run --workspace "$CHANGED" \
               --rule-selector pmd --severity-threshold 3 \
               --output-file results.sarif
+            # Zero findings -> code-analyzer writes a SARIF with no results, which
+            # the upload-sarif action rejects ("1 item required; only 0 supplied").
+            # Drop it so the upload step's hashFiles guard skips cleanly.
+            if [ "$(jq '[.runs[]?.results[]?] | length' results.sarif 2>/dev/null || echo 0)" -eq 0 ]; then
+              rm -f results.sarif
+            fi
           fi
       # Publish findings to the Security -> Code scanning tab: persistent history
       # + audit trail of accepted/dismissed findings + inline PR annotations.
