@@ -1,6 +1,8 @@
 /**
  * Demo consumer of DemoGetSet. Exists to exercise a cross-developer dependency:
  * this class (Sergio) depends on DemoGetSet (Mario), merged in a separate PR.
+ *
+ * The separator between the two fields is a single dash surrounded by spaces.
  */
 public with sharing class DemoGetSetConsumer {
     /**
