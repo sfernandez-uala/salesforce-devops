@@ -179,6 +179,24 @@ assumes). Then promote `dev → uat → main`.
 - **Secrets**: gitleaks in the gate + GitHub push protection; JWT secrets scoped
   to Environments.
 
+### PR feedback: Apex test results comment
+
+The `apex-test-report` job in `pr-check.yml` posts a **test results + per-class
+coverage** table as a PR comment (parity with what the corporate repo publishes
+today). It is **informational** — it never blocks the merge. The authoritative
+test gate stays `delta-check-deploy` (`RunLocalTests` on `uat`/`main`); this job
+just surfaces the numbers where reviewers read them.
+
+- **Smart selection** — it does not run the whole org. For each changed `.cls` it
+  runs the class itself if it is `@isTest`, plus any `@isTest` class that
+  references it (`grep -rlw`). No changed Apex → the step is skipped.
+- **Auth** — reuses the gate's JWT block: same `environment:` binding and the
+  `SFDX_CLIENT_ID/KEY/CERT_<ORG>` secrets, so it authenticates to the target org.
+- **Runs against the org, not the diff** — `sf apex run test` executes tests that
+  already exist **in the target org**. A brand-new test added by the PR is not
+  there yet (it deploys on merge), so its first run posts "no test result
+  produced" — expected. The coverage it shows is real, org-side coverage.
+
 ---
 
 ## 10. Environment-specific configuration & safe production deploys

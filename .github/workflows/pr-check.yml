@@ -177,3 +177,94 @@ jobs:
             exit 1
           fi
           echo "All git-derived deletions are declared in manifest/destructiveChanges.xml. OK."
+
+  apex-test-report:
+    runs-on: ubuntu-latest
+    name: Apex Test Results
+    # Same environment binding as the gate so it JWT-auths to the target org.
+    environment: ${{ github.event.pull_request.base.ref == 'main' && 'prod' || github.event.pull_request.base.ref }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Install CLI + plugins
+        run: |
+          npm install --global @salesforce/cli@2.142.7
+          echo y | sf plugins install sfdx-hardis@7.20.0
+      # Smart selection: run only the tests that cover the changed Apex classes
+      # (the changed class itself if it is @isTest, plus any @isTest class that
+      # references it), so a PR never triggers the whole org's test suite.
+      - name: Detect relevant test classes
+        id: tests
+        run: |
+          DIR="force-app/main/default/classes"
+          CHANGED=$(git diff --name-only --diff-filter=ACMRT \
+            "origin/${{ github.base_ref }}...HEAD" \
+            | grep -E "^${DIR}/.*\.cls$" || true)
+          SET=""
+          for f in $CHANGED; do
+            name=$(basename "$f" .cls)
+            # The changed class is itself a test class -> run it directly.
+            if [ -f "$f" ] && grep -qi '@istest' "$f"; then
+              SET="${SET}${name}"$'\n'
+            fi
+            # Any test class that references the changed class -> run it too.
+            for ref in $(grep -rlw --include='*.cls' "$name" "$DIR" 2>/dev/null || true); do
+              if grep -qi '@istest' "$ref"; then
+                SET="${SET}$(basename "$ref" .cls)"$'\n'
+              fi
+            done
+          done
+          LIST=$(printf '%s' "$SET" | grep -v '^$' | sort -u | paste -sd, -)
+          echo "list=$LIST" >> "$GITHUB_OUTPUT"
+          echo "Relevant test classes: ${LIST:-<none>}"
+      - name: Run tests & post coverage comment
+        if: steps.tests.outputs.list != ''
+        env:
+          SFDX_CLIENT_ID_DEV:   ${{ secrets.SFDX_CLIENT_ID_DEV }}
+          SFDX_CLIENT_KEY_DEV:  ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          SFDX_CLIENT_ID_UAT:   ${{ secrets.SFDX_CLIENT_ID_UAT }}
+          SFDX_CLIENT_KEY_UAT:  ${{ secrets.SFDX_CLIENT_KEY_UAT }}
+          SFDX_CLIENT_ID_MAIN:  ${{ secrets.SFDX_CLIENT_ID_MAIN }}
+          SFDX_CLIENT_KEY_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
+          # Raw-PEM path: hardis reads SFDX_CLIENT_CERT_<ORG> and uses it directly
+          # (no decryption) when it detects a PEM header. See delta-check-deploy.
+          SFDX_CLIENT_CERT_DEV:  ${{ secrets.SFDX_CLIENT_KEY_DEV }}
+          SFDX_CLIENT_CERT_UAT:  ${{ secrets.SFDX_CLIENT_KEY_UAT }}
+          SFDX_CLIENT_CERT_MAIN: ${{ secrets.SFDX_CLIENT_KEY_MAIN }}
+          CI_COMMIT_REF_NAME:   ${{ github.event.pull_request.base.ref }}
+          CONFIG_BRANCH:        ${{ github.event.pull_request.base.ref }}
+          ORG_ALIAS:            ${{ github.event.pull_request.base.ref }}
+          GH_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+          FORCE_COLOR: "1"
+        run: |
+          set -o pipefail
+          sf hardis auth login
+          IFS=',' read -ra NAMES <<< "${{ steps.tests.outputs.list }}"
+          ARGS=(); for n in "${NAMES[@]}"; do ARGS+=(--tests "$n"); done
+          # Informational report only: never blocks the PR. The authoritative
+          # test gate is delta-check-deploy (RunLocalTests on uat/main). "|| true"
+          # so a failing/absent test still posts a comment instead of erroring.
+          sf apex run test "${ARGS[@]}" --code-coverage --result-format human \
+            --output-dir test-results --wait 20 --target-org "$ORG_ALIAS" || true
+          RESULT_FILE=$(find test-results -name 'test-result*.txt' 2>/dev/null | head -1)
+          {
+            echo "## Apex Test Results"
+            echo ""
+            echo "Ran the tests covering the changed Apex classes: \`${{ steps.tests.outputs.list }}\`"
+            echo ""
+            if [ -n "$RESULT_FILE" ] && [ -f "$RESULT_FILE" ]; then
+              echo '```'
+              cat "$RESULT_FILE"
+              echo '```'
+            else
+              echo "_No test result produced — the selected tests may not be deployed to the target org yet (they deploy when this PR merges)._"
+            fi
+          } > comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file comment.md
