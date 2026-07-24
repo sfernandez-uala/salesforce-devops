@@ -10,7 +10,19 @@
     </types>
     <types>
         <members>*</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>*</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>*</members>
         <name>ExternalCredential</name>
+    </types>
+    <types>
+        <members>*</members>
+        <name>LightningComponentBundle</name>
     </types>
     <types>
         <members>*</members>
@@ -19,18 +31,6 @@
     <types>
         <members>*</members>
         <name>PermissionSet</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>CustomObject</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>CustomField</name>
-    </types>
-    <types>
-        <members>*</members>
-        <name>LightningComponentBundle</name>
     </types>
     <version>67.0</version>
 </Package>
