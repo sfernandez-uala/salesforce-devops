@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TargetApiName__c</fullName>
+    <description>Target of the condition: a Permission Set API name (PERMISSION_SET) or a field API name — direct or one level of parent traversal, e.g. Parent__r.Field__c (FLS_READ).</description>
+    <label>Target API Name</label>
+    <length>255</length>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Text</type>
+</CustomField>

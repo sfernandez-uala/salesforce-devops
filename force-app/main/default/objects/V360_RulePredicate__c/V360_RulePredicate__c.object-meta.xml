@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Structured condition attached to a visibility rule, for checks a formula cannot express: Permission Set assignment and field-level-security read access. Field history is tracked for auditability.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <label>V360 Rule Predicate</label>
+    <nameField>
+        <displayFormat>PRED-{0000}</displayFormat>
+        <label>Predicate Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>V360 Rule Predicates</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+</CustomObject>
