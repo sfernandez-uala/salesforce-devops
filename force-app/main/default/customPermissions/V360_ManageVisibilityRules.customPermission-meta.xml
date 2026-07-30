@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Manage Vista 360 Visibility Rules</label>
+    <description>Grants the ability to manage Vista 360 visibility configuration. Every admin write operation checks this permission server-side before any create, update, or delete of tabs, cards, rules, or predicates.</description>
+</CustomPermission>
