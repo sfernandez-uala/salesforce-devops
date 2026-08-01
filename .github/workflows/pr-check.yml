@@ -266,7 +266,11 @@ jobs:
           # so a failing/absent test still posts a comment instead of erroring.
           sf apex run test "${ARGS[@]}" --code-coverage --result-format human \
             --output-dir test-results --wait 20 --target-org "$ORG_ALIAS" || true
-          RESULT_FILE=$(find test-results -name 'test-result*.txt' 2>/dev/null | head -1)
+          # Guarded: with the runner's default `bash -e -o pipefail`, an absent
+          # test-results dir (e.g. brand-new test classes that only exist after
+          # this PR merges) would otherwise kill the step before the fallback
+          # comment posts.
+          RESULT_FILE=$(find test-results -name 'test-result*.txt' 2>/dev/null | head -1 || true)
           {
             echo "## Apex Test Results"
             echo ""
