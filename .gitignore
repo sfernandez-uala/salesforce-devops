@@ -5,6 +5,9 @@
 .DS_Store
 # Local tooling
 .atl/
+# Claude Code harness — .claude/skills IS tracked; local machinery is not
+.claude/worktrees/
+.claude/settings.local.json
 # Planning workspace (local only, never committed)
 openspec/
 # Plan docs (local only)
