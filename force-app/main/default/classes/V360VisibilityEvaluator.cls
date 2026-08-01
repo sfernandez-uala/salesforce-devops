@@ -26,18 +26,24 @@ public with sharing class V360VisibilityEvaluator {
     private final V360PredicateEvaluator predicateEvaluator;
     private final V360Diagnostics diagnostics;
 
-    public V360VisibilityEvaluator(
-        ICardCatalogSource catalogSource,
-        ICardRuleSource ruleSource,
-        IUserContext userContext,
-        IFormulaEngine formulaEngine,
-        V360Diagnostics diagnostics
-    ) {
-        this.catalogSource = catalogSource;
-        this.ruleSource = ruleSource;
-        this.formulaEngine = formulaEngine;
-        this.predicateEvaluator = new V360PredicateEvaluator(userContext);
-        this.diagnostics = diagnostics;
+    /**
+     * The full set of collaborators the evaluator works through. Grouped in
+     * one holder so construction sites stay readable as seams grow.
+     */
+    public class Services {
+        public ICardCatalogSource catalogSource;
+        public ICardRuleSource ruleSource;
+        public IUserContext userContext;
+        public IFormulaEngine formulaEngine;
+        public V360Diagnostics diagnostics;
+    }
+
+    public V360VisibilityEvaluator(Services services) {
+        this.catalogSource = services.catalogSource;
+        this.ruleSource = services.ruleSource;
+        this.formulaEngine = services.formulaEngine;
+        this.predicateEvaluator = new V360PredicateEvaluator(services.userContext);
+        this.diagnostics = services.diagnostics;
     }
 
     /**
@@ -52,118 +58,122 @@ public with sharing class V360VisibilityEvaluator {
             return new List<V360CardDecision>();
         }
 
-        Set<Id> cardIds = new Set<Id>();
-        for (V360CardCatalogDTO card : cards) {
-            cardIds.add(card.cardId);
-        }
-        Map<Id, V360RuleGraph> ruleGraphsByCardId = ruleSource.getRulesForCards(cardIds);
-        String anchorSObjectApiName = anchorRecord == null
-            ? null
-            : anchorRecord.getSObjectType().getDescribe().getName();
+        Map<Id, V360RuleGraph> ruleGraphsByCardId = ruleSource.getRulesForCards(collectCardIds(cards));
+        EvalContext ctx = buildContext(recordId, tabApiName, anchorRecord);
 
-        List<V360Diagnostics.Entry> diagnosticEntries = new List<V360Diagnostics.Entry>();
         List<V360CardDecision> visibleCards = new List<V360CardDecision>();
-
         for (V360CardCatalogDTO card : cards) {
-            if (card.killSwitch || !card.active) {
-                continue;
-            }
-
-            V360RuleGraph ruleGraph = ruleGraphsByCardId.get(card.cardId);
-            Boolean cardIsVisible = ruleGraph == null || ruleGraph.rules.isEmpty()
-                ? true
-                : evaluateRules(ruleGraph, recordId, tabApiName, card, anchorRecord, anchorSObjectApiName, diagnosticEntries);
-
-            if (cardIsVisible) {
+            if (isVisible(card, ruleGraphsByCardId.get(card.cardId), ctx)) {
                 visibleCards.add(toDecision(card));
             }
         }
 
-        diagnostics.publishAll(diagnosticEntries);
+        diagnostics.publishAll(ctx.entries);
         visibleCards.sort(new OrderComparator());
         return visibleCards;
     }
 
-    /**
-     * A card's rule(s) pass only when every active rule row passes: each
-     * rule's own formula (if present) must evaluate true AND every one of
-     * that rule's predicates must pass. Any evaluation error hides the card
-     * and records exactly one diagnostic for the failing step.
-     */
-    private Boolean evaluateRules(
-        V360RuleGraph ruleGraph,
-        Id recordId,
-        String tabApiName,
-        V360CardCatalogDTO card,
-        SObject anchorRecord,
-        String anchorSObjectApiName,
-        List<V360Diagnostics.Entry> diagnosticEntries
-    ) {
+    /** Everything one evaluation pass shares across cards and rules. */
+    private class EvalContext {
+        Id recordId;
+        String tabApiName;
+        SObject anchorRecord;
+        String anchorSObjectApiName;
+        List<V360Diagnostics.Entry> entries = new List<V360Diagnostics.Entry>();
+
+        void addEntry(V360CardCatalogDTO card, V360Diagnostics.Reason reason, String detail) {
+            V360Diagnostics.Entry entry = new V360Diagnostics.Entry();
+            entry.recordId = this.recordId;
+            entry.tabName = this.tabApiName;
+            entry.cardName = card.developerName;
+            entry.reason = reason;
+            entry.detail = detail;
+            entries.add(entry);
+        }
+    }
+
+    private EvalContext buildContext(Id recordId, String tabApiName, SObject anchorRecord) {
+        EvalContext ctx = new EvalContext();
+        ctx.recordId = recordId;
+        ctx.tabApiName = tabApiName;
+        ctx.anchorRecord = anchorRecord;
+        ctx.anchorSObjectApiName = anchorRecord == null
+            ? null
+            : anchorRecord.getSObjectType().getDescribe().getName();
+        return ctx;
+    }
+
+    private Set<Id> collectCardIds(List<V360CardCatalogDTO> cards) {
+        Set<Id> cardIds = new Set<Id>();
+        for (V360CardCatalogDTO card : cards) {
+            cardIds.add(card.cardId);
+        }
+        return cardIds;
+    }
+
+    private Boolean isVisible(V360CardCatalogDTO card, V360RuleGraph ruleGraph, EvalContext ctx) {
+        if (card.killSwitch || !card.active) {
+            return false;
+        }
+        if (ruleGraph == null || ruleGraph.rules.isEmpty()) {
+            return true;
+        }
         for (V360RuleGraph.RuleRow rule : ruleGraph.rules) {
-            if (!rule.active) {
-                continue;
+            if (rule.active && !rulePasses(rule, card, ctx)) {
+                return false;
             }
+        }
+        return true;
+    }
 
-            if (String.isNotBlank(rule.visibilityFormula)) {
-                Boolean formulaPassed;
-                try {
-                    formulaEngine.build(rule.visibilityFormula, anchorRecord.getSObjectType());
-                } catch (Exception buildException) {
-                    diagnosticEntries.add(
-                        new V360Diagnostics.Entry(
-                            recordId, tabApiName, card.developerName,
-                            V360Diagnostics.Reason.FORMULA_INVALID, buildException.getMessage()
-                        )
-                    );
-                    return false;
-                }
-                try {
-                    formulaPassed = formulaEngine.evaluate(anchorRecord);
-                } catch (Exception evaluateException) {
-                    diagnosticEntries.add(
-                        new V360Diagnostics.Entry(
-                            recordId, tabApiName, card.developerName,
-                            V360Diagnostics.Reason.FORMULA_EVAL_ERROR, evaluateException.getMessage()
-                        )
-                    );
-                    return false;
-                }
-                if (!formulaPassed) {
-                    return false;
-                }
+    private Boolean rulePasses(V360RuleGraph.RuleRow rule, V360CardCatalogDTO card, EvalContext ctx) {
+        return passesFormula(rule, card, ctx) && passesPredicates(rule, card, ctx);
+    }
+
+    private Boolean passesFormula(V360RuleGraph.RuleRow rule, V360CardCatalogDTO card, EvalContext ctx) {
+        if (String.isBlank(rule.visibilityFormula)) {
+            return true;
+        }
+        try {
+            formulaEngine.build(rule.visibilityFormula, ctx.anchorRecord.getSObjectType());
+        } catch (Exception buildException) {
+            ctx.addEntry(card, V360Diagnostics.Reason.FORMULA_INVALID, buildException.getMessage());
+            return false;
+        }
+        try {
+            return formulaEngine.evaluate(ctx.anchorRecord);
+        } catch (Exception evaluateException) {
+            ctx.addEntry(card, V360Diagnostics.Reason.FORMULA_EVAL_ERROR, evaluateException.getMessage());
+            return false;
+        }
+    }
+
+    private Boolean passesPredicates(V360RuleGraph.RuleRow rule, V360CardCatalogDTO card, EvalContext ctx) {
+        for (V360RuleGraph.PredicateRow predicate : rule.predicates) {
+            Boolean predicatePassed;
+            try {
+                predicatePassed = predicateEvaluator.evaluate(predicate, ctx.anchorSObjectApiName);
+            } catch (Exception predicateException) {
+                ctx.addEntry(card, V360Diagnostics.Reason.PREDICATE_ERROR, predicateException.getMessage());
+                return false;
             }
-
-            for (V360RuleGraph.PredicateRow predicate : rule.predicates) {
-                Boolean predicatePassed;
-                try {
-                    predicatePassed = predicateEvaluator.evaluate(predicate, anchorSObjectApiName);
-                } catch (Exception predicateException) {
-                    diagnosticEntries.add(
-                        new V360Diagnostics.Entry(
-                            recordId, tabApiName, card.developerName,
-                            V360Diagnostics.Reason.PREDICATE_ERROR, predicateException.getMessage()
-                        )
-                    );
-                    return false;
-                }
-                if (!predicatePassed) {
-                    return false;
-                }
+            if (!predicatePassed) {
+                return false;
             }
         }
         return true;
     }
 
     private V360CardDecision toDecision(V360CardCatalogDTO card) {
-        return new V360CardDecision(
-            card.developerName,
-            card.componentType,
-            card.componentName,
-            card.label,
-            card.iconName,
-            card.buttonLabel,
-            card.order
-        );
+        V360CardDecision decision = new V360CardDecision();
+        decision.cardName = card.developerName;
+        decision.componentType = card.componentType;
+        decision.componentName = card.componentName;
+        decision.label = card.label;
+        decision.iconName = card.iconName;
+        decision.buttonLabel = card.buttonLabel;
+        decision.order = card.order;
+        return decision;
     }
 
     private class OrderComparator implements Comparator<V360CardDecision> {

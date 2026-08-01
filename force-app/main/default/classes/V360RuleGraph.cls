@@ -17,27 +17,15 @@ public class V360RuleGraph {
      * One visibility rule row: an optional boolean formula plus zero or more
      * structured predicates. Passes only when its formula (if present)
      * evaluates true AND every one of its predicates passes.
+     *
+     * Plain data holder: construct empty and assign fields.
      */
     public class RuleRow {
         public Id ruleId;
         public String developerName;
         public String visibilityFormula;
-        public Boolean active;
-        public List<PredicateRow> predicates;
-
-        public RuleRow(
-            Id ruleId,
-            String developerName,
-            String visibilityFormula,
-            Boolean active,
-            List<PredicateRow> predicates
-        ) {
-            this.ruleId = ruleId;
-            this.developerName = developerName;
-            this.visibilityFormula = visibilityFormula;
-            this.active = active;
-            this.predicates = predicates == null ? new List<PredicateRow>() : predicates;
-        }
+        public Boolean active = true;
+        public List<PredicateRow> predicates = new List<PredicateRow>();
     }
 
     /**

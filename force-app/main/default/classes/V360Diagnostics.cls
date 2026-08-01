@@ -30,14 +30,6 @@ public with sharing class V360Diagnostics {
         public String cardName;
         public Reason reason;
         public String detail;
-
-        public Entry(Id recordId, String tabName, String cardName, Reason reason, String detail) {
-            this.recordId = recordId;
-            this.tabName = tabName;
-            this.cardName = cardName;
-            this.reason = reason;
-            this.detail = detail;
-        }
     }
 
     /**

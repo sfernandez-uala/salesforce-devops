@@ -3,11 +3,44 @@ private class V360VisibilityEvaluatorTest {
 
     private static final String TAB_API_NAME = 'AccountOverview';
 
-    private static V360CardCatalogDTO buildCard(Id cardId, String developerName, Integer order, Boolean killSwitch, Boolean active) {
-        return new V360CardCatalogDTO(
-            cardId, developerName, 'LWC', 'v360AccountBalance', null,
-            order, developerName + ' Label', null, null, null, killSwitch, active
-        );
+    /**
+     * A default-visible card: kill-switch off, active, order 1. Individual
+     * tests mutate the returned instance's fields (order, killSwitch, active)
+     * rather than passing every field through a constructor.
+     */
+    private static V360CardCatalogDTO visibleCard(Id cardId, String developerName) {
+        V360CardCatalogDTO card = new V360CardCatalogDTO();
+        card.cardId = cardId;
+        card.developerName = developerName;
+        card.componentType = 'LWC';
+        card.componentName = 'v360AccountBalance';
+        card.order = 1;
+        card.label = developerName + ' Label';
+        return card;
+    }
+
+    /**
+     * A default active rule row with the given formula and no predicates.
+     * Individual tests mutate the returned instance (active, predicates)
+     * rather than passing every field through a constructor.
+     */
+    private static V360RuleGraph.RuleRow ruleWithFormula(Id ruleId, String developerName, String formula) {
+        V360RuleGraph.RuleRow rule = new V360RuleGraph.RuleRow();
+        rule.ruleId = ruleId;
+        rule.developerName = developerName;
+        rule.visibilityFormula = formula;
+        return rule;
+    }
+
+    /** A services holder wired with default stubs; tests override only what they need. */
+    private static V360VisibilityEvaluator.Services defaultServices() {
+        V360VisibilityEvaluator.Services services = new V360VisibilityEvaluator.Services();
+        services.catalogSource = new V360TestStubs.StubCardCatalogSource();
+        services.ruleSource = new V360TestStubs.StubCardRuleSource();
+        services.userContext = new V360TestStubs.StubUserContext();
+        services.formulaEngine = new V360TestStubs.StubFormulaEngine();
+        services.diagnostics = new V360Diagnostics();
+        return services;
     }
 
     @IsTest
@@ -16,19 +49,19 @@ private class V360VisibilityEvaluatorTest {
             Id visibleCardId = V360TestStubs.fakeId(Account.SObjectType, 1);
             Id hiddenCardId = V360TestStubs.fakeId(Account.SObjectType, 2);
 
+            V360CardCatalogDTO killedCard = visibleCard(hiddenCardId, 'KilledCard');
+            killedCard.order = 2;
+            killedCard.killSwitch = true;
+
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(visibleCardId, 'VisibleCard', 1, false, true),
-                buildCard(hiddenCardId, 'KilledCard', 2, true, true)
+                visibleCard(visibleCardId, 'VisibleCard'),
+                killedCard
             });
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource,
-                new V360TestStubs.StubCardRuleSource(),
-                new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(),
-                new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -45,16 +78,12 @@ private class V360VisibilityEvaluatorTest {
             Id cardId = V360TestStubs.fakeId(Account.SObjectType, 3);
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'NoRulesCard', 1, false, true)
+                visibleCard(cardId, 'NoRulesCard')
             });
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource,
-                new V360TestStubs.StubCardRuleSource(), // no rule graph registered for this card
-                new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(),
-                new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource; // no rule graph registered for this card
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -68,18 +97,15 @@ private class V360VisibilityEvaluatorTest {
     static void inactiveCardIsHiddenEvenWithNoRules() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             Id cardId = V360TestStubs.fakeId(Account.SObjectType, 4);
-            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
-            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'InactiveCard', 1, false, false)
-            });
+            V360CardCatalogDTO inactiveCard = visibleCard(cardId, 'InactiveCard');
+            inactiveCard.active = false;
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource,
-                new V360TestStubs.StubCardRuleSource(),
-                new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(),
-                new V360Diagnostics()
-            );
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{ inactiveCard });
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -95,22 +121,25 @@ private class V360VisibilityEvaluatorTest {
             Id cardId = V360TestStubs.fakeId(Account.SObjectType, 5);
             Id ruleId = V360TestStubs.fakeId(Account.SObjectType, 6);
 
+            V360CardCatalogDTO killedCard = visibleCard(cardId, 'KilledPassingCard');
+            killedCard.killSwitch = true;
+
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
-            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'KilledPassingCard', 1, true, true)
-            });
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{ killedCard });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
             ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'AlwaysPasses', 'true', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(ruleId, 'AlwaysPasses', 'true')
             }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.resultByFormula.put('true', true);
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -124,18 +153,15 @@ private class V360VisibilityEvaluatorTest {
     static void killSwitchHidesCardThatWouldOtherwiseBeDefaultVisible() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             Id cardId = V360TestStubs.fakeId(Account.SObjectType, 7);
-            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
-            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'KilledDefaultCard', 1, true, true)
-            });
+            V360CardCatalogDTO killedCard = visibleCard(cardId, 'KilledDefaultCard');
+            killedCard.killSwitch = true;
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource,
-                new V360TestStubs.StubCardRuleSource(), // no rules at all — would be default-visible
-                new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(),
-                new V360Diagnostics()
-            );
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{ killedCard });
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource; // no rules at all — would be default-visible
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -153,25 +179,27 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'FormulaAndPredicateCard', 1, false, true)
+                visibleCard(cardId, 'FormulaAndPredicateCard')
             });
 
             V360TestStubs.StubUserContext userContext = new V360TestStubs.StubUserContext();
             userContext.assignedPermissionSets.add('V360_Admin');
 
+            V360RuleGraph.RuleRow rule = ruleWithFormula(ruleId, 'PassingRule', 'AnnualRevenue > 0');
+            rule.predicates.add(new V360RuleGraph.PredicateRow(V360PredicateEvaluator.PERMISSION_SET, 'V360_Admin'));
+
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
-            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'PassingRule', 'AnnualRevenue > 0', true, new List<V360RuleGraph.PredicateRow>{
-                    new V360RuleGraph.PredicateRow(V360PredicateEvaluator.PERMISSION_SET, 'V360_Admin')
-                })
-            }));
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.resultByFormula.put('AnnualRevenue > 0', true);
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, userContext, formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.userContext = userContext;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe', AnnualRevenue = 500));
@@ -189,23 +217,24 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'FormulaPassesPredicateFailsCard', 1, false, true)
+                visibleCard(cardId, 'FormulaPassesPredicateFailsCard')
             });
 
+            V360RuleGraph.RuleRow rule = ruleWithFormula(ruleId, 'FormulaPassesPredicateFails', 'AnnualRevenue > 0');
+            rule.predicates.add(new V360RuleGraph.PredicateRow(V360PredicateEvaluator.FLS_READ, 'AnnualRevenue'));
+
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
-            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'FormulaPassesPredicateFails', 'AnnualRevenue > 0', true, new List<V360RuleGraph.PredicateRow>{
-                    new V360RuleGraph.PredicateRow(V360PredicateEvaluator.FLS_READ, 'AnnualRevenue')
-                })
-            }));
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.resultByFormula.put('AnnualRevenue > 0', true);
 
             // StubUserContext with no readable fields configured — the FLS_READ predicate fails
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe', AnnualRevenue = 500));
@@ -223,20 +252,22 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'BuildFailureCard', 1, false, true)
+                visibleCard(cardId, 'BuildFailureCard')
             });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
             ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'MalformedRule', 'NOT_A_REAL_FUNCTION(Name)', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(ruleId, 'MalformedRule', 'NOT_A_REAL_FUNCTION(Name)')
             }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.formulasThatFailToBuild.add('NOT_A_REAL_FUNCTION(Name)');
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -254,20 +285,22 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'EvaluateFailureCard', 1, false, true)
+                visibleCard(cardId, 'EvaluateFailureCard')
             });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
             ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'ErrorsAtEvalTime', 'AnnualRevenue > 0', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(ruleId, 'ErrorsAtEvalTime', 'AnnualRevenue > 0')
             }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.formulasThatFailToEvaluate.add('AnnualRevenue > 0');
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -285,19 +318,19 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'BadPredicateCard', 1, false, true)
+                visibleCard(cardId, 'BadPredicateCard')
             });
 
-            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
-            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(ruleId, 'BadPredicateRule', null, true, new List<V360RuleGraph.PredicateRow>{
-                    new V360RuleGraph.PredicateRow('NOT_A_REAL_PREDICATE_TYPE', 'Whatever')
-                })
-            }));
+            V360RuleGraph.RuleRow rule = ruleWithFormula(ruleId, 'BadPredicateRule', null);
+            rule.predicates.add(new V360RuleGraph.PredicateRow('NOT_A_REAL_PREDICATE_TYPE', 'Whatever'));
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), new V360TestStubs.StubFormulaEngine(), new V360Diagnostics()
-            );
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule }));
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -316,22 +349,24 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'MultiRuleCard', 1, false, true)
+                visibleCard(cardId, 'MultiRuleCard')
             });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
             ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(passingRuleId, 'PassingRule', 'true', true, new List<V360RuleGraph.PredicateRow>()),
-                new V360RuleGraph.RuleRow(failingRuleId, 'FailingRule', 'false', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(passingRuleId, 'PassingRule', 'true'),
+                ruleWithFormula(failingRuleId, 'FailingRule', 'false')
             }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.resultByFormula.put('true', true);
             formulaEngine.resultByFormula.put('false', false);
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -352,17 +387,19 @@ private class V360VisibilityEvaluatorTest {
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'InactiveRuleCard', 1, false, true)
+                visibleCard(cardId, 'InactiveRuleCard')
             });
 
-            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
-            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(inactiveRuleId, 'InactiveRule', 'false', false, new List<V360RuleGraph.PredicateRow>())
-            }));
+            V360RuleGraph.RuleRow inactiveRule = ruleWithFormula(inactiveRuleId, 'InactiveRule', 'false');
+            inactiveRule.active = false;
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), new V360TestStubs.StubFormulaEngine(), new V360Diagnostics()
-            );
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ inactiveRule }));
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -380,27 +417,32 @@ private class V360VisibilityEvaluatorTest {
             Id passingRuleId = V360TestStubs.fakeId(Account.SObjectType, 25);
             Id failingRuleId = V360TestStubs.fakeId(Account.SObjectType, 26);
 
+            V360CardCatalogDTO failingCard = visibleCard(failingCardId, 'FailingCard');
+            failingCard.order = 2;
+
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(passingCardId, 'PassingCard', 1, false, true),
-                buildCard(failingCardId, 'FailingCard', 2, false, true)
+                visibleCard(passingCardId, 'PassingCard'),
+                failingCard
             });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
             ruleSource.ruleGraphByCardId.put(passingCardId, new V360RuleGraph(passingCardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(passingRuleId, 'Passes', 'true', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(passingRuleId, 'Passes', 'true')
             }));
             ruleSource.ruleGraphByCardId.put(failingCardId, new V360RuleGraph(failingCardId, new List<V360RuleGraph.RuleRow>{
-                new V360RuleGraph.RuleRow(failingRuleId, 'Fails', 'false', true, new List<V360RuleGraph.PredicateRow>())
+                ruleWithFormula(failingRuleId, 'Fails', 'false')
             }));
 
             V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
             formulaEngine.resultByFormula.put('true', true);
             formulaEngine.resultByFormula.put('false', false);
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, ruleSource, new V360TestStubs.StubUserContext(), formulaEngine, new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -418,17 +460,21 @@ private class V360VisibilityEvaluatorTest {
             Id cardIdOrder1 = V360TestStubs.fakeId(Account.SObjectType, 28);
             Id cardIdOrder2 = V360TestStubs.fakeId(Account.SObjectType, 29);
 
+            V360CardCatalogDTO thirdCard = visibleCard(cardIdOrder3, 'ThirdCard');
+            thirdCard.order = 3;
+            V360CardCatalogDTO secondCard = visibleCard(cardIdOrder2, 'SecondCard');
+            secondCard.order = 2;
+
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardIdOrder3, 'ThirdCard', 3, false, true),
-                buildCard(cardIdOrder1, 'FirstCard', 1, false, true),
-                buildCard(cardIdOrder2, 'SecondCard', 2, false, true)
+                thirdCard,
+                visibleCard(cardIdOrder1, 'FirstCard'),
+                secondCard
             });
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, new V360TestStubs.StubCardRuleSource(), new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(), new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
@@ -443,11 +489,8 @@ private class V360VisibilityEvaluatorTest {
     @IsTest
     static void emptyTabReturnsAnEmptyVisibleSetWithoutCallingTheRuleSource() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                new V360TestStubs.StubCardCatalogSource(), // no cards registered for any tab
-                new V360TestStubs.StubCardRuleSource(), new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(), new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices(); // no cards registered for any tab
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), 'UnknownTab', new Account(Name = 'Probe'));
@@ -466,13 +509,12 @@ private class V360VisibilityEvaluatorTest {
             Id cardId = V360TestStubs.fakeId(Account.SObjectType, 30);
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                buildCard(cardId, 'MediatedCard', 1, false, true)
+                visibleCard(cardId, 'MediatedCard')
             });
 
-            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(
-                catalogSource, new V360TestStubs.StubCardRuleSource(), new V360TestStubs.StubUserContext(),
-                new V360TestStubs.StubFormulaEngine(), new V360Diagnostics()
-            );
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
 
             Test.startTest();
             List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
