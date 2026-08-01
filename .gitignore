@@ -5,13 +5,18 @@
 .DS_Store
 # Local tooling
 .atl/
+# Planning workspace (local only, never committed)
+openspec/
 # Plan docs (local only)
 plan/
 .cache/
 config/user/
 hardis-report/
 tmp/
-**/__tests__/**
+# Node / LWC Jest tooling — __tests__ files ARE tracked (see .forceignore for
+# excluding them from org deployment); only build output is ignored here.
+node_modules/
+/coverage/
 **/cleanDataServices/
 **/siteDotComSites/*.site
 **/data/**/source/**
