@@ -18,7 +18,15 @@
     </types>
     <types>
         <members>*</members>
+        <name>CustomPermission</name>
+    </types>
+    <types>
+        <members>*</members>
         <name>ExternalCredential</name>
+    </types>
+    <types>
+        <members>*</members>
+        <name>Layout</name>
     </types>
     <types>
         <members>*</members>

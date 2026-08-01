@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Tab__c</fullName>
+    <deleteConstraint>Restrict</deleteConstraint>
+    <label>Tab</label>
+    <referenceTo>V360_Tab__c</referenceTo>
+    <relationshipLabel>V360 Cards</relationshipLabel>
+    <relationshipName>V360_Cards</relationshipName>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Lookup</type>
+</CustomField>
