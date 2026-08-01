@@ -5,6 +5,8 @@
 .DS_Store
 # Local tooling
 .atl/
+# Planning workspace (local only, never committed)
+openspec/
 # Plan docs (local only)
 plan/
 .cache/
