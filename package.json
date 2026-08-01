@@ -1,0 +1,12 @@
+{
+  "name": "developer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LWC unit test tooling for the Salesforce DX project (Vista 360 and beyond).",
+  "scripts": {
+    "test:unit": "sfdx-lwc-jest"
+  },
+  "devDependencies": {
+    "@salesforce/sfdx-lwc-jest": "7.9.0"
+  }
+}
