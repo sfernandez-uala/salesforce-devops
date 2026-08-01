@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>VisibilityFormula__c</fullName>
+    <description>Boolean formula (standard Salesforce formula syntax) deciding card visibility. Validated on save; evaluated server-side when the visible card set is computed. Optional: a rule with no formula and no predicates leaves the card visible. Maximum length 3,900 characters — the platform's hard cap for dynamically evaluated formulas.</description>
+    <label>Visibility Formula</label>
+    <length>3900</length>
+    <required>false</required>
+    <trackHistory>true</trackHistory>
+    <type>LongTextArea</type>
+    <visibleLines>10</visibleLines>
+</CustomField>

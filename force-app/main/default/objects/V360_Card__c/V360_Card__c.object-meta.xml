@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Vista 360 card catalog entry: component binding, tab placement, presentation (label, icon, order), and kill-switch. End users have no direct read access; the server returns only the cards visible to the user. Field history is tracked for auditability.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <label>V360 Card</label>
+    <nameField>
+        <label>Card Name</label>
+        <trackHistory>false</trackHistory>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>V360 Cards</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>
