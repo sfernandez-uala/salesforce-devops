@@ -1,0 +1,69 @@
+<template>
+    <template lwc:if={isLoading}>
+        <lightning-card title="Vista 360" icon-name="standard:account" data-id="loading-state">
+            <div class="slds-p-around_medium">
+                <lightning-spinner alternative-text="Loading cards" size="small"></lightning-spinner>
+            </div>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isError}>
+        <lightning-card title="Vista 360" icon-name="standard:account">
+            <c-v360-empty-state
+                data-id="error-state"
+                title="Something went wrong"
+                illustration-name="error:recoverable"
+                alternative-text="Error illustration"
+                description="Unable to load Vista 360 cards for this record right now."
+                retry-label="Retry"
+                onretry={handleRetry}
+            ></c-v360-empty-state>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isEmpty}>
+        <lightning-card title="Vista 360" icon-name="standard:account">
+            <c-v360-empty-state
+                data-id="empty-state"
+                title="No cards to show"
+                illustration-name="noresults:unknown"
+                alternative-text="No results illustration"
+                description="No cards are configured for this tab."
+            ></c-v360-empty-state>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={hasCards}>
+        <template for:each={cards} for:item="card">
+            <div
+                key={card.key}
+                class="slds-p-bottom_small"
+                data-card-name={card.key}
+                onclick={handleSelectCard}
+            >
+                <template lwc:if={card.isLwc}>
+                    <div lwc:dom="manual" data-lwc-mount={card.key}></div>
+                </template>
+                <template lwc:if={card.isFlow}>
+                    <lightning-card title={card.label} icon-name={card.iconName}>
+                        <div class="slds-p-around_medium slds-text-color_weak" data-id="flow-placeholder">
+                            Flow card placeholder — the generic Flow host ships in a later work unit.
+                            Configured flow: {card.componentName}
+                        </div>
+                    </lightning-card>
+                </template>
+                <template lwc:if={card.isUnknownBinding}>
+                    <lightning-card title={card.label} icon-name="utility:error">
+                        <c-v360-empty-state
+                            data-id="unknown-binding"
+                            title="Card unavailable"
+                            illustration-name="error:unrecoverable"
+                            alternative-text="Unrecoverable error illustration"
+                            description="This card's component is not available."
+                        ></c-v360-empty-state>
+                    </lightning-card>
+                </template>
+            </div>
+        </template>
+    </template>
+</template>

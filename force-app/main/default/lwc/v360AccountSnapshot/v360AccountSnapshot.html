@@ -1,0 +1,32 @@
+<template>
+    <div class="slds-p-around_small">
+        <template lwc:if={hasError}>
+            <c-v360-empty-state
+                data-id="error-state"
+                title="Something went wrong"
+                illustration-name="error:recoverable"
+                alternative-text="Error illustration"
+                description="Unable to load account details right now."
+                retry-label="Retry"
+                onretry={handleRetry}
+            ></c-v360-empty-state>
+        </template>
+        <template lwc:else>
+            <template lwc:if={hasIndustry}>
+                <p><strong>Industry:</strong> {industry}</p>
+            </template>
+            <template lwc:if={hasAnnualRevenue}>
+                <p><strong>Annual Revenue:</strong> {annualRevenue}</p>
+            </template>
+            <template lwc:if={hasNoVisibleFields}>
+                <c-v360-empty-state
+                    data-id="no-fields-state"
+                    title="No account details available"
+                    illustration-name="access:request"
+                    alternative-text="No access illustration"
+                    description="No account details are available for this user."
+                ></c-v360-empty-state>
+            </template>
+        </template>
+    </div>
+</template>

@@ -9,12 +9,15 @@
  * state for that case — this module has no rendering responsibility.
  */
 import PipelineProbe from 'c/pipelineProbe';
+import V360AccountSnapshot from 'c/v360AccountSnapshot';
 
-// Structural placeholder only: pipelineProbe is a repo smoke-test
-// component, not a real visibility card. It exercises the static-import
-// wiring end to end until the first real card lands and is registered here.
+// pipelineProbe is a repo smoke-test component, not a real visibility card,
+// kept registered from the shell-foundation work unit that first exercised
+// this static-import wiring end to end. v360AccountSnapshot is the first
+// real Vista 360 card.
 const REGISTRY = {
-    pipelineProbe: PipelineProbe
+    pipelineProbe: PipelineProbe,
+    v360AccountSnapshot: V360AccountSnapshot
 };
 
 /**

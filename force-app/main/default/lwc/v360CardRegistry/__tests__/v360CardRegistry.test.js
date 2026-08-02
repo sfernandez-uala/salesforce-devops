@@ -1,11 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 import PipelineProbe from 'c/pipelineProbe';
+import V360AccountSnapshot from 'c/v360AccountSnapshot';
 import { resolve } from 'c/v360CardRegistry';
 
 describe('c-v360-card-registry', () => {
     it('resolves a known component name to its constructor', () => {
         expect(resolve('pipelineProbe')).toBe(PipelineProbe);
+    });
+
+    it('resolves the first real Vista 360 card, v360AccountSnapshot', () => {
+        expect(resolve('v360AccountSnapshot')).toBe(V360AccountSnapshot);
     });
 
     it('returns null for an unknown component name', () => {
