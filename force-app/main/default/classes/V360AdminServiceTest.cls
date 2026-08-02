@@ -71,6 +71,41 @@ private class V360AdminServiceTest {
     }
 
     @IsTest
+    static void saveRulePredicatesSucceedsAndPreservesTheMasterDetailParentReference() {
+        User admin = adminUser();
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Admin_PredTab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id, 'V360Test_Admin_PredCard', new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360Snapshot')
+        );
+        V360_CardRule__c rule = V360TestDataFactory.insertCardRule(card.Id, 'V360Test_Admin_PredRule', null);
+        V360_RulePredicate__c newPredicate = new V360_RulePredicate__c(
+            CardRule__c = rule.Id,
+            PredicateType__c = 'FLS_READ',
+            TargetApiName__c = 'AnnualRevenue'
+        );
+
+        List<Database.UpsertResult> results;
+        System.runAs(admin) {
+            Test.startTest();
+            results = V360AdminService.saveRulePredicates(new List<V360_RulePredicate__c>{ newPredicate });
+            Test.stopTest();
+        }
+
+        Assert.isTrue(
+            results[0].isSuccess(),
+            'A well-formed predicate save by an admin must succeed: ' + results[0].getErrors()
+        );
+        V360_RulePredicate__c saved = [
+            SELECT CardRule__c FROM V360_RulePredicate__c WHERE Id = :results[0].getId()
+        ];
+        Assert.areEqual(
+            rule.Id,
+            saved.CardRule__c,
+            'The required master-detail parent reference must never be stripped from a predicate save'
+        );
+    }
+
+    @IsTest
     static void saveTabsThrowsWhenUserLacksManagePermission() {
         User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
         V360_Tab__c newTab = new V360_Tab__c(
