@@ -19,18 +19,18 @@ public interface IFormulaEngine {
      * something that does not exist (an unknown field, function, or permission).
      *
      * @param formulaText the boolean formula in standard formula syntax
-     * @param anchorType the SObject type the formula is evaluated against
+     * @param sObjectType the SObject type the formula is evaluated against
      */
-    void build(String formulaText, Schema.SObjectType anchorType);
+    void build(String formulaText, Schema.SObjectType sObjectType);
 
     /**
      * Evaluates the most recently built formula against the given record.
      * Must only be called after a successful build().
      *
-     * @param anchorRecord the record to evaluate the formula against
+     * @param record the record to evaluate the formula against
      * @return the formula's boolean result
      */
-    Boolean evaluate(SObject anchorRecord);
+    Boolean evaluate(SObject record);
 
     /**
      * Returns every field (including one-level parent-relationship paths, e.g.

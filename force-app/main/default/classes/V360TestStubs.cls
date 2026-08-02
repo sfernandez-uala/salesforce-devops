@@ -49,7 +49,7 @@ public class V360TestStubs {
 
         private String currentFormula;
 
-        public void build(String formulaText, Schema.SObjectType anchorType) {
+        public void build(String formulaText, Schema.SObjectType sObjectType) {
             if (formulasThatFailToBuild.contains(formulaText)) {
                 this.currentFormula = null;
                 throw new StubFormulaEngineException('Stub build failure for: ' + formulaText);
@@ -57,7 +57,7 @@ public class V360TestStubs {
             this.currentFormula = formulaText;
         }
 
-        public Boolean evaluate(SObject anchorRecord) {
+        public Boolean evaluate(SObject record) {
             requireBuilt();
             if (formulasThatFailToEvaluate.contains(currentFormula)) {
                 throw new StubFormulaEngineException('Stub evaluate failure for: ' + currentFormula);

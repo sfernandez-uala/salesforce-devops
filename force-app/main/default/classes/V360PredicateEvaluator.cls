@@ -17,10 +17,10 @@ public with sharing class V360PredicateEvaluator {
 
     /**
      * @param predicate the predicate row to evaluate
-     * @param anchorSObjectApiName the anchor SObject's API name; only used by FLS_READ predicates
+     * @param sObjectApiName the anchor SObject's API name; only used by FLS_READ predicates
      * @return true when the predicate passes for the running user
      */
-    public Boolean evaluate(V360RuleGraph.PredicateRow predicate, String anchorSObjectApiName) {
+    public Boolean evaluate(V360RuleGraph.PredicateRow predicate, String sObjectApiName) {
         validatePredicate(predicate);
 
         if (predicate.predicateType == PERMISSION_SET) {
@@ -28,7 +28,7 @@ public with sharing class V360PredicateEvaluator {
         }
 
         if (predicate.predicateType == FLS_READ) {
-            return evaluateFlsRead(predicate, anchorSObjectApiName);
+            return evaluateFlsRead(predicate, sObjectApiName);
         }
 
         throw new V360PredicateEvaluatorException('Unknown predicate type: ' + predicate.predicateType);
@@ -47,14 +47,14 @@ public with sharing class V360PredicateEvaluator {
         return userContext.hasPermissionSet(predicate.targetApiName);
     }
 
-    private Boolean evaluateFlsRead(V360RuleGraph.PredicateRow predicate, String anchorSObjectApiName) {
+    private Boolean evaluateFlsRead(V360RuleGraph.PredicateRow predicate, String sObjectApiName) {
         if (String.isBlank(predicate.targetApiName)) {
             throw new V360PredicateEvaluatorException('An FLS_READ predicate must name a field.');
         }
-        if (String.isBlank(anchorSObjectApiName)) {
+        if (String.isBlank(sObjectApiName)) {
             throw new V360PredicateEvaluatorException('An FLS_READ predicate requires the anchor SObject API name.');
         }
-        return userContext.isFieldReadable(anchorSObjectApiName, predicate.targetApiName);
+        return userContext.isFieldReadable(sObjectApiName, predicate.targetApiName);
     }
 
     public class V360PredicateEvaluatorException extends Exception {
