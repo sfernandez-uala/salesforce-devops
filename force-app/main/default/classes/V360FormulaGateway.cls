@@ -28,8 +28,8 @@ public with sharing class V360FormulaGateway implements IFormulaEngine {
 
     private FormulaEval.FormulaInstance builtFormula;
 
-    public void build(String formulaText, Schema.SObjectType anchorType) {
-        if (anchorType == null) {
+    public void build(String formulaText, Schema.SObjectType sObjectType) {
+        if (sObjectType == null) {
             throw new V360FormulaGatewayException('An anchor SObject type is required to build a formula.');
         }
         if (String.isBlank(formulaText)) {
@@ -43,7 +43,7 @@ public with sharing class V360FormulaGateway implements IFormulaEngine {
 
         try {
             this.builtFormula = Formula.builder()
-                .withType(anchorType)
+                .withType(sObjectType)
                 .withReturnType(FormulaEval.FormulaReturnType.BOOLEAN)
                 .withGlobalVariables(IDENTITY_GLOBALS)
                 .withFormula(formulaText)
@@ -54,10 +54,10 @@ public with sharing class V360FormulaGateway implements IFormulaEngine {
         }
     }
 
-    public Boolean evaluate(SObject anchorRecord) {
+    public Boolean evaluate(SObject record) {
         requireBuiltFormula();
         try {
-            Object result = this.builtFormula.evaluate(anchorRecord);
+            Object result = this.builtFormula.evaluate(record);
             return result == null ? false : (Boolean) result;
         } catch (Exception evaluateException) {
             throw new V360FormulaGatewayException(
