@@ -83,12 +83,28 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+      # A PR that touches no deployable metadata (workflow bumps, docs, repo
+      # tooling) has nothing to simulate — and dependabot-triggered runs cannot
+      # read environment secrets at all, so the org login would fail anyway.
+      - name: Detect deployable changes
+        id: delta
+        run: |
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            | grep -E '^(force-app|manifest|config)/' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "deployable=false" >> "$GITHUB_OUTPUT"
+            echo "No deployable metadata changes - org simulation not required."
+          else
+            echo "deployable=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Install CLI + plugins
+        if: steps.delta.outputs.deployable == 'true'
         run: |
           npm install --global @salesforce/cli@2.142.7
           echo y | sf plugins install sfdx-hardis@7.20.0
           echo y | sf plugins install sfdx-git-delta@6.45.1
       - name: Login & Simulate deployment
+        if: steps.delta.outputs.deployable == 'true'
         env:
           SFDX_CLIENT_ID_DEV:   ${{ secrets.SFDX_CLIENT_ID_DEV }}
           SFDX_CLIENT_KEY_DEV:  ${{ secrets.SFDX_CLIENT_KEY_DEV }}
