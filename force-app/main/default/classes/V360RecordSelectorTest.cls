@@ -1,5 +1,5 @@
 @IsTest
-private class V360AnchorRecordSelectorTest {
+private class V360RecordSelectorTest {
 
     private static final String TAB_API_NAME = 'V360Test_AnchorTab';
 
@@ -18,13 +18,13 @@ private class V360AnchorRecordSelectorTest {
         return dto;
     }
 
-    private static V360AnchorRecordSelector.Request buildRequest(
+    private static V360RecordSelector.Request buildRequest(
         Id recordId, Id cardId, V360RuleGraph ruleGraph
     ) {
-        V360AnchorRecordSelector.Request request = new V360AnchorRecordSelector.Request();
+        V360RecordSelector.Request request = new V360RecordSelector.Request();
         request.recordId = recordId;
         request.tabApiName = TAB_API_NAME;
-        request.anchorSObjectApiName = 'Account';
+        request.sObjectApiName = 'Account';
         request.cards = new List<V360CardCatalogDTO>{ cardDto(cardId, 'V360Test_Card') };
         request.ruleGraphsByCardId = new Map<Id, V360RuleGraph>{ cardId => ruleGraph };
         request.formulaEngine = new V360FormulaGateway();
@@ -33,7 +33,7 @@ private class V360AnchorRecordSelectorTest {
     }
 
     @IsTest
-    static void resolveAnchorRecordQueriesDirectAndParentFormulaFieldsWhenBothValid() {
+    static void resolveRecordQueriesDirectAndParentFormulaFieldsWhenBothValid() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
             Account childAccount = [SELECT Id FROM Account WHERE Name = 'V360 Test Child'];
@@ -42,24 +42,24 @@ private class V360AnchorRecordSelectorTest {
             rule.active = true;
             rule.visibilityFormula = 'ISPICKVAL(Industry, \'Technology\') || ISPICKVAL(Parent.Industry, \'Banking\')';
             V360RuleGraph ruleGraph = new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule });
-            V360AnchorRecordSelector selector = new V360AnchorRecordSelector();
+            V360RecordSelector selector = new V360RecordSelector();
 
             // When
             Test.startTest();
-            SObject anchorRecord = selector.resolveAnchorRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
+            SObject record = selector.resolveRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
             Test.stopTest();
 
             // Then
-            Assert.areEqual('Technology', (String) anchorRecord.get('Industry'), 'Direct field must be queried');
+            Assert.areEqual('Technology', (String) record.get('Industry'), 'Direct field must be queried');
             Assert.areEqual(
-                'Banking', (String) anchorRecord.getSObject('Parent').get('Industry'),
+                'Banking', (String) record.getSObject('Parent').get('Industry'),
                 'One-level parent field must be queried'
             );
         }
     }
 
     @IsTest
-    static void resolveAnchorRecordOmitsUnknownFieldWhenFlsReadTargetsNonexistentField() {
+    static void resolveRecordOmitsUnknownFieldWhenFlsReadTargetsNonexistentField() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
             Account childAccount = [SELECT Id FROM Account WHERE Name = 'V360 Test Child'];
@@ -68,17 +68,17 @@ private class V360AnchorRecordSelectorTest {
             rule.active = true;
             rule.predicates.add(new V360RuleGraph.PredicateRow('FLS_READ', 'Nonexistent_Field__c'));
             V360RuleGraph ruleGraph = new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule });
-            V360AnchorRecordSelector selector = new V360AnchorRecordSelector();
+            V360RecordSelector selector = new V360RecordSelector();
 
             // When
             Test.startTest();
-            SObject anchorRecord = selector.resolveAnchorRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
+            SObject record = selector.resolveRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
             Test.stopTest();
 
             // Then
             Boolean threwOnUnqueriedField = false;
             try {
-                anchorRecord.get('Nonexistent_Field__c');
+                record.get('Nonexistent_Field__c');
             } catch (Exception fieldNotQueriedException) {
                 threwOnUnqueriedField = true;
             }
@@ -87,7 +87,7 @@ private class V360AnchorRecordSelectorTest {
     }
 
     @IsTest
-    static void resolveAnchorRecordOmitsDeeperFieldWhenFormulaReferencesTwoParentLevels() {
+    static void resolveRecordOmitsDeeperFieldWhenFormulaReferencesTwoParentLevels() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
             Account childAccount = [SELECT Id FROM Account WHERE Name = 'V360 Test Child'];
@@ -96,17 +96,17 @@ private class V360AnchorRecordSelectorTest {
             rule.active = true;
             rule.visibilityFormula = 'ISPICKVAL(Parent.Parent.Industry, \'Banking\')';
             V360RuleGraph ruleGraph = new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ rule });
-            V360AnchorRecordSelector selector = new V360AnchorRecordSelector();
+            V360RecordSelector selector = new V360RecordSelector();
 
             // When
             Test.startTest();
-            SObject anchorRecord = selector.resolveAnchorRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
+            SObject record = selector.resolveRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
             Test.stopTest();
 
             // Then
             Boolean threwOnUnqueriedParent = false;
             try {
-                anchorRecord.getSObject('Parent').getSObject('Parent');
+                record.getSObject('Parent').getSObject('Parent');
             } catch (Exception fieldNotQueriedException) {
                 threwOnUnqueriedParent = true;
             }
@@ -115,7 +115,7 @@ private class V360AnchorRecordSelectorTest {
     }
 
     @IsTest
-    static void resolveAnchorRecordSkipsInactiveRulesWhenGatheringFields() {
+    static void resolveRecordSkipsInactiveRulesWhenGatheringFields() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
             Account childAccount = [SELECT Id FROM Account WHERE Name = 'V360 Test Child'];
@@ -124,17 +124,17 @@ private class V360AnchorRecordSelectorTest {
             inactiveRule.active = false;
             inactiveRule.visibilityFormula = 'ISPICKVAL(Industry, \'Technology\')';
             V360RuleGraph ruleGraph = new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{ inactiveRule });
-            V360AnchorRecordSelector selector = new V360AnchorRecordSelector();
+            V360RecordSelector selector = new V360RecordSelector();
 
             // When
             Test.startTest();
-            SObject anchorRecord = selector.resolveAnchorRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
+            SObject record = selector.resolveRecord(buildRequest(childAccount.Id, cardId, ruleGraph));
             Test.stopTest();
 
             // Then
             Boolean threwOnUnqueriedField = false;
             try {
-                anchorRecord.get('Industry');
+                record.get('Industry');
             } catch (Exception fieldNotQueriedException) {
                 threwOnUnqueriedField = true;
             }
@@ -143,27 +143,27 @@ private class V360AnchorRecordSelectorTest {
     }
 
     @IsTest
-    static void resolveAnchorRecordThrowsWhenAnchorRecordIsNotFound() {
+    static void resolveRecordThrowsWhenAnchorRecordIsNotFound() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
             Id fakeAccountId = V360TestStubs.fakeId(Account.SObjectType, 99);
-            V360AnchorRecordSelector.Request request = new V360AnchorRecordSelector.Request();
+            V360RecordSelector.Request request = new V360RecordSelector.Request();
             request.recordId = fakeAccountId;
             request.tabApiName = TAB_API_NAME;
-            request.anchorSObjectApiName = 'Account';
+            request.sObjectApiName = 'Account';
             request.cards = new List<V360CardCatalogDTO>();
             request.ruleGraphsByCardId = new Map<Id, V360RuleGraph>();
             request.formulaEngine = new V360FormulaGateway();
             request.diagnostics = new V360Diagnostics();
-            V360AnchorRecordSelector selector = new V360AnchorRecordSelector();
+            V360RecordSelector selector = new V360RecordSelector();
 
             // When / Then
             Test.startTest();
             Boolean threw = false;
             try {
-                selector.resolveAnchorRecord(request);
-                Assert.fail('Expected V360AnchorRecordSelectorException for a nonexistent anchor record');
-            } catch (V360AnchorRecordSelector.V360AnchorRecordSelectorException ex) {
+                selector.resolveRecord(request);
+                Assert.fail('Expected V360RecordSelectorException for a nonexistent anchor record');
+            } catch (V360RecordSelector.V360RecordSelectorException ex) {
                 threw = true;
             }
             Test.stopTest();

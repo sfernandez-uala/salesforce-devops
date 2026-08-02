@@ -41,7 +41,7 @@ private class V360CardCatalogSelectorTest {
 
         // Then
         V360CardCatalogDTO cardA = findByDeveloperName(cards, 'V360Test_CardA');
-        Assert.areEqual('Account', cardA.anchorSObject, 'A card with no override should inherit the tab anchor');
+        Assert.areEqual('Account', cardA.sObjectApiName, 'A card with no override should inherit the tab anchor');
     }
 
     @IsTest
@@ -56,7 +56,7 @@ private class V360CardCatalogSelectorTest {
 
         // Then
         V360CardCatalogDTO cardB = findByDeveloperName(cards, 'V360Test_CardB');
-        Assert.areEqual('Contact', cardB.anchorSObject, 'A card override should win over the tab default');
+        Assert.areEqual('Contact', cardB.sObjectApiName, 'A card override should win over the tab default');
         Assert.isTrue(cardB.killSwitch, 'The kill-switch flag should be mapped onto the DTO');
     }
 

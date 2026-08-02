@@ -7,11 +7,11 @@
 @IsTest
 public class V360TestDataFactory {
 
-    public static V360_Tab__c insertTab(String developerName, String anchorSObjectApiName) {
+    public static V360_Tab__c insertTab(String developerName, String sObjectApiName) {
         V360_Tab__c tab = new V360_Tab__c(
             Name = developerName,
             DeveloperName__c = developerName,
-            AnchorSObject__c = anchorSObjectApiName,
+            AnchorSObject__c = sObjectApiName,
             Sequence__c = 1
         );
         insert tab;

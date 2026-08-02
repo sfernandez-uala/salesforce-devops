@@ -12,7 +12,7 @@
  * referenced it then fails closed naturally when the evaluator tries to
  * read a field the anchor record was never queried for.
  */
-public with sharing class V360AnchorRecordSelector {
+public with sharing class V360RecordSelector {
 
     /**
      * Everything one anchor-record resolution pass needs. Plain data holder:
@@ -21,7 +21,7 @@ public with sharing class V360AnchorRecordSelector {
     public class Request {
         public Id recordId;
         public String tabApiName;
-        public String anchorSObjectApiName;
+        public String sObjectApiName;
         public List<V360CardCatalogDTO> cards;
         public Map<Id, V360RuleGraph> ruleGraphsByCardId;
         public IFormulaEngine formulaEngine;
@@ -33,23 +33,23 @@ public with sharing class V360AnchorRecordSelector {
      *        discover, validate, and query the anchor record's field set
      * @return the anchor record populated with exactly the fields the rules need
      */
-    public SObject resolveAnchorRecord(Request request) {
+    public SObject resolveRecord(Request request) {
         if (request.recordId == null) {
-            throw new V360AnchorRecordSelectorException('A record Id is required to resolve the anchor record.');
+            throw new V360RecordSelectorException('A record Id is required to resolve the anchor record.');
         }
-        if (String.isBlank(request.anchorSObjectApiName)) {
-            throw new V360AnchorRecordSelectorException('An anchor SObject API name is required.');
+        if (String.isBlank(request.sObjectApiName)) {
+            throw new V360RecordSelectorException('An anchor SObject API name is required.');
         }
-        Schema.SObjectType anchorType = Schema.getGlobalDescribe().get(request.anchorSObjectApiName.toLowerCase());
-        if (anchorType == null) {
-            throw new V360AnchorRecordSelectorException('Unknown anchor SObject: ' + request.anchorSObjectApiName);
+        Schema.SObjectType sObjectType = Schema.getGlobalDescribe().get(request.sObjectApiName.toLowerCase());
+        if (sObjectType == null) {
+            throw new V360RecordSelectorException('Unknown anchor SObject: ' + request.sObjectApiName);
         }
 
-        FieldCollectionContext ctx = new FieldCollectionContext(request, anchorType);
+        FieldCollectionContext ctx = new FieldCollectionContext(request, sObjectType);
         collectFieldPaths(request.ruleGraphsByCardId, ctx);
         request.diagnostics.publishAll(ctx.unknownFieldEntries);
 
-        return queryAnchorRecord(request.recordId, request.anchorSObjectApiName, ctx.fieldPaths);
+        return queryAnchorRecord(request.recordId, request.sObjectApiName, ctx.fieldPaths);
     }
 
     // Object/field names in a dynamic SOQL string can never be bind variables — only values can.
@@ -57,13 +57,13 @@ public with sharing class V360AnchorRecordSelector {
     // Schema.getGlobalDescribe(), and each field path is confirmed by V360FieldPathUtil against
     // that same type, so nothing unvalidated reaches this query string.
     @SuppressWarnings('PMD.ApexSOQLInjection')
-    private SObject queryAnchorRecord(Id recordId, String anchorSObjectApiName, Set<String> fieldPaths) {
+    private SObject queryAnchorRecord(Id recordId, String sObjectApiName, Set<String> fieldPaths) {
         String fieldList = fieldPaths.isEmpty() ? '' : ', ' + String.join(new List<String>(fieldPaths), ', ');
-        String query = 'SELECT Id' + fieldList + ' FROM ' + anchorSObjectApiName
+        String query = 'SELECT Id' + fieldList + ' FROM ' + sObjectApiName
             + ' WHERE Id = :recordId WITH USER_MODE';
         List<SObject> results = Database.query(query);
         if (results.isEmpty()) {
-            throw new V360AnchorRecordSelectorException('Anchor record not found or not readable: ' + recordId);
+            throw new V360RecordSelectorException('Anchor record not found or not readable: ' + recordId);
         }
         return results[0];
     }
@@ -86,7 +86,7 @@ public with sharing class V360AnchorRecordSelector {
         }
         Set<String> referencedFields;
         try {
-            ctx.formulaEngine.build(rule.visibilityFormula, ctx.anchorType);
+            ctx.formulaEngine.build(rule.visibilityFormula, ctx.sObjectType);
             referencedFields = ctx.formulaEngine.getReferencedFields();
         } catch (Exception buildException) {
             // An invalid formula surfaces as FORMULA_INVALID when the evaluator independently
@@ -107,7 +107,7 @@ public with sharing class V360AnchorRecordSelector {
     }
 
     private void addOrReportField(String fieldPath, Id cardId, FieldCollectionContext ctx) {
-        if (V360FieldPathUtil.describeFieldPath(ctx.anchorType, fieldPath) != null) {
+        if (V360FieldPathUtil.describeFieldPath(ctx.sObjectType, fieldPath) != null) {
             ctx.fieldPaths.add(fieldPath);
         } else {
             ctx.unknownFieldEntries.add(ctx.unknownFieldEntry(cardId, fieldPath));
@@ -118,16 +118,16 @@ public with sharing class V360AnchorRecordSelector {
     private class FieldCollectionContext {
         Id recordId;
         String tabApiName;
-        Schema.SObjectType anchorType;
+        Schema.SObjectType sObjectType;
         IFormulaEngine formulaEngine;
         Map<Id, String> cardNamesById = new Map<Id, String>();
         Set<String> fieldPaths = new Set<String>();
         List<V360Diagnostics.Entry> unknownFieldEntries = new List<V360Diagnostics.Entry>();
 
-        FieldCollectionContext(Request request, Schema.SObjectType anchorType) {
+        FieldCollectionContext(Request request, Schema.SObjectType sObjectType) {
             this.recordId = request.recordId;
             this.tabApiName = request.tabApiName;
-            this.anchorType = anchorType;
+            this.sObjectType = sObjectType;
             this.formulaEngine = request.formulaEngine;
             for (V360CardCatalogDTO card : request.cards) {
                 this.cardNamesById.put(card.cardId, card.developerName);
@@ -145,6 +145,6 @@ public with sharing class V360AnchorRecordSelector {
         }
     }
 
-    public class V360AnchorRecordSelectorException extends Exception {
+    public class V360RecordSelectorException extends Exception {
     }
 }

@@ -118,9 +118,9 @@ public with sharing class V360AdminService {
 
         IFormulaEngine formulaEngine = new V360FormulaGateway();
         for (V360_CardRule__c rule : rulesWithFormulas) {
-            Schema.SObjectType anchorType = resolveAnchorType(cardsById.get(rule.Card__c));
+            Schema.SObjectType sObjectType = resolveAnchorType(cardsById.get(rule.Card__c));
             try {
-                formulaEngine.build(rule.VisibilityFormula__c, anchorType);
+                formulaEngine.build(rule.VisibilityFormula__c, sObjectType);
             } catch (Exception buildException) {
                 throw new V360AdminServiceException(
                     'Formula failed to validate: ' + buildException.getMessage(),
@@ -135,11 +135,11 @@ public with sharing class V360AdminService {
             throw new V360AdminServiceException('A rule must reference an existing card to validate its formula.');
         }
         String anchorApiName = String.isNotBlank(card.AnchorSObject__c) ? card.AnchorSObject__c : card.Tab__r.AnchorSObject__c;
-        Schema.SObjectType anchorType = Schema.getGlobalDescribe().get(anchorApiName.toLowerCase());
-        if (anchorType == null) {
+        Schema.SObjectType sObjectType = Schema.getGlobalDescribe().get(anchorApiName.toLowerCase());
+        if (sObjectType == null) {
             throw new V360AdminServiceException('Unknown anchor SObject: ' + anchorApiName);
         }
-        return anchorType;
+        return sObjectType;
     }
 
     private static Set<Id> collectCardIds(List<V360_CardRule__c> rules) {

@@ -49,17 +49,17 @@ public with sharing class V360VisibilityEvaluator {
     /**
      * @param recordId the record the tab is being evaluated for
      * @param tabApiName the tab's stable developer name
-     * @param anchorRecord the already-resolved anchor record used by rule formulas/predicates
+     * @param record the already-resolved anchor record used by rule formulas/predicates
      * @return the visible cards for this tab, presentation-overlaid and sorted by order
      */
-    public List<V360CardDecision> evaluate(Id recordId, String tabApiName, SObject anchorRecord) {
+    public List<V360CardDecision> evaluate(Id recordId, String tabApiName, SObject record) {
         List<V360CardCatalogDTO> cards = catalogSource.getCardsForTab(tabApiName);
         if (cards.isEmpty()) {
             return new List<V360CardDecision>();
         }
 
         Map<Id, V360RuleGraph> ruleGraphsByCardId = ruleSource.getRulesForCards(collectCardIds(cards));
-        EvalContext ctx = buildContext(recordId, tabApiName, anchorRecord);
+        EvalContext ctx = buildContext(recordId, tabApiName, record);
 
         List<V360CardDecision> visibleCards = new List<V360CardDecision>();
         for (V360CardCatalogDTO card : cards) {
@@ -77,8 +77,8 @@ public with sharing class V360VisibilityEvaluator {
     private class EvalContext {
         Id recordId;
         String tabApiName;
-        SObject anchorRecord;
-        String anchorSObjectApiName;
+        SObject record;
+        String sObjectApiName;
         List<V360Diagnostics.Entry> entries = new List<V360Diagnostics.Entry>();
 
         void addEntry(V360CardCatalogDTO card, V360Diagnostics.Reason reason, String detail) {
@@ -92,14 +92,14 @@ public with sharing class V360VisibilityEvaluator {
         }
     }
 
-    private EvalContext buildContext(Id recordId, String tabApiName, SObject anchorRecord) {
+    private EvalContext buildContext(Id recordId, String tabApiName, SObject record) {
         EvalContext ctx = new EvalContext();
         ctx.recordId = recordId;
         ctx.tabApiName = tabApiName;
-        ctx.anchorRecord = anchorRecord;
-        ctx.anchorSObjectApiName = anchorRecord == null
+        ctx.record = record;
+        ctx.sObjectApiName = record == null
             ? null
-            : anchorRecord.getSObjectType().getDescribe().getName();
+            : record.getSObjectType().getDescribe().getName();
         return ctx;
     }
 
@@ -135,13 +135,13 @@ public with sharing class V360VisibilityEvaluator {
             return true;
         }
         try {
-            formulaEngine.build(rule.visibilityFormula, ctx.anchorRecord.getSObjectType());
+            formulaEngine.build(rule.visibilityFormula, ctx.record.getSObjectType());
         } catch (Exception buildException) {
             ctx.addEntry(card, V360Diagnostics.Reason.FORMULA_INVALID, buildException.getMessage());
             return false;
         }
         try {
-            return formulaEngine.evaluate(ctx.anchorRecord);
+            return formulaEngine.evaluate(ctx.record);
         } catch (Exception evaluateException) {
             ctx.addEntry(card, V360Diagnostics.Reason.FORMULA_EVAL_ERROR, evaluateException.getMessage());
             return false;
@@ -152,7 +152,7 @@ public with sharing class V360VisibilityEvaluator {
         for (V360RuleGraph.PredicateRow predicate : rule.predicates) {
             Boolean predicatePassed;
             try {
-                predicatePassed = predicateEvaluator.evaluate(predicate, ctx.anchorSObjectApiName);
+                predicatePassed = predicateEvaluator.evaluate(predicate, ctx.sObjectApiName);
             } catch (Exception predicateException) {
                 ctx.addEntry(card, V360Diagnostics.Reason.PREDICATE_ERROR, predicateException.getMessage());
                 return false;

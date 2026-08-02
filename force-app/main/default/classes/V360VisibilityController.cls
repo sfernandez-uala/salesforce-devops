@@ -52,15 +52,15 @@ public with sharing class V360VisibilityController {
         IFormulaEngine formulaEngine = new V360FormulaGateway();
         V360Diagnostics diagnostics = new V360Diagnostics();
 
-        V360AnchorRecordSelector.Request anchorRequest = new V360AnchorRecordSelector.Request();
-        anchorRequest.recordId = recordId;
-        anchorRequest.tabApiName = tabApiName;
-        anchorRequest.anchorSObjectApiName = cards[0].anchorSObject;
-        anchorRequest.cards = cards;
-        anchorRequest.ruleGraphsByCardId = ruleGraphsByCardId;
-        anchorRequest.formulaEngine = formulaEngine;
-        anchorRequest.diagnostics = diagnostics;
-        SObject anchorRecord = new V360AnchorRecordSelector().resolveAnchorRecord(anchorRequest);
+        V360RecordSelector.Request request = new V360RecordSelector.Request();
+        request.recordId = recordId;
+        request.tabApiName = tabApiName;
+        request.sObjectApiName = cards[0].sObjectApiName;
+        request.cards = cards;
+        request.ruleGraphsByCardId = ruleGraphsByCardId;
+        request.formulaEngine = formulaEngine;
+        request.diagnostics = diagnostics;
+        SObject record = new V360RecordSelector().resolveRecord(request);
 
         V360VisibilityEvaluator.Services services = new V360VisibilityEvaluator.Services();
         services.catalogSource = catalogSource;
@@ -69,7 +69,7 @@ public with sharing class V360VisibilityController {
         services.formulaEngine = formulaEngine;
         services.diagnostics = diagnostics;
 
-        return new V360VisibilityEvaluator(services).evaluate(recordId, tabApiName, anchorRecord);
+        return new V360VisibilityEvaluator(services).evaluate(recordId, tabApiName, record);
     }
 
     private static Set<Id> collectCardIds(List<V360CardCatalogDTO> cards) {

@@ -3,8 +3,8 @@ private class V360VisibilityControllerTest {
 
     @TestSetup
     static void setupTestData() {
-        Account anchorAccount = new Account(Name = 'V360 Controller Test Account', Industry = 'Banking');
-        insert anchorAccount;
+        Account testAccount = new Account(Name = 'V360 Controller Test Account', Industry = 'Banking');
+        insert testAccount;
 
         V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Ctrl_Tab', 'Account');
 
@@ -39,7 +39,7 @@ private class V360VisibilityControllerTest {
         );
     }
 
-    private static Id anchorAccountId() {
+    private static Id testAccountId() {
         return [SELECT Id FROM Account WHERE Name = 'V360 Controller Test Account'].Id;
     }
 
@@ -61,7 +61,7 @@ private class V360VisibilityControllerTest {
     static void getVisibleCardsReturnsDefaultAndPassingCardsExcludingKilledFailingAndMalformed() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
-            Id recordId = anchorAccountId();
+            Id recordId = testAccountId();
             reassertCardsActive();
 
             // When
@@ -89,7 +89,7 @@ private class V360VisibilityControllerTest {
         // DML operation for the cacheable-method restriction.
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
-            Id recordId = anchorAccountId();
+            Id recordId = testAccountId();
 
             // When / Then — the malformed-formula card in the fixture triggers a diagnostic publish
             Test.startTest();
@@ -104,7 +104,7 @@ private class V360VisibilityControllerTest {
     static void getVisibleCardsFreshReturnsTheSameResultAsTheCacheablePath() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
-            Id recordId = anchorAccountId();
+            Id recordId = testAccountId();
             reassertCardsActive();
 
             // When
@@ -122,7 +122,7 @@ private class V360VisibilityControllerTest {
     static void getVisibleCardsReturnsEmptyListWhenTabApiNameIsBlank() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
-            Id recordId = anchorAccountId();
+            Id recordId = testAccountId();
 
             // When
             Test.startTest();
@@ -151,7 +151,7 @@ private class V360VisibilityControllerTest {
     static void getVisibleCardsReturnsEmptyListWhenTabHasNoCards() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // Given
-            Id recordId = anchorAccountId();
+            Id recordId = testAccountId();
 
             // When
             Test.startTest();

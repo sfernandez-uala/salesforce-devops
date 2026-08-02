@@ -11,7 +11,7 @@ public class V360CardCatalogDTO {
     public String developerName;
     public String componentType;
     public String componentName;
-    public String anchorSObject;
+    public String sObjectApiName;
     public Integer order;
     public String label;
     public String description;

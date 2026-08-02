@@ -41,7 +41,7 @@ public without sharing class V360CardCatalogSelector implements ICardCatalogSour
         dto.developerName = cardRecord.DeveloperName__c;
         dto.componentType = cardRecord.ComponentType__c;
         dto.componentName = cardRecord.ComponentName__c;
-        dto.anchorSObject = String.isNotBlank(cardRecord.AnchorSObject__c)
+        dto.sObjectApiName = String.isNotBlank(cardRecord.AnchorSObject__c)
             ? cardRecord.AnchorSObject__c
             : cardRecord.Tab__r.AnchorSObject__c;
         dto.order = cardRecord.Order__c == null ? null : Integer.valueOf(cardRecord.Order__c);
