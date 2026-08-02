@@ -32,9 +32,45 @@ for anyone maintaining `VisibilityFormula__c` or the code that evaluates it.
   gate: unknown functions and misspelled identifiers are rejected immediately, not discovered
   later at evaluation time.
 
+## A documented extension seam: building a formula against an Apex class instead of a record
+
+`Formula.builder().withType()` does not require an SObject — it also accepts a plain, global
+Apex class as the formula's context. This is useful the moment a rule needs a value that is not
+a field on the record itself (a computed total, for instance), because the evaluator can hand
+the formula a small Apex object carrying that computed value alongside the record.
+
+This was verified by probing against a sandbox with a temporary class shaped like this:
+
+```apex
+global class ExampleFormulaContext {
+    global Account Record;
+    global Decimal TotalBalance;
+}
+```
+
+Findings, all confirmed against a real org and consistent with the limits above:
+
+- **Traversing into a record field through the Apex class works exactly like a direct field.**
+  A formula can reference `Record.Name`, a picklist field via `TEXT(Record.Industry)`, and a
+  plain (non-record) property like `TotalBalance`, and combine all of them in one expression —
+  no different from writing a formula directly against the record.
+- **`getReferencedFields()` follows the same pattern as parent-record traversal.** A record field
+  reached through the Apex class comes back as `PropertyName.FieldName` (e.g.
+  `Record.AnnualRevenue`); a plain top-level property on the Apex class comes back as its bare
+  name (e.g. `TotalBalance`). The same "split on the dot" logic that detects parent-record
+  traversal on a direct-record formula also correctly separates these two cases.
+- **Per-evaluation cost is unchanged.** Building and evaluating a formula against this kind of
+  Apex context costs the same order of magnitude per cycle as evaluating directly against a
+  record — there is no meaningful extra cost from the indirection.
+
+None of this is used by any production code today — it is a confirmed, ready-to-use option for
+the day a rule needs a computed value the record itself doesn't carry.
+
 ## Methodology
 
 These numbers come from probing `FormulaEval` with anonymous Apex against a sandbox org — a
 read-only exercise with no permanent org changes (a temporary test class was deployed, run, and
-then deleted to confirm the build/evaluate-in-test-context behavior). No script is committed to
-this repository; the findings above are the durable, reusable output of that exercise.
+then deleted to confirm the build/evaluate-in-test-context behavior; a second temporary class
+was deployed, probed, and deleted the same way to confirm the Apex-context behavior above). No
+script is committed to this repository; the findings above are the durable, reusable output of
+that exercise.
