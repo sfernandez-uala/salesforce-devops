@@ -28,7 +28,7 @@ jobs:
         run: |
           CHANGED=$(git diff --name-only --diff-filter=ACMRT \
             origin/${{ github.base_ref }}...HEAD \
-            | grep -E '\.cls$|\.trigger$|\.page$' | paste -sd, -)
+            | grep -E '^force-app/.*\.(cls|trigger|page)$' | paste -sd, -)
           if [ -n "$CHANGED" ]; then
             sf code-analyzer run --workspace "$CHANGED" \
               --rule-selector pmd --severity-threshold 3 \
