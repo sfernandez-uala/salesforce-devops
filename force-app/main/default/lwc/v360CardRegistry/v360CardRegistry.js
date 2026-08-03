@@ -12,14 +12,17 @@
  */
 import PipelineProbe from 'c/pipelineProbe';
 import V360AccountSnapshot from 'c/v360AccountSnapshot';
+import V360LifecycleDemo from 'c/v360LifecycleDemo';
 
 // pipelineProbe is a repo smoke-test component, not a real visibility card,
 // kept registered from the shell-foundation work unit that first exercised
 // this registry wiring end to end. v360AccountSnapshot is the first real
-// Vista 360 card.
+// Vista 360 card; v360LifecycleDemo is the deterministic showcase of the
+// card lifecycle stages.
 const REGISTRY = {
     pipelineProbe: PipelineProbe,
-    v360AccountSnapshot: V360AccountSnapshot
+    v360AccountSnapshot: V360AccountSnapshot,
+    v360LifecycleDemo: V360LifecycleDemo
 };
 
 /**

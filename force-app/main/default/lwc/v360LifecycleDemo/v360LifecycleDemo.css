@@ -1,0 +1,45 @@
+/**
+ * The SKELETON stage's stencil bars. SLDS ships no stencil/shimmer
+ * treatment, so the bar shape and shimmer keyframes live here as this
+ * card's own structural presentation; colors come from the shared tokens
+ * so the treatment stays on-theme without a hardcoded hex value.
+ */
+@import 'c/v360Styles';
+
+.v360-stencil-bar {
+    height: 0.75rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.75rem;
+    background: linear-gradient(
+        90deg,
+        var(--v360-color-skeleton) 25%,
+        var(--v360-color-surface) 50%,
+        var(--v360-color-skeleton) 75%
+    );
+    background-size: 200% 100%;
+    animation: v360-stencil-shimmer 1.5s ease-in-out infinite;
+}
+
+.v360-stencil-bar_short {
+    width: 40%;
+}
+
+.v360-stencil-bar_long {
+    width: 70%;
+}
+
+@keyframes v360-stencil-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .v360-stencil-bar {
+        animation: none;
+        background: var(--v360-color-skeleton);
+    }
+}

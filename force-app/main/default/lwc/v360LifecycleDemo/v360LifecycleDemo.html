@@ -1,0 +1,23 @@
+<template>
+    <div class="slds-p-horizontal_medium slds-p-bottom_small">
+        <template lwc:if={hasError}>
+            <c-v360-empty-state
+                data-id="error-state"
+                title="Something went wrong"
+                illustration-name="error:recoverable"
+                alternative-text="Error illustration"
+                description="This reference card fails on purpose. Retry to watch the skeleton stage again."
+                retry-label="Retry"
+                onretry={handleRetry}
+            ></c-v360-empty-state>
+        </template>
+        <template lwc:else>
+            <div class="slds-form" role="presentation" data-id="skeleton-state" aria-hidden="true">
+                <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+                <div class="v360-stencil-bar v360-stencil-bar_long"></div>
+                <div class="v360-stencil-bar v360-stencil-bar_long"></div>
+                <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+            </div>
+        </template>
+    </div>
+</template>
