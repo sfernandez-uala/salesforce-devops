@@ -373,23 +373,19 @@ export default class V360Shell extends LightningElement {
         return Boolean(selected) && selected.isLwc && !selected.ctor;
     }
 
+    /**
+     * The rail reflects the pinned-first order but carries no pin control:
+     * it is the fast card-switching surface, and pinning is a deliberate
+     * curation act that lives on the gallery tiles.
+     */
     get sidebarCards() {
-        return this.sortByPins(this.cards).map((card) => {
-            const isPinned = this.pinnedKeys.includes(card.key);
-            return {
-                ...card,
-                isPinned,
-                pinIconName: isPinned ? 'utility:pinned' : 'utility:pin',
-                pinLabel: isPinned ? 'Unpin' : 'Pin to top',
-                pinClass: isPinned
-                    ? 'v360-shell-sidebar-pin v360-shell-sidebar-pin_active'
-                    : 'v360-shell-sidebar-pin',
-                itemClass:
-                    card.key === this.selectedCardKey
-                        ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
-                        : 'v360-shell-sidebar-item'
-            };
-        });
+        return this.sortByPins(this.cards).map((card) => ({
+            ...card,
+            itemClass:
+                card.key === this.selectedCardKey
+                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
+                    : 'v360-shell-sidebar-item'
+        }));
     }
 
     get galleryCards() {

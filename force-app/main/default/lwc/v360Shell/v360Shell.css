@@ -119,7 +119,6 @@
 }
 
 .v360-shell-sidebar-item {
-    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -132,24 +131,6 @@
     cursor: pointer;
     transition: background-color 0.15s ease-out;
 }
-
-/* Same reveal contract as the tile pin: quiet until the item is engaged,
-   always visible while pinned. Corner-anchored so the minimized launcher
-   keeps its centered icon-plus-label rhythm. */
-.v360-shell-sidebar-pin {
-    position: absolute;
-    top: 0.25rem;
-    right: 0.25rem;
-    opacity: 0;
-    transition: opacity 0.15s ease-out;
-}
-
-.v360-shell-sidebar-item:hover .v360-shell-sidebar-pin,
-.v360-shell-sidebar-item:focus-within .v360-shell-sidebar-pin,
-.v360-shell-sidebar-pin_active {
-    opacity: 1;
-}
-
 .v360-shell-sidebar-item:hover {
     background: var(--v360-color-surface-hover);
 }
@@ -270,8 +251,7 @@
 @media (prefers-reduced-motion: reduce) {
     .v360-shell-tile,
     .v360-shell-sidebar-item,
-    .v360-shell-tile-pin,
-    .v360-shell-sidebar-pin {
+    .v360-shell-tile-pin {
         transition: none;
     }
 
