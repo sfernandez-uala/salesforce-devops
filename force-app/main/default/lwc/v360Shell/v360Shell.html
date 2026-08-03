@@ -34,36 +34,40 @@
     </template>
 
     <template lwc:elseif={hasCards}>
-        <template for:each={cards} for:item="card">
-            <div
-                key={card.key}
-                class="slds-p-bottom_small"
-                data-card-name={card.key}
-                onclick={handleSelectCard}
-            >
-                <template lwc:if={card.ctor}>
-                    <lwc:component lwc:is={card.ctor} record-id={recordId}></lwc:component>
-                </template>
-                <template lwc:if={card.isFlow}>
-                    <lightning-card title={card.label} icon-name={card.iconName}>
-                        <div class="slds-p-around_medium slds-text-color_weak" data-id="flow-placeholder">
-                            Flow card placeholder — the generic Flow host ships in a later work unit.
-                            Configured flow: {card.componentName}
-                        </div>
-                    </lightning-card>
-                </template>
-                <template lwc:if={card.isUnknownBinding}>
-                    <lightning-card title={card.label} icon-name="utility:error">
-                        <c-v360-empty-state
-                            data-id="unknown-binding"
-                            title="Card unavailable"
-                            illustration-name="error:unrecoverable"
-                            alternative-text="Unrecoverable error illustration"
-                            description="This card's component is not available."
-                        ></c-v360-empty-state>
-                    </lightning-card>
-                </template>
-            </div>
-        </template>
+        <div class="slds-grid slds-wrap slds-gutters_small">
+            <template for:each={cards} for:item="card">
+                <div
+                    key={card.key}
+                    class="slds-col slds-size_1-of-1 slds-large-size_1-of-2 slds-p-bottom_small"
+                    data-card-name={card.key}
+                    onclick={handleSelectCard}
+                >
+                    <template lwc:if={card.ctor}>
+                        <lightning-card title={card.label} icon-name={card.iconName}>
+                            <lwc:component lwc:is={card.ctor} record-id={recordId}></lwc:component>
+                        </lightning-card>
+                    </template>
+                    <template lwc:if={card.isFlow}>
+                        <lightning-card title={card.label} icon-name={card.iconName}>
+                            <div class="slds-p-around_medium slds-text-color_weak" data-id="flow-placeholder">
+                                Flow card placeholder — the generic Flow host ships in a later work unit.
+                                Configured flow: {card.componentName}
+                            </div>
+                        </lightning-card>
+                    </template>
+                    <template lwc:if={card.isUnknownBinding}>
+                        <lightning-card title={card.label} icon-name="utility:error">
+                            <c-v360-empty-state
+                                data-id="unknown-binding"
+                                title="Card unavailable"
+                                illustration-name="error:unrecoverable"
+                                alternative-text="Unrecoverable error illustration"
+                                description="This card's component is not available."
+                            ></c-v360-empty-state>
+                        </lightning-card>
+                    </template>
+                </div>
+            </template>
+        </div>
     </template>
 </template>

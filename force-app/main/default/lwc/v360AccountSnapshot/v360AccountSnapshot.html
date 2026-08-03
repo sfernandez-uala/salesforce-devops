@@ -1,5 +1,5 @@
 <template>
-    <div class="slds-p-around_small">
+    <div class="slds-p-horizontal_medium slds-p-bottom_small">
         <template lwc:if={hasError}>
             <c-v360-empty-state
                 data-id="error-state"
@@ -12,12 +12,29 @@
             ></c-v360-empty-state>
         </template>
         <template lwc:else>
-            <template lwc:if={hasIndustry}>
-                <p><strong>Industry:</strong> {industry}</p>
-            </template>
-            <template lwc:if={hasAnnualRevenue}>
-                <p><strong>Annual Revenue:</strong> {annualRevenue}</p>
-            </template>
+            <div class="slds-form" role="list">
+                <template lwc:if={hasIndustry}>
+                    <div class="slds-form-element slds-form-element_readonly slds-form-element_stacked" role="listitem">
+                        <span class="slds-form-element__label">Industry</span>
+                        <div class="slds-form-element__control">
+                            <div class="slds-form-element__static">{industry}</div>
+                        </div>
+                    </div>
+                </template>
+                <template lwc:if={hasAnnualRevenue}>
+                    <div class="slds-form-element slds-form-element_readonly slds-form-element_stacked" role="listitem">
+                        <span class="slds-form-element__label">Annual Revenue</span>
+                        <div class="slds-form-element__control">
+                            <div class="slds-form-element__static">
+                                <lightning-formatted-number
+                                    value={annualRevenue}
+                                    format-style="currency"
+                                ></lightning-formatted-number>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
             <template lwc:if={hasNoVisibleFields}>
                 <c-v360-empty-state
                     data-id="no-fields-state"

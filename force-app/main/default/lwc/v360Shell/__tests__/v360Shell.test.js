@@ -91,11 +91,14 @@ describe('c-v360-shell', () => {
         expect(load).toHaveBeenCalledWith('v360AccountSnapshot');
         const cardWrapper = element.shadowRoot.querySelector('[data-card-name="v360AccountSnapshot"]');
         expect(cardWrapper).not.toBeNull();
+        const chrome = cardWrapper.querySelector('lightning-card');
+        expect(chrome).not.toBeNull();
+        expect(chrome.title).toBe('Snapshot');
         // A dynamically instantiated component's tag name is
         // environment-defined (the Jest harness uses a synthetic one), so the
         // mounted card is asserted through its position and the props it
         // received rather than a tag selector.
-        const mountedCard = cardWrapper.firstElementChild;
+        const mountedCard = chrome.firstElementChild;
         expect(mountedCard).not.toBeNull();
         expect(mountedCard.recordId).toBe('001000000000404AAA');
         expect(element.shadowRoot.querySelector('[data-id="unknown-binding"]')).toBeNull();

@@ -246,21 +246,28 @@
                 <identifier>flexipage_fieldSection</identifier>
             </componentInstance>
         </itemInstances>
-        <!-- Vista 360 shell: renders the visible cards for this record's tab -->
-        <itemInstances>
-            <componentInstance>
-                <componentInstanceProperties>
-                    <name>tabApiName</name>
-                    <value>AccountOverview</value>
-                </componentInstanceProperties>
-                <componentName>c:v360Shell</componentName>
-                <identifier>c_v360Shell</identifier>
-            </componentInstance>
-        </itemInstances>
         <name>detailTabContent</name>
         <type>Facet</type>
     </flexiPageRegions>
     <flexiPageRegions>
+        <itemInstances>
+            <componentInstance>
+                <componentInstanceProperties>
+                    <name>active</name>
+                    <value>true</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>body</name>
+                    <value>vista360TabContent</value>
+                </componentInstanceProperties>
+                <componentInstanceProperties>
+                    <name>title</name>
+                    <value>Vista 360</value>
+                </componentInstanceProperties>
+                <componentName>flexipage:tab</componentName>
+                <identifier>vista360Tab</identifier>
+            </componentInstance>
+        </itemInstances>
         <itemInstances>
             <componentInstance>
                 <componentInstanceProperties>
@@ -278,10 +285,6 @@
         <itemInstances>
             <componentInstance>
                 <componentInstanceProperties>
-                    <name>active</name>
-                    <value>true</value>
-                </componentInstanceProperties>
-                <componentInstanceProperties>
                     <name>body</name>
                     <value>detailTabContent</value>
                 </componentInstanceProperties>
@@ -294,6 +297,21 @@
             </componentInstance>
         </itemInstances>
         <name>maintabs</name>
+        <type>Facet</type>
+    </flexiPageRegions>
+    <flexiPageRegions>
+        <!-- Vista 360 shell: renders the visible cards for this record's tab -->
+        <itemInstances>
+            <componentInstance>
+                <componentInstanceProperties>
+                    <name>tabApiName</name>
+                    <value>AccountOverview</value>
+                </componentInstanceProperties>
+                <componentName>c:v360Shell</componentName>
+                <identifier>c_v360Shell</identifier>
+            </componentInstance>
+        </itemInstances>
+        <name>vista360TabContent</name>
         <type>Facet</type>
     </flexiPageRegions>
     <flexiPageRegions>

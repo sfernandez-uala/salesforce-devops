@@ -31,12 +31,14 @@ describe('c-v360-account-snapshot', () => {
         });
         await flushPromises();
 
-        const paragraphs = element.shadowRoot.querySelectorAll('p');
+        const paragraphs = element.shadowRoot.querySelectorAll('.slds-form-element__static');
         const text = Array.from(paragraphs)
             .map((p) => p.textContent)
             .join(' ');
         expect(text).toContain('Banking');
-        expect(text).toContain('5000000');
+        const revenue = element.shadowRoot.querySelector('lightning-formatted-number');
+        expect(revenue).not.toBeNull();
+        expect(revenue.value).toBe(5000000);
         expect(element.shadowRoot.querySelector('[data-id="no-fields-state"]')).toBeNull();
         expect(element.shadowRoot.querySelector('[data-id="error-state"]')).toBeNull();
     });
