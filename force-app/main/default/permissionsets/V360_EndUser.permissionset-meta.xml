@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <label>V360 End User</label>
-    <description>Vista 360 record-page/shell access for end users. Deliberately grants no permission on Vista 360 configuration objects — the core security boundary for this feature. Shell/record-page access will be added once that component ships.</description>
+    <description>Vista 360 shell access for end users. Grants Apex access to V360VisibilityController (the read-only visibility boundary) for v360Shell. Grants no permission on the Vista 360 configuration objects — the core security boundary for this feature.</description>
     <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>V360VisibilityController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
 </PermissionSet>

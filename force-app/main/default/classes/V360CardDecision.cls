@@ -10,6 +10,7 @@ public class V360CardDecision {
     @AuraEnabled public String componentType;
     @AuraEnabled public String componentName;
     @AuraEnabled public String label;
+    @AuraEnabled public String description;
     @AuraEnabled public String iconName;
     @AuraEnabled public String buttonLabel;
     @AuraEnabled public Integer order;

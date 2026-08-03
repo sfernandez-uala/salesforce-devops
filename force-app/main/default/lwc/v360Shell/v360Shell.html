@@ -1,0 +1,161 @@
+<template>
+    <template lwc:if={isLoading}>
+        <lightning-card title="Vista 360" icon-name="standard:account" data-id="loading-state">
+            <div class="slds-p-around_medium">
+                <lightning-spinner alternative-text="Loading cards" size="small"></lightning-spinner>
+            </div>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isError}>
+        <lightning-card title="Vista 360" icon-name="standard:account">
+            <c-v360-empty-state
+                data-id="error-state"
+                title="Something went wrong"
+                illustration-name="error:recoverable"
+                alternative-text="Error illustration"
+                description="Unable to load Vista 360 cards for this record right now."
+                retry-label="Retry"
+                onretry={handleRetry}
+            ></c-v360-empty-state>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isEmpty}>
+        <lightning-card title="Vista 360" icon-name="standard:account">
+            <c-v360-empty-state
+                data-id="empty-state"
+                title="No cards to show"
+                illustration-name="noresults:unknown"
+                alternative-text="No results illustration"
+                description="No cards are configured for this tab."
+            ></c-v360-empty-state>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isGalleryView}>
+        <div class="slds-grid slds-wrap slds-gutters_small" data-id="gallery-view">
+            <template for:each={cards} for:item="card">
+                <div key={card.key} class="slds-col slds-size_1-of-1 slds-large-size_1-of-3 slds-p-bottom_small">
+                    <div
+                        class="slds-box slds-box_x-small"
+                        data-id="gallery-tile"
+                        data-card-name={card.key}
+                        onclick={handleSelectCard}
+                    >
+                        <div class="slds-grid slds-grid_vertical-align-center slds-p-bottom_small">
+                            <lightning-icon
+                                icon-name={card.iconName}
+                                size="small"
+                                class="slds-m-right_x-small"
+                            ></lightning-icon>
+                            <h3 class="slds-text-heading_small slds-truncate">{card.label}</h3>
+                        </div>
+                        <template lwc:if={card.description}>
+                            <p class="slds-text-body_regular slds-p-bottom_small">{card.description}</p>
+                        </template>
+                        <hr class="slds-m-vertical_small" />
+                        <div class="slds-text-align_center">
+                            <lightning-button
+                                variant="base"
+                                label={card.buttonLabel}
+                                data-card-name={card.key}
+                                onclick={handleSelectCard}
+                            ></lightning-button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+
+    <template lwc:elseif={isFocusedView}>
+        <div class="slds-grid" data-id="focused-view">
+            <div class="v360-shell-sidebar slds-shrink-none slds-p-right_small" data-id="sidebar">
+                <template for:each={sidebarCards} for:item="sidebarCard">
+                    <div
+                        key={sidebarCard.key}
+                        class={sidebarCard.itemClass}
+                        data-id="sidebar-item"
+                        data-card-name={sidebarCard.key}
+                        onclick={handleSelectCard}
+                    >
+                        <lightning-icon icon-name={sidebarCard.iconName} size="small"></lightning-icon>
+                        <p class="slds-text-align_center slds-truncate">{sidebarCard.label}</p>
+                    </div>
+                </template>
+            </div>
+
+            <div class="slds-col slds-grow">
+                <div
+                    class="slds-box slds-box_x-small slds-grid slds-grid_vertical-align-center slds-m-bottom_small"
+                    data-id="focused-header"
+                >
+                    <lightning-button-icon
+                        icon-name="utility:chevronleft"
+                        alternative-text="Back"
+                        data-id="back-button"
+                        class="slds-m-right_small"
+                        onclick={handleBack}
+                    ></lightning-button-icon>
+                    <lightning-icon
+                        icon-name={selectedCard.iconName}
+                        size="small"
+                        class="slds-m-right_small"
+                    ></lightning-icon>
+                    <div class="slds-grow">
+                        <h2 class="slds-text-heading_small slds-truncate" data-id="focused-title">{selectedCard.label}</h2>
+                        <template lwc:if={selectedCard.description}>
+                            <p class="slds-text-body_small slds-text-color_weak" data-id="focused-description">
+                                {selectedCard.description}
+                            </p>
+                        </template>
+                    </div>
+                    <div class="slds-grid" data-id="header-actions">
+                        <template for:each={headerActions} for:item="action">
+                            <lightning-button-icon
+                                key={action.name}
+                                icon-name={action.iconName}
+                                alternative-text={action.label}
+                                title={action.label}
+                                data-id="header-action"
+                                data-action-name={action.name}
+                                class="slds-m-left_x-small"
+                                onclick={handleHeaderActionClick}
+                            ></lightning-button-icon>
+                        </template>
+                    </div>
+                </div>
+
+                <template lwc:if={isSelectedCardHydrating}>
+                    <div class="slds-p-around_medium" data-id="card-loading-state">
+                        <lightning-spinner alternative-text="Loading card" size="small"></lightning-spinner>
+                    </div>
+                </template>
+                <template lwc:elseif={selectedCard.ctor}>
+                    <lwc:component
+                        lwc:ref="mountedCard"
+                        lwc:is={selectedCard.ctor}
+                        record-id={recordId}
+                        onheaderactionschange={handleHeaderActionsChange}
+                    ></lwc:component>
+                </template>
+                <template lwc:elseif={selectedCard.isFlow}>
+                    <div class="slds-p-around_medium slds-text-color_weak" data-id="flow-placeholder">
+                        Flow card placeholder — the generic Flow host ships in a later work unit.
+                        Configured flow: {selectedCard.componentName}
+                    </div>
+                </template>
+                <template lwc:elseif={selectedCard.isUnknownBinding}>
+                    <c-v360-empty-state
+                        data-id="unknown-binding"
+                        title="Card unavailable"
+                        illustration-name="error:unrecoverable"
+                        alternative-text="Unrecoverable error illustration"
+                        description="This card's component is not available."
+                    ></c-v360-empty-state>
+                </template>
+            </div>
+        </div>
+    </template>
+</template>

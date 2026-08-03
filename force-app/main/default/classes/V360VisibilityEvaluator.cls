@@ -170,6 +170,7 @@ public with sharing class V360VisibilityEvaluator {
         decision.componentType = card.componentType;
         decision.componentName = card.componentName;
         decision.label = card.label;
+        decision.description = card.description;
         decision.iconName = card.iconName;
         decision.buttonLabel = card.buttonLabel;
         decision.order = card.order;

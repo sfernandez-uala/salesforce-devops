@@ -1,0 +1,24 @@
+<template>
+    <lightning-empty-state
+        title={title}
+        illustration-name={illustrationName}
+        size={size}
+        alternative-text={alternativeText}
+    >
+        <template lwc:if={description}>
+            <p slot="description">{description}</p>
+        </template>
+        <template lwc:else>
+            <slot name="description" slot="description"></slot>
+        </template>
+        <template lwc:if={retryLabel}>
+            <lightning-button
+                slot="cta"
+                variant="brand"
+                label={retryLabel}
+                onclick={handleRetryClick}
+            ></lightning-button>
+        </template>
+        <slot name="cta" slot="cta"></slot>
+    </lightning-empty-state>
+</template>

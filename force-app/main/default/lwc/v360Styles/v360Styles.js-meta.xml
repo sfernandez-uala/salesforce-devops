@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>false</isExposed>
+    <description>Vista 360 shared stylesheet module: the global color tokens and the few shared chrome rules SLDS has no utility class for. CSS-only bundle (stylesheet plus this metadata file, no JavaScript) consumed via @import 'c/v360Styles' from component stylesheets.</description>
+</LightningComponentBundle>

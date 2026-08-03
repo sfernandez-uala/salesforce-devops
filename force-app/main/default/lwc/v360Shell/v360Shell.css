@@ -1,0 +1,11 @@
+/**
+ * Custom CSS for the shell's focused-view chrome. The global color tokens
+ * and shared chrome rules come from the imported c/v360Styles module; the
+ * only rule living here is the shell's own: SLDS has no utility class for
+ * a fixed-width vertical icon rail.
+ */
+@import 'c/v360Styles';
+
+.v360-shell-sidebar {
+    width: 6.5rem;
+}
