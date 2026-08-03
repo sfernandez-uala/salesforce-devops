@@ -1,12 +1,32 @@
 /**
  * The shell's own chrome: the gallery tiles, the focused-view sidebar rail,
  * the focused header, and the content frame. Everything references the
- * shared Vista 360 tokens; SLDS utilities cover spacing and grid, and the
- * rules below exist only where SLDS has no utility for the treatment.
+ * shared Vista 360 tokens; SLDS utilities cover spacing, and the rules below
+ * exist only where SLDS has no utility for the treatment.
+ *
+ * Responsiveness is container-based, not viewport-based: the shell can live
+ * in a narrow Lightning page region (for example next to the activity
+ * panel), so it declares itself a size container and every breakpoint below
+ * measures the shell's own width.
  */
 @import 'c/v360Styles';
 
-/* ---- Gallery tiles: equal-height launcher cards that lift on hover. ---- */
+.v360-shell {
+    container-type: inline-size;
+    container-name: v360shell;
+    display: block;
+    min-height: 32rem;
+}
+
+/* ---- Gallery: an intrinsic grid that fits as many tiles as the region
+   allows, no viewport assumptions. ---- */
+.v360-shell-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
 .v360-shell-tile {
     display: flex;
     flex-direction: column;
@@ -39,9 +59,25 @@
     color: var(--v360-color-text-subtle);
 }
 
-/* ---- Focused-view sidebar: a narrow rail of minimized launchers. ---- */
+/* ---- Focused view: sidebar rail + a main column that stretches so the
+   workspace keeps its height regardless of how short a card's content is. ---- */
+.v360-shell-focused {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    min-height: 32rem;
+}
+
 .v360-shell-sidebar {
+    flex: 0 0 7.5rem;
     width: 7.5rem;
+}
+
+.v360-shell-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .v360-shell-sidebar-item {
@@ -83,7 +119,9 @@
     overflow: hidden;
 }
 
-/* ---- Focused header and content frame: one surface system. ---- */
+/* ---- Focused header and content frame: one surface system. The content
+   frame grows to fill the workspace, which is what gives the focused view
+   its minimum height even with a one-field card. ---- */
 .v360-shell-header {
     background: var(--v360-color-surface);
     border: 1px solid var(--v360-color-border);
@@ -93,11 +131,35 @@
 }
 
 .v360-shell-content {
+    flex-grow: 1;
     background: var(--v360-color-surface);
     border: 1px solid var(--v360-color-border);
     border-radius: var(--v360-radius);
     box-shadow: var(--v360-shadow-card);
     padding: 1rem;
+}
+
+/* ---- Narrow regions: the rail becomes a horizontal, scrollable strip on
+   top of the content instead of squeezing it. ---- */
+@container v360shell (max-width: 44rem) {
+    .v360-shell-focused {
+        flex-direction: column;
+    }
+
+    .v360-shell-sidebar {
+        flex: 0 0 auto;
+        width: 100%;
+        display: flex;
+        gap: 0.5rem;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+
+    .v360-shell-sidebar-item {
+        flex: 0 0 auto;
+        min-width: 5.5rem;
+        margin-bottom: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
