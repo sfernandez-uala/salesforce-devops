@@ -83,7 +83,8 @@
 
     <template lwc:elseif={isFocusedView}>
         <div class="v360-shell-focused" data-id="focused-view">
-            <div class={sidebarClass} data-id="sidebar" lwc:ref="sidebar">
+            <div class={sidebarClass} data-id="sidebar">
+                <div class="v360-shell-sidebar-scroll" lwc:ref="sidebar">
                 <template for:each={sidebarCards} for:item="sidebarCard">
                     <div
                         key={sidebarCard.key}
@@ -107,6 +108,7 @@
                         <p class="v360-shell-sidebar-label">{sidebarCard.label}</p>
                     </div>
                 </template>
+                </div>
             </div>
 
             <div class="v360-shell-main">

@@ -76,6 +76,8 @@ export default class V360Shell extends LightningElement {
     railOverflowing = false;
     railResizeObserver;
     pinnedKeys = [];
+    railOverflowInline = false;
+    railOverflowBlock = false;
 
     connectedCallback() {
         this.pinnedKeys = getPinnedKeys(this.tabApiName);
@@ -131,16 +133,25 @@ export default class V360Shell extends LightningElement {
 
     measureRailOverflow() {
         const rail = this.refs?.sidebar;
-        const overflowing = Boolean(rail) && rail.scrollWidth > rail.clientWidth;
-        if (overflowing !== this.railOverflowing) {
-            this.railOverflowing = overflowing;
+        const inline = Boolean(rail) && rail.scrollWidth > rail.clientWidth;
+        const block = Boolean(rail) && rail.scrollHeight > rail.clientHeight;
+        if (inline !== this.railOverflowInline) {
+            this.railOverflowInline = inline;
+        }
+        if (block !== this.railOverflowBlock) {
+            this.railOverflowBlock = block;
         }
     }
 
     get sidebarClass() {
-        return this.railOverflowing
-            ? 'v360-shell-sidebar v360-shell-sidebar_overflowing'
-            : 'v360-shell-sidebar';
+        let classes = 'v360-shell-sidebar';
+        if (this.railOverflowInline) {
+            classes += ' v360-shell-sidebar_overflow-inline';
+        }
+        if (this.railOverflowBlock) {
+            classes += ' v360-shell-sidebar_overflow-block';
+        }
+        return classes;
     }
 
     renderedCallback() {

@@ -66,6 +66,42 @@ describe('c-v360-lifecycle-demo', () => {
         expect(element.shadowRoot.querySelector('[data-id="error-state"]')).not.toBeNull();
     });
 
+    it('exposes five header actions to exercise the shell overflow policy', () => {
+        const element = createDemo();
+
+        const actions = element.headerActions;
+        expect(actions).toHaveLength(5);
+        actions.forEach((action) => {
+            expect(action.name).toEqual(expect.any(String));
+            expect(action.label).toEqual(expect.any(String));
+            expect(action.iconName).toEqual(expect.stringMatching(/^utility:/));
+        });
+    });
+
+    it('restarts the simulation through the restart header action', async () => {
+        const element = createDemo();
+
+        jest.runAllTimers();
+        await flushRender();
+        expect(element.shadowRoot.querySelector('[data-id="error-state"]')).not.toBeNull();
+
+        element.invokeHeaderAction('restart');
+        await flushRender();
+
+        expect(element.shadowRoot.querySelector('[data-id="skeleton-state"]')).not.toBeNull();
+    });
+
+    it('raises a toast when a demo header action is invoked', () => {
+        const element = createDemo();
+        const toastHandler = jest.fn();
+        element.addEventListener('lightning__showtoast', toastHandler);
+
+        element.invokeHeaderAction('demo-action-3');
+
+        expect(toastHandler).toHaveBeenCalledTimes(1);
+        expect(toastHandler.mock.calls[0][0].detail.title).toBe('Demo action 3');
+    });
+
     it('clears the pending simulated request when removed from the DOM', () => {
         const element = createDemo();
 
