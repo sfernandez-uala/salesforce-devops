@@ -1,25 +1,11 @@
 import { LightningElement, api } from 'lwc';
 import v360CustomerState from 'c/v360CustomerState';
 import v360ShellState from 'c/v360ShellState';
-import { resolve as resolveCardComponent } from 'c/v360CardRegistry';
+import { has as isRegisteredCard, load as loadCardConstructor } from 'c/v360CardRegistry';
 
 const DEFAULT_TAB_API_NAME = 'AccountOverview';
 const COMPONENT_TYPE_LWC = 'LWC';
 const COMPONENT_TYPE_FLOW = 'Flow';
-
-/**
- * Converts a registered card component name (e.g. "v360AccountSnapshot",
- * matching its bundle folder name exactly) to the custom element tag name
- * the platform generates for it (e.g. "c-v360-account-snapshot"): insert a
- * hyphen before each internal uppercase letter, lowercase the result, and
- * prefix the default namespace.
- *
- * @param {string} componentName - a card's registered component name.
- * @returns {string} the corresponding custom element tag name.
- */
-function toCustomElementTagName(componentName) {
-    return `c-${componentName.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
-}
 
 /**
  * The Vista 360 shell container: the record-page surface that asks the
@@ -32,14 +18,13 @@ function toCustomElementTagName(componentName) {
  * Render dispatch is by componentType, the contract every card decision
  * carries:
  *   - LWC: a componentName the dev-owned v360CardRegistry recognizes is
- *     mounted manually (an `lwc:dom="manual"` mount point per card, with the
- *     matching custom element created and appended imperatively -- this
- *     component targets a real org's default LWC compiler settings, where
- *     the newer `lwc:component`/`lwc:is` dynamic-component directives are
- *     gated behind an org-level opt-in this change does not require). A
- *     componentName the registry does not recognize renders a safe inline
- *     error and nothing dynamic -- the render-time fail-closed backstop the
- *     design promises.
+ *     rendered through the platform's dynamic-component support
+ *     (lwc:component with lwc:is, declared via the
+ *     lightning__dynamicComponent capability in this component's meta). The
+ *     registry hands back constructors from literal dynamic imports, so no
+ *     import path is ever built from configured data. A componentName the
+ *     registry does not recognize renders a safe error state and nothing
+ *     dynamic -- the render-time fail-closed backstop the design promises.
  *   - Flow: renders a clearly-labeled placeholder here. The generic Flow
  *     host that actually embeds a screen flow ships in a later work unit;
  *     this exercises the render-dispatch contract end to end without
@@ -73,53 +58,50 @@ export default class V360Shell extends LightningElement {
         }
     }
 
-    renderedCallback() {
-        if (!this.hasCards) {
-            return;
-        }
-        for (const card of this.cards) {
-            if (card.isLwc) {
-                this.mountLwcCard(card);
-            }
-        }
-    }
-
-    mountLwcCard(card) {
-        const mountPoint = this.template.querySelector(`[data-lwc-mount="${card.key}"]`);
-        // The mount point's own content is the source of truth for whether the
-        // card is mounted: a template pass through the loading branch (a second
-        // load, or the record page re-parenting this component) recreates the
-        // manual-DOM container empty, and any mounted-once bookkeeping kept in
-        // memory would wrongly skip re-mounting into it.
-        if (!mountPoint || mountPoint.hasChildNodes()) {
-            return;
-        }
-        const cardElement = document.createElement(card.tagName);
-        cardElement.recordId = this.recordId;
-        mountPoint.appendChild(cardElement);
-    }
-
     syncFromCustomerState() {
         const { status, data, error } = this.customerState.value;
         this.status = status;
         this.error = error;
         this.cards = (data ?? []).map((decision) => this.toRenderableCard(decision));
+        this.hydrateCardConstructors();
     }
 
     toRenderableCard(decision) {
         const isLwc = decision.componentType === COMPONENT_TYPE_LWC;
         const isFlow = decision.componentType === COMPONENT_TYPE_FLOW;
-        const isKnownLwc = isLwc && resolveCardComponent(decision.componentName) != null;
+        const isKnownLwc = isLwc && isRegisteredCard(decision.componentName);
         return {
             key: decision.cardName,
             label: decision.label,
             iconName: decision.iconName,
             componentName: decision.componentName,
-            tagName: isKnownLwc ? toCustomElementTagName(decision.componentName) : null,
+            ctor: null,
             isLwc: isKnownLwc,
             isFlow,
             isUnknownBinding: isLwc && !isKnownLwc
         };
+    }
+
+    /**
+     * Fills in the constructor of every known LWC card as its module
+     * resolves. Constructors arrive asynchronously (the registry loads each
+     * module once and memoizes it), so each arrival patches the cards list
+     * immutably to trigger a re-render of just-ready cards.
+     */
+    hydrateCardConstructors() {
+        for (const card of this.cards) {
+            if (!card.isLwc || card.ctor) {
+                continue;
+            }
+            loadCardConstructor(card.componentName).then((ctor) => {
+                if (!ctor) {
+                    return;
+                }
+                this.cards = this.cards.map((current) =>
+                    current.key === card.key && !current.ctor ? { ...current, ctor } : current
+                );
+            });
+        }
     }
 
     handleSelectCard(event) {

@@ -1,7 +1,7 @@
 import { createElement } from 'lwc';
 import V360Shell from 'c/v360Shell';
 import { getVisibleCards, getVisibleCardsFresh } from 'c/v360Service';
-import { resolve } from 'c/v360CardRegistry';
+import { has, load } from 'c/v360CardRegistry';
 import v360ShellState from 'c/v360ShellState';
 import V360AccountSnapshot from 'c/v360AccountSnapshot';
 
@@ -11,7 +11,8 @@ jest.mock('c/v360Service', () => ({
 }));
 
 jest.mock('c/v360CardRegistry', () => ({
-    resolve: jest.fn()
+    has: jest.fn(),
+    load: jest.fn()
 }));
 
 const flushPromises = () => new Promise((res) => setTimeout(res, 0));
@@ -69,7 +70,8 @@ describe('c-v360-shell', () => {
     });
 
     it('renders a registered LWC card through dynamic dispatch', async () => {
-        resolve.mockReturnValue(V360AccountSnapshot);
+        has.mockReturnValue(true);
+        load.mockResolvedValue(V360AccountSnapshot);
         getVisibleCards.mockResolvedValue([
             {
                 cardName: 'v360AccountSnapshot',
@@ -84,11 +86,16 @@ describe('c-v360-shell', () => {
 
         const element = createShell('001000000000404AAA');
         await flushPromises();
+        await flushPromises();
 
-        expect(resolve).toHaveBeenCalledWith('v360AccountSnapshot');
+        expect(load).toHaveBeenCalledWith('v360AccountSnapshot');
         const cardWrapper = element.shadowRoot.querySelector('[data-card-name="v360AccountSnapshot"]');
         expect(cardWrapper).not.toBeNull();
-        const mountedCard = cardWrapper.querySelector('c-v360-account-snapshot');
+        // A dynamically instantiated component's tag name is
+        // environment-defined (the Jest harness uses a synthetic one), so the
+        // mounted card is asserted through its position and the props it
+        // received rather than a tag selector.
+        const mountedCard = cardWrapper.firstElementChild;
         expect(mountedCard).not.toBeNull();
         expect(mountedCard.recordId).toBe('001000000000404AAA');
         expect(element.shadowRoot.querySelector('[data-id="unknown-binding"]')).toBeNull();
@@ -113,11 +120,11 @@ describe('c-v360-shell', () => {
         const placeholder = element.shadowRoot.querySelector('[data-id="flow-placeholder"]');
         expect(placeholder).not.toBeNull();
         expect(placeholder.textContent).toContain('Some_Screen_Flow');
-        expect(resolve).not.toHaveBeenCalled();
+        expect(has).not.toHaveBeenCalled();
     });
 
     it('renders a safe inline error for an LWC binding the registry does not recognize', async () => {
-        resolve.mockReturnValue(null);
+        has.mockReturnValue(false);
         getVisibleCards.mockResolvedValue([
             {
                 cardName: 'unknownCard',
@@ -140,7 +147,8 @@ describe('c-v360-shell', () => {
     });
 
     it('selects a card in shell state when its wrapper is clicked', async () => {
-        resolve.mockReturnValue(V360AccountSnapshot);
+        has.mockReturnValue(true);
+        load.mockResolvedValue(V360AccountSnapshot);
         getVisibleCards.mockResolvedValue([
             {
                 cardName: 'v360AccountSnapshot',

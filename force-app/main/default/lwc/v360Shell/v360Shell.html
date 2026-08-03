@@ -41,8 +41,8 @@
                 data-card-name={card.key}
                 onclick={handleSelectCard}
             >
-                <template lwc:if={card.isLwc}>
-                    <div lwc:dom="manual" data-lwc-mount={card.key}></div>
+                <template lwc:if={card.ctor}>
+                    <lwc:component lwc:is={card.ctor} record-id={recordId}></lwc:component>
                 </template>
                 <template lwc:if={card.isFlow}>
                     <lightning-card title={card.label} icon-name={card.iconName}>
