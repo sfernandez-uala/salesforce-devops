@@ -59,8 +59,6 @@ export default class V360Shell extends LightningElement {
     cards = [];
     error;
 
-    mountedCardKeys = new Set();
-
     connectedCallback() {
         this.customerState = v360CustomerState(this.recordId);
         this.shellState = v360ShellState(this.recordId);
@@ -80,7 +78,7 @@ export default class V360Shell extends LightningElement {
             return;
         }
         for (const card of this.cards) {
-            if (card.isLwc && !this.mountedCardKeys.has(card.key)) {
+            if (card.isLwc) {
                 this.mountLwcCard(card);
             }
         }
@@ -88,13 +86,17 @@ export default class V360Shell extends LightningElement {
 
     mountLwcCard(card) {
         const mountPoint = this.template.querySelector(`[data-lwc-mount="${card.key}"]`);
-        if (!mountPoint) {
+        // The mount point's own content is the source of truth for whether the
+        // card is mounted: a template pass through the loading branch (a second
+        // load, or the record page re-parenting this component) recreates the
+        // manual-DOM container empty, and any mounted-once bookkeeping kept in
+        // memory would wrongly skip re-mounting into it.
+        if (!mountPoint || mountPoint.hasChildNodes()) {
             return;
         }
         const cardElement = document.createElement(card.tagName);
         cardElement.recordId = this.recordId;
         mountPoint.appendChild(cardElement);
-        this.mountedCardKeys.add(card.key);
     }
 
     syncFromCustomerState() {
