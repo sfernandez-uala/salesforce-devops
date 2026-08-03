@@ -1,0 +1,103 @@
+<template>
+    <lightning-card title="Vista 360 Configuration" icon-name="standard:settings">
+        <lightning-button-icon
+            slot="actions"
+            icon-name="utility:refresh"
+            variant="border-filled"
+            alternative-text="Refresh"
+            title="Refresh"
+            data-id="refresh"
+            onclick={handleRefresh}
+        ></lightning-button-icon>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_small">
+            <template lwc:if={isLoading}>
+                <div role="presentation" data-id="loading-state" aria-hidden="true">
+                    <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+                    <div class="v360-stencil-bar v360-stencil-bar_long"></div>
+                    <div class="v360-stencil-bar v360-stencil-bar_long"></div>
+                    <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+                </div>
+            </template>
+
+            <template lwc:elseif={isError}>
+                <c-v360-empty-state
+                    data-id="error-state"
+                    title="Something went wrong"
+                    illustration-name="error:recoverable"
+                    alternative-text="Error illustration"
+                    description="Unable to load the Vista 360 configuration right now."
+                    retry-label="Retry"
+                    onretry={handleRetry}
+                ></c-v360-empty-state>
+            </template>
+
+            <template lwc:elseif={isDenied}>
+                <c-v360-empty-state
+                    data-id="denied-state"
+                    title="Access needed"
+                    illustration-name="access:request"
+                    alternative-text="No access illustration"
+                    description="Managing Vista 360 cards requires the V360 Admin permission set."
+                ></c-v360-empty-state>
+            </template>
+
+            <template lwc:elseif={isEmpty}>
+                <c-v360-empty-state
+                    data-id="empty-state"
+                    title="No configuration yet"
+                    illustration-name="noresults:unknown"
+                    alternative-text="No results illustration"
+                    description="No Vista 360 tabs are configured in this org."
+                ></c-v360-empty-state>
+            </template>
+
+            <template lwc:elseif={isCatalogVisible}>
+                <template for:each={tabs} for:item="tab">
+                    <div key={tab.tabId} class="slds-m-bottom_medium" data-id="tab-section">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                            <h2 class="slds-text-heading_small slds-m-right_x-small" data-id="tab-title">{tab.title}</h2>
+                            <span class={tab.statusClass}>{tab.statusLabel}</span>
+                        </div>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered" aria-label={tab.title}>
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th scope="col">Label</th>
+                                    <th scope="col">Developer Name</th>
+                                    <th scope="col">Type</th>
+                                    <th scope="col">Component</th>
+                                    <th scope="col">Order</th>
+                                    <th scope="col">Active</th>
+                                    <th scope="col">Kill Switch</th>
+                                    <th scope="col">Rules</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={tab.cards} for:item="card">
+                                    <tr key={card.cardId} class="slds-hint-parent" data-id="card-row">
+                                        <th scope="row" data-label="Label">
+                                            <div class="slds-truncate">{card.label}</div>
+                                        </th>
+                                        <td data-label="Developer Name">
+                                            <div class="slds-truncate">{card.developerName}</div>
+                                        </td>
+                                        <td data-label="Type">{card.componentType}</td>
+                                        <td data-label="Component">
+                                            <div class="slds-truncate">{card.componentName}</div>
+                                        </td>
+                                        <td data-label="Order">{card.order}</td>
+                                        <td data-label="Active">{card.activeLabel}</td>
+                                        <td data-label="Kill Switch">
+                                            <span class={card.killSwitchClass}>{card.killSwitchLabel}</span>
+                                        </td>
+                                        <td data-label="Rules">{card.ruleCount}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>
