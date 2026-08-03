@@ -265,7 +265,7 @@ export default class V360Shell extends LightningElement {
             ...card,
             itemClass:
                 card.key === this.selectedCardKey
-                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active slds-theme_shade'
+                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
                     : 'v360-shell-sidebar-item'
         }));
     }

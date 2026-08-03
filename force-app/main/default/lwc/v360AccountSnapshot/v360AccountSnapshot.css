@@ -39,3 +39,10 @@
         background-position: -200% 0;
     }
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .v360-stencil-bar {
+        animation: none;
+        background: var(--v360-color-skeleton);
+    }
+}

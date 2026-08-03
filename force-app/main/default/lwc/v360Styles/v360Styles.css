@@ -2,26 +2,29 @@
  * Shared Vista 360 stylesheet (a CSS-only module: this file plus the bundle
  * metadata, no JavaScript). Components pull it in from their own stylesheet
  * with `@import 'c/v360Styles';`. SLDS utility classes and base-component
- * styling hooks cover most needs — this file only carries the global color
- * tokens plus the handful of shared chrome rules SLDS genuinely has no
- * utility class for.
+ * styling hooks cover most needs — this file carries the design tokens every
+ * Vista 360 component shares: color, radius, and elevation. Component-specific
+ * structural rules live in each component's own stylesheet, referencing these
+ * tokens.
  */
 :host {
-    /* Global Vista 360 color tokens, mapped onto SLDS 2 global styling
-       hooks with a literal fallback for orgs/themes where a given hook is
-       not yet defined. Every V360 component that needs a color reaches for
-       one of these instead of hardcoding a hex value, so dark mode and
-       future theme changes are absorbed here in one place. */
+    /* Color tokens, mapped onto SLDS 2 global styling hooks with a literal
+       fallback for orgs/themes where a given hook is not yet defined. Every
+       V360 component that needs a color reaches for one of these instead of
+       hardcoding a hex value, so dark mode and future theme changes are
+       absorbed here in one place. */
     --v360-color-brand: var(--slds-g-color-brand-base-50, #0176d3);
+    --v360-color-brand-tint: var(--slds-g-color-brand-base-95, #eef4fe);
     --v360-color-text-subtle: var(--slds-g-color-neutral-base-30, #706e6b);
     --v360-color-surface: var(--slds-g-color-surface-1, #ffffff);
+    --v360-color-surface-hover: var(--slds-g-color-neutral-base-95, #f3f3f3);
+    --v360-color-border: var(--slds-g-color-border-base-1, #e5e5e5);
     --v360-color-skeleton: var(--slds-g-color-neutral-base-90, #dddbda);
-}
 
-/* The shell's focused-view sidebar highlights the selected card with a
-   rounded, shaded rail item: the shading comes from the SLDS
-   `slds-theme_shade` utility, but SLDS has no utility class for the
-   rounded-corner half of that treatment. */
-.v360-shell-sidebar-item_active {
-    border-radius: 0.25rem;
+    /* Shape and elevation tokens: one soft radius and two elevation steps
+       (resting and raised) keep every Vista 360 surface on the same visual
+       system. */
+    --v360-radius: 0.5rem;
+    --v360-shadow-card: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
+    --v360-shadow-raised: 0 4px 12px 0 rgba(0, 0, 0, 0.12);
 }
