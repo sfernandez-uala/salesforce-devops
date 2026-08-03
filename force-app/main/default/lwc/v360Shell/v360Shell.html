@@ -36,7 +36,7 @@
 
     <template lwc:elseif={isGalleryView}>
         <div class="v360-shell-gallery" data-id="gallery-view">
-            <template for:each={cards} for:item="card">
+            <template for:each={galleryCards} for:item="card">
                 <div key={card.key}>
                     <div
                         class="v360-shell-tile"
@@ -50,7 +50,18 @@
                                 size="small"
                                 class="slds-m-right_x-small"
                             ></lightning-icon>
-                            <h3 class="slds-text-heading_small slds-truncate">{card.label}</h3>
+                            <h3 class="v360-shell-tile-title slds-text-heading_small slds-truncate">{card.label}</h3>
+                            <lightning-button-icon
+                                icon-name={card.pinIconName}
+                                variant="bare"
+                                size="small"
+                                alternative-text={card.pinLabel}
+                                title={card.pinLabel}
+                                class={card.pinClass}
+                                data-id="pin-toggle"
+                                data-card-name={card.key}
+                                onclick={handleTogglePin}
+                            ></lightning-button-icon>
                         </div>
                         <template lwc:if={card.description}>
                             <p class="v360-shell-tile-description slds-text-body_regular slds-p-bottom_small">{card.description}</p>

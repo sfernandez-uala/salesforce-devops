@@ -2,6 +2,7 @@ import { LightningElement, api } from 'lwc';
 import v360CustomerState from 'c/v360CustomerState';
 import v360ShellState from 'c/v360ShellState';
 import { has as isRegisteredCard, load as loadCardConstructor } from 'c/v360CardRegistry';
+import { getPinnedKeys, togglePin } from 'c/v360CardPreferences';
 
 const DEFAULT_TAB_API_NAME = 'AccountOverview';
 const DEFAULT_BUTTON_LABEL = 'Consultar';
@@ -74,8 +75,10 @@ export default class V360Shell extends LightningElement {
     headerActions = [];
     railOverflowing = false;
     railResizeObserver;
+    pinnedKeys = [];
 
     connectedCallback() {
+        this.pinnedKeys = getPinnedKeys(this.tabApiName);
         this.customerState = v360CustomerState(this.recordId);
         this.shellState = v360ShellState(this.recordId);
         this.unsubscribeCustomerState = this.customerState.subscribe(() => this.syncFromCustomerState());
@@ -256,6 +259,27 @@ export default class V360Shell extends LightningElement {
         this.shellState.value.selectCard(cardName);
     }
 
+    /**
+     * Pinning is the user's own presentation preference (see
+     * c/v360CardPreferences); the click must not bubble into the tile's
+     * select handler, or toggling a pin would also launch the card.
+     */
+    handleTogglePin(event) {
+        event.stopPropagation();
+        this.pinnedKeys = togglePin(this.tabApiName, event.currentTarget.dataset.cardName);
+    }
+
+    /**
+     * The server returns cards in admin-configured Order__c sequence; the
+     * user's pinned cards lift to the front while keeping that same
+     * relative order among themselves, so the result stays predictable.
+     */
+    sortByPins(cards) {
+        const pinned = cards.filter((card) => this.pinnedKeys.includes(card.key));
+        const unpinned = cards.filter((card) => !this.pinnedKeys.includes(card.key));
+        return [...pinned, ...unpinned];
+    }
+
     handleBack() {
         this.shellState.value.selectCard(null);
     }
@@ -339,12 +363,27 @@ export default class V360Shell extends LightningElement {
     }
 
     get sidebarCards() {
-        return this.cards.map((card) => ({
+        return this.sortByPins(this.cards).map((card) => ({
             ...card,
             itemClass:
                 card.key === this.selectedCardKey
                     ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
                     : 'v360-shell-sidebar-item'
         }));
+    }
+
+    get galleryCards() {
+        return this.sortByPins(this.cards).map((card) => {
+            const isPinned = this.pinnedKeys.includes(card.key);
+            return {
+                ...card,
+                isPinned,
+                pinIconName: isPinned ? 'utility:pinned' : 'utility:pin',
+                pinLabel: isPinned ? 'Unpin' : 'Pin to top',
+                pinClass: isPinned
+                    ? 'v360-shell-tile-pin v360-shell-tile-pin_active slds-m-left_x-small'
+                    : 'v360-shell-tile-pin slds-m-left_x-small'
+            };
+        });
     }
 }

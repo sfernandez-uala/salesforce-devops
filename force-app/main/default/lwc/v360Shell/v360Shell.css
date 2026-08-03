@@ -52,6 +52,27 @@
     outline-offset: 2px;
 }
 
+/* The title is the only shrinkable piece of the tile's header row, so a
+   long label ellipsizes instead of pushing the pin control out. */
+.v360-shell-tile-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* The pin control stays quiet until the tile is engaged (pointer hover or
+   keyboard focus), but a pinned card keeps its pin visible -- the state
+   must be readable at rest. */
+.v360-shell-tile-pin {
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+}
+
+.v360-shell-tile:hover .v360-shell-tile-pin,
+.v360-shell-tile:focus-within .v360-shell-tile-pin,
+.v360-shell-tile-pin_active {
+    opacity: 1;
+}
+
 /* The description grows so every tile's action row sits on the same
    baseline regardless of copy length. */
 .v360-shell-tile-description {
@@ -203,7 +224,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .v360-shell-tile,
-    .v360-shell-sidebar-item {
+    .v360-shell-sidebar-item,
+    .v360-shell-tile-pin {
         transition: none;
     }
 
