@@ -130,7 +130,7 @@ describe('c-v360-admin-console', () => {
         const element = createConsole();
         await flushPromises();
 
-        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        element.shadowRoot.querySelector('[data-id="card-picker"][data-card-id="card-b"]').click();
         await flushPromises();
 
         expect(element.shadowRoot.querySelector('[data-id="detail-title"]').textContent).toBe('CardB');
@@ -143,7 +143,7 @@ describe('c-v360-admin-console', () => {
 
         const element = createConsole();
         await flushPromises();
-        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        element.shadowRoot.querySelector('[data-id="card-picker"][data-card-id="card-b"]').click();
         await flushPromises();
 
         element.shadowRoot.querySelector('[data-id="activate-open"]').click();

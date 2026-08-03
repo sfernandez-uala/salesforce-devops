@@ -298,10 +298,8 @@ export default class V360AdminConsole extends LightningElement {
         return {
             ...card,
             ...presentation,
-            rowClass:
-                card.cardId === this.selectedCardId
-                    ? 'v360-admin-card-row v360-admin-card-row_selected'
-                    : 'v360-admin-card-row',
+            inputId: `picker-${card.cardId}`,
+            isSelected: card.cardId === this.selectedCardId,
             moveUpDisabled: index === 0 || this.savingOrder,
             moveDownDisabled: index === lastIndex || this.savingOrder
         };
@@ -413,8 +411,11 @@ export default class V360AdminConsole extends LightningElement {
         });
         return checks.map((check) => ({
             ...check,
-            markClass: check.ok ? 'v360-admin-check v360-admin-check_ok' : 'v360-admin-check v360-admin-check_warn',
-            mark: check.ok ? '✓' : '⚠'
+            boxClass: check.ok
+                ? 'slds-box slds-box_x-small slds-m-bottom_x-small'
+                : 'slds-box slds-box_x-small slds-m-bottom_x-small slds-theme_warning',
+            iconName: check.ok ? 'utility:success' : 'utility:warning',
+            iconVariant: check.ok ? 'success' : 'warning'
         }));
     }
 }
