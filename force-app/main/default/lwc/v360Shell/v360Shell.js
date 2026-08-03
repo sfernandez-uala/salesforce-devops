@@ -10,6 +10,7 @@ const COMPONENT_TYPE_FLOW = 'Flow';
 const HEADER_ACTION_NAME = 'name';
 const HEADER_ACTION_LABEL = 'label';
 const HEADER_ACTION_ICON = 'iconName';
+const DEFAULT_CARD_ICON = 'standard:default';
 
 /**
  * The Vista 360 shell container: the record-page surface that asks the
@@ -126,7 +127,10 @@ export default class V360Shell extends LightningElement {
             key: decision.cardName,
             label: decision.label,
             description: decision.description,
-            iconName: decision.iconName,
+            // A card with no configured icon still gets one: the tile and
+            // sidebar rail rely on the icon for visual rhythm, and a config
+            // gap must degrade to a neutral glyph, not a hole in the chrome.
+            iconName: decision.iconName || DEFAULT_CARD_ICON,
             buttonLabel: decision.buttonLabel || DEFAULT_BUTTON_LABEL,
             componentName: decision.componentName,
             ctor: null,
