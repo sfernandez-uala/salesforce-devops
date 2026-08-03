@@ -363,13 +363,22 @@ export default class V360Shell extends LightningElement {
     }
 
     get sidebarCards() {
-        return this.sortByPins(this.cards).map((card) => ({
-            ...card,
-            itemClass:
-                card.key === this.selectedCardKey
-                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
-                    : 'v360-shell-sidebar-item'
-        }));
+        return this.sortByPins(this.cards).map((card) => {
+            const isPinned = this.pinnedKeys.includes(card.key);
+            return {
+                ...card,
+                isPinned,
+                pinIconName: isPinned ? 'utility:pinned' : 'utility:pin',
+                pinLabel: isPinned ? 'Unpin' : 'Pin to top',
+                pinClass: isPinned
+                    ? 'v360-shell-sidebar-pin v360-shell-sidebar-pin_active'
+                    : 'v360-shell-sidebar-pin',
+                itemClass:
+                    card.key === this.selectedCardKey
+                        ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
+                        : 'v360-shell-sidebar-item'
+            };
+        });
     }
 
     get galleryCards() {

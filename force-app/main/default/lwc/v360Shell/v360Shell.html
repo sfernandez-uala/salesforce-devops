@@ -92,6 +92,17 @@
                         data-card-name={sidebarCard.key}
                         onclick={handleSelectCard}
                     >
+                        <lightning-button-icon
+                            icon-name={sidebarCard.pinIconName}
+                            variant="bare"
+                            size="x-small"
+                            alternative-text={sidebarCard.pinLabel}
+                            title={sidebarCard.pinLabel}
+                            class={sidebarCard.pinClass}
+                            data-id="rail-pin-toggle"
+                            data-card-name={sidebarCard.key}
+                            onclick={handleTogglePin}
+                        ></lightning-button-icon>
                         <lightning-icon icon-name={sidebarCard.iconName} size="small"></lightning-icon>
                         <p class="v360-shell-sidebar-label">{sidebarCard.label}</p>
                     </div>

@@ -106,6 +106,28 @@ describe('c-v360-shell card pinning', () => {
         expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY))).toEqual([]);
     });
 
+    it('pins from the rail without changing the selected card', async () => {
+        const element = createShell('001000000000506AAA');
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="alpha"]').click();
+        await flushPromises();
+
+        element.shadowRoot
+            .querySelector('[data-id="rail-pin-toggle"][data-card-name="gamma"]')
+            .click();
+        await flushPromises();
+
+        const railOrder = Array.from(
+            element.shadowRoot.querySelectorAll('[data-id="sidebar-item"]')
+        ).map((item) => item.dataset.cardName);
+        expect(railOrder).toEqual(['gamma', 'alpha', 'beta']);
+        expect(JSON.parse(window.localStorage.getItem(STORAGE_KEY))).toEqual(['gamma']);
+        // Alpha stays the mounted card: pinning is never a selection.
+        expect(element.shadowRoot.querySelector('[data-id="focused-title"]').textContent).toBe(
+            'Alpha'
+        );
+    });
+
     it('orders the focused-view sidebar with pinned cards first as well', async () => {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(['gamma']));
 
