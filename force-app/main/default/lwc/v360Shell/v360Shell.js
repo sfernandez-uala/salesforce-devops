@@ -10,6 +10,7 @@ const COMPONENT_TYPE_FLOW = 'Flow';
 const HEADER_ACTION_NAME = 'name';
 const HEADER_ACTION_LABEL = 'label';
 const HEADER_ACTION_ICON = 'iconName';
+const DEFAULT_CARD_ICON = 'standard:default';
 
 /**
  * The Vista 360 shell container: the record-page surface that asks the
@@ -71,6 +72,8 @@ export default class V360Shell extends LightningElement {
     error;
     selectedCardKey = null;
     headerActions = [];
+    railOverflowing = false;
+    railResizeObserver;
 
     connectedCallback() {
         this.customerState = v360CustomerState(this.recordId);
@@ -89,10 +92,58 @@ export default class V360Shell extends LightningElement {
         if (this.unsubscribeShellState) {
             this.unsubscribeShellState();
         }
+        if (this.railResizeObserver) {
+            this.railResizeObserver.disconnect();
+            this.railResizeObserver = null;
+        }
+    }
+
+    /**
+     * The sidebar rail advertises hidden items with a trailing-edge fade,
+     * but only while items actually overflow -- a permanent fade would
+     * signal more content when there is none. CSS cannot detect overflow,
+     * so the shell measures: on every render (item set may have changed)
+     * and on rail resizes (region width may have changed, without any
+     * re-render). ResizeObserver is absent in test DOMs; the fade then
+     * simply never engages.
+     */
+    syncRailOverflowObserver() {
+        if (typeof ResizeObserver === 'undefined') {
+            return;
+        }
+        const rail = this.refs?.sidebar ?? null;
+        if (rail === this.observedRail) {
+            return;
+        }
+        if (this.railResizeObserver) {
+            this.railResizeObserver.disconnect();
+            this.railResizeObserver = null;
+        }
+        this.observedRail = rail;
+        if (rail) {
+            this.railResizeObserver = new ResizeObserver(() => this.measureRailOverflow());
+            this.railResizeObserver.observe(rail);
+        }
+    }
+
+    measureRailOverflow() {
+        const rail = this.refs?.sidebar;
+        const overflowing = Boolean(rail) && rail.scrollWidth > rail.clientWidth;
+        if (overflowing !== this.railOverflowing) {
+            this.railOverflowing = overflowing;
+        }
+    }
+
+    get sidebarClass() {
+        return this.railOverflowing
+            ? 'v360-shell-sidebar v360-shell-sidebar_overflowing'
+            : 'v360-shell-sidebar';
     }
 
     renderedCallback() {
         this.syncHeaderActionsFromMountedCard();
+        this.syncRailOverflowObserver();
+        this.measureRailOverflow();
     }
 
     syncFromCustomerState() {
@@ -126,7 +177,10 @@ export default class V360Shell extends LightningElement {
             key: decision.cardName,
             label: decision.label,
             description: decision.description,
-            iconName: decision.iconName,
+            // A card with no configured icon still gets one: the tile and
+            // sidebar rail rely on the icon for visual rhythm, and a config
+            // gap must degrade to a neutral glyph, not a hole in the chrome.
+            iconName: decision.iconName || DEFAULT_CARD_ICON,
             buttonLabel: decision.buttonLabel || DEFAULT_BUTTON_LABEL,
             componentName: decision.componentName,
             ctor: null,
@@ -211,11 +265,35 @@ export default class V360Shell extends LightningElement {
     }
 
     handleHeaderActionClick(event) {
-        const actionName = event.currentTarget.dataset.actionName;
+        this.invokeHeaderAction(event.currentTarget.dataset.actionName);
+    }
+
+    handleOverflowActionSelect(event) {
+        this.invokeHeaderAction(event.detail.value);
+    }
+
+    invokeHeaderAction(actionName) {
         const mountedCard = this.refs?.mountedCard;
         if (mountedCard && typeof mountedCard.invokeHeaderAction === 'function') {
             mountedCard.invokeHeaderAction(actionName);
         }
+    }
+
+    /**
+     * Up to three actions render inline; beyond that, two stay inline and
+     * the rest collapse into an overflow menu, so the header never grows an
+     * unbounded button row.
+     */
+    get visibleHeaderActions() {
+        return this.headerActions.length > 3 ? this.headerActions.slice(0, 2) : this.headerActions;
+    }
+
+    get overflowHeaderActions() {
+        return this.headerActions.length > 3 ? this.headerActions.slice(2) : [];
+    }
+
+    get hasOverflowHeaderActions() {
+        return this.overflowHeaderActions.length > 0;
     }
 
     handleRetry() {
@@ -265,7 +343,7 @@ export default class V360Shell extends LightningElement {
             ...card,
             itemClass:
                 card.key === this.selectedCardKey
-                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active slds-theme_shade'
+                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active'
                     : 'v360-shell-sidebar-item'
         }));
     }
