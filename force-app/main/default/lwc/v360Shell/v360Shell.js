@@ -211,11 +211,35 @@ export default class V360Shell extends LightningElement {
     }
 
     handleHeaderActionClick(event) {
-        const actionName = event.currentTarget.dataset.actionName;
+        this.invokeHeaderAction(event.currentTarget.dataset.actionName);
+    }
+
+    handleOverflowActionSelect(event) {
+        this.invokeHeaderAction(event.detail.value);
+    }
+
+    invokeHeaderAction(actionName) {
         const mountedCard = this.refs?.mountedCard;
         if (mountedCard && typeof mountedCard.invokeHeaderAction === 'function') {
             mountedCard.invokeHeaderAction(actionName);
         }
+    }
+
+    /**
+     * Up to three actions render inline; beyond that, two stay inline and
+     * the rest collapse into an overflow menu, so the header never grows an
+     * unbounded button row.
+     */
+    get visibleHeaderActions() {
+        return this.headerActions.length > 3 ? this.headerActions.slice(0, 2) : this.headerActions;
+    }
+
+    get overflowHeaderActions() {
+        return this.headerActions.length > 3 ? this.headerActions.slice(2) : [];
+    }
+
+    get hasOverflowHeaderActions() {
+        return this.overflowHeaderActions.length > 0;
     }
 
     handleRetry() {

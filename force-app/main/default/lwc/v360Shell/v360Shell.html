@@ -95,7 +95,8 @@
                     <lightning-button-icon
                         icon-name="utility:chevronleft"
                         alternative-text="Back"
-                        variant="border-filled"
+                        variant="bare"
+                        size="large"
                         data-id="back-button"
                         class="slds-m-right_small"
                         onclick={handleBack}
@@ -106,15 +107,15 @@
                         class="slds-m-right_small"
                     ></lightning-icon>
                     <div class="slds-grow">
-                        <h2 class="slds-text-heading_medium slds-truncate" data-id="focused-title">{selectedCard.label}</h2>
+                        <h2 class="v360-shell-title slds-text-heading_medium slds-truncate" data-id="focused-title">{selectedCard.label}</h2>
                         <template lwc:if={selectedCard.description}>
-                            <p class="slds-text-body_small slds-text-color_weak" data-id="focused-description">
+                            <p class="v360-shell-subtitle slds-text-body_small slds-text-color_weak" data-id="focused-description">
                                 {selectedCard.description}
                             </p>
                         </template>
                     </div>
                     <div class="slds-grid" data-id="header-actions">
-                        <template for:each={headerActions} for:item="action">
+                        <template for:each={visibleHeaderActions} for:item="action">
                             <lightning-button-icon
                                 key={action.name}
                                 icon-name={action.iconName}
@@ -126,6 +127,26 @@
                                 class="slds-m-left_x-small"
                                 onclick={handleHeaderActionClick}
                             ></lightning-button-icon>
+                        </template>
+                        <template lwc:if={hasOverflowHeaderActions}>
+                            <lightning-button-menu
+                                icon-name="utility:down"
+                                variant="border-filled"
+                                menu-alignment="right"
+                                alternative-text="More actions"
+                                data-id="header-action-overflow"
+                                class="slds-m-left_x-small"
+                                onselect={handleOverflowActionSelect}
+                            >
+                                <template for:each={overflowHeaderActions} for:item="action">
+                                    <lightning-menu-item
+                                        key={action.name}
+                                        value={action.name}
+                                        label={action.label}
+                                        prefix-icon-name={action.iconName}
+                                    ></lightning-menu-item>
+                                </template>
+                            </lightning-button-menu>
                         </template>
                     </div>
                 </div>
