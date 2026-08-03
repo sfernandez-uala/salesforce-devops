@@ -501,6 +501,33 @@ private class V360VisibilityEvaluatorTest {
     }
 
     @IsTest
+    static void descriptionFlowsFromCatalogDtoToDecision() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 31);
+            V360CardCatalogDTO card = visibleCard(cardId, 'DescribedCard');
+            card.description = 'Shows the account\'s key details.';
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{ card });
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.areEqual(1, visible.size(), 'The described card must be visible');
+            Assert.areEqual(
+                'Shows the account\'s key details.',
+                visible[0].description,
+                'The catalog description must be carried onto the decision returned to the client'
+            );
+        }
+    }
+
+    @IsTest
     static void evaluatorReturnsCatalogDataRegardlessOfTheRunningUsersOwnConfigAccess() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
             // The stub sources stand in for the trusted, system-mode mediator: they

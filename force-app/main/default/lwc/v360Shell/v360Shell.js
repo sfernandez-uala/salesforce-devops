@@ -4,8 +4,12 @@ import v360ShellState from 'c/v360ShellState';
 import { has as isRegisteredCard, load as loadCardConstructor } from 'c/v360CardRegistry';
 
 const DEFAULT_TAB_API_NAME = 'AccountOverview';
+const DEFAULT_BUTTON_LABEL = 'Consultar';
 const COMPONENT_TYPE_LWC = 'LWC';
 const COMPONENT_TYPE_FLOW = 'Flow';
+const HEADER_ACTION_NAME = 'name';
+const HEADER_ACTION_LABEL = 'label';
+const HEADER_ACTION_ICON = 'iconName';
 
 /**
  * The Vista 360 shell container: the record-page surface that asks the
@@ -15,8 +19,16 @@ const COMPONENT_TYPE_FLOW = 'Flow';
  * asks, and it renders whatever { status, data, error } that manager
  * reports.
  *
- * Render dispatch is by componentType, the contract every card decision
- * carries:
+ * Two view states, driven entirely by v360ShellState's per-record selection:
+ *   - GALLERY (no card selected): a grid of card tiles that only launch a
+ *     card into view -- tiles never mount a card's component.
+ *   - FOCUSED (a card is selected): a narrow sidebar listing every visible
+ *     card as a minimized launcher, plus a main area whose header carries
+ *     the selected card's identity and any header actions it exposes, and
+ *     whose content mounts exactly that one card's component.
+ *
+ * Render dispatch for the mounted card is by componentType, the contract
+ * every card decision carries:
  *   - LWC: a componentName the dev-owned v360CardRegistry recognizes is
  *     rendered through the platform's dynamic-component support
  *     (lwc:component with lwc:is, declared via the
@@ -30,6 +42,19 @@ const COMPONENT_TYPE_FLOW = 'Flow';
  *     this exercises the render-dispatch contract end to end without
  *     waiting on that component.
  *
+ * Header actions protocol: a card MAY expose `@api get headerActions()`
+ * (an array of { name, label, iconName }) and `@api invokeHeaderAction(name)`
+ * without importing anything from Vista 360 -- the card stays fully
+ * engine-agnostic. Once mounted, this shell reads that optional interface
+ * off the dynamic component instance and renders each action as a
+ * lightning-button-icon in the focused header's right zone; clicking one
+ * invokes it on the card. Actions are also registered on v360ShellState via
+ * registerHeaderActions so the existing state contract stays the single
+ * source of truth, even though rendering itself reads the freshly-synced
+ * local copy for immediate reactivity. A card may dispatch a bubbling
+ * `headeractionschange` event to ask the shell to re-read its action set;
+ * cards that implement neither member simply show no actions.
+ *
  * Kept lean on purpose -- this is the vertical slice, not the final chrome.
  */
 export default class V360Shell extends LightningElement {
@@ -39,16 +64,21 @@ export default class V360Shell extends LightningElement {
     customerState;
     shellState;
     unsubscribeCustomerState;
+    unsubscribeShellState;
 
     status = 'unconfigured';
     cards = [];
     error;
+    selectedCardKey = null;
+    headerActions = [];
 
     connectedCallback() {
         this.customerState = v360CustomerState(this.recordId);
         this.shellState = v360ShellState(this.recordId);
         this.unsubscribeCustomerState = this.customerState.subscribe(() => this.syncFromCustomerState());
+        this.unsubscribeShellState = this.shellState.subscribe(() => this.syncFromShellState());
         this.syncFromCustomerState();
+        this.syncFromShellState();
         this.customerState.value.load(this.tabApiName);
     }
 
@@ -56,6 +86,13 @@ export default class V360Shell extends LightningElement {
         if (this.unsubscribeCustomerState) {
             this.unsubscribeCustomerState();
         }
+        if (this.unsubscribeShellState) {
+            this.unsubscribeShellState();
+        }
+    }
+
+    renderedCallback() {
+        this.syncHeaderActionsFromMountedCard();
     }
 
     syncFromCustomerState() {
@@ -66,6 +103,21 @@ export default class V360Shell extends LightningElement {
         this.hydrateCardConstructors();
     }
 
+    /**
+     * Reacts to any change on this record's shell-state session. Only a
+     * change to the selected card resets the locally-tracked header actions
+     * -- registerHeaderActions itself writes into this same session, so
+     * blindly resetting on every notification would wipe out the actions we
+     * just registered and loop forever.
+     */
+    syncFromShellState() {
+        const nextSelectedCardKey = this.shellState.value.selectedCard;
+        if (nextSelectedCardKey !== this.selectedCardKey) {
+            this.selectedCardKey = nextSelectedCardKey;
+            this.headerActions = [];
+        }
+    }
+
     toRenderableCard(decision) {
         const isLwc = decision.componentType === COMPONENT_TYPE_LWC;
         const isFlow = decision.componentType === COMPONENT_TYPE_FLOW;
@@ -73,7 +125,9 @@ export default class V360Shell extends LightningElement {
         return {
             key: decision.cardName,
             label: decision.label,
+            description: decision.description,
             iconName: decision.iconName,
+            buttonLabel: decision.buttonLabel || DEFAULT_BUTTON_LABEL,
             componentName: decision.componentName,
             ctor: null,
             isLwc: isKnownLwc,
@@ -86,7 +140,10 @@ export default class V360Shell extends LightningElement {
      * Fills in the constructor of every known LWC card as its module
      * resolves. Constructors arrive asynchronously (the registry loads each
      * module once and memoizes it), so each arrival patches the cards list
-     * immutably to trigger a re-render of just-ready cards.
+     * immutably to trigger a re-render of just-ready cards. Hydrating every
+     * card up front (not only the selected one) means a card is usually
+     * already resolved by the time the user selects it from the gallery or
+     * sidebar, minimizing the shell's own hydration placeholder.
      */
     hydrateCardConstructors() {
         for (const card of this.cards) {
@@ -104,9 +161,61 @@ export default class V360Shell extends LightningElement {
         }
     }
 
+    /**
+     * Reads the optional header-actions interface off the currently mounted
+     * dynamic card, if any, and registers/renders a fresh copy only when the
+     * action set actually changed -- the card's headerActions getter is free
+     * to return a new array literal on every access, so a reference
+     * comparison would reassign (and re-render, and re-run this very method)
+     * forever.
+     */
+    syncHeaderActionsFromMountedCard() {
+        const mountedCard = this.refs?.mountedCard;
+        const actions =
+            mountedCard && typeof mountedCard.headerActions !== 'undefined' ? mountedCard.headerActions ?? [] : [];
+        if (this.areHeaderActionsEqual(actions, this.headerActions)) {
+            return;
+        }
+        this.headerActions = actions;
+        if (this.selectedCardKey) {
+            this.shellState.value.registerHeaderActions(this.selectedCardKey, actions);
+        }
+    }
+
+    areHeaderActionsEqual(left, right) {
+        if (left.length !== right.length) {
+            return false;
+        }
+        return left.every((action, index) => {
+            const other = right[index];
+            return (
+                other &&
+                action[HEADER_ACTION_NAME] === other[HEADER_ACTION_NAME] &&
+                action[HEADER_ACTION_LABEL] === other[HEADER_ACTION_LABEL] &&
+                action[HEADER_ACTION_ICON] === other[HEADER_ACTION_ICON]
+            );
+        });
+    }
+
     handleSelectCard(event) {
         const cardName = event.currentTarget.dataset.cardName;
         this.shellState.value.selectCard(cardName);
+    }
+
+    handleBack() {
+        this.shellState.value.selectCard(null);
+    }
+
+    handleHeaderActionsChange() {
+        this.syncHeaderActionsFromMountedCard();
+    }
+
+    handleHeaderActionClick(event) {
+        const actionName = event.currentTarget.dataset.actionName;
+        const mountedCard = this.refs?.mountedCard;
+        if (mountedCard && typeof mountedCard.invokeHeaderAction === 'function') {
+            mountedCard.invokeHeaderAction(actionName);
+        }
     }
 
     handleRetry() {
@@ -127,5 +236,37 @@ export default class V360Shell extends LightningElement {
 
     get hasCards() {
         return this.status === 'loaded' && this.cards.length > 0;
+    }
+
+    /** The full decision for the selected card, or null when none matches (including a stale selection for a card no longer visible). */
+    get selectedCard() {
+        if (!this.selectedCardKey) {
+            return null;
+        }
+        return this.cards.find((card) => card.key === this.selectedCardKey) ?? null;
+    }
+
+    get isGalleryView() {
+        return this.hasCards && !this.selectedCard;
+    }
+
+    get isFocusedView() {
+        return this.hasCards && Boolean(this.selectedCard);
+    }
+
+    /** True while a selected LWC card's constructor is still resolving -- the shell's own loading placeholder for stage 1 of the card lifecycle. */
+    get isSelectedCardHydrating() {
+        const selected = this.selectedCard;
+        return Boolean(selected) && selected.isLwc && !selected.ctor;
+    }
+
+    get sidebarCards() {
+        return this.cards.map((card) => ({
+            ...card,
+            itemClass:
+                card.key === this.selectedCardKey
+                    ? 'v360-shell-sidebar-item v360-shell-sidebar-item_active slds-theme_shade'
+                    : 'v360-shell-sidebar-item'
+        }));
     }
 }

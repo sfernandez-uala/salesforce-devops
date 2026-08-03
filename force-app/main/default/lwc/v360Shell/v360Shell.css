@@ -1,0 +1,38 @@
+/**
+ * The shell is Vista 360's root, so its stylesheet is where the global
+ * color tokens are defined: CSS custom properties inherit down the DOM
+ * tree, shadow boundaries included, so every card mounted inside the shell
+ * resolves these without importing anything. (A dedicated CSS-only module
+ * was the first attempt, but the deploy tooling cannot package a Lightning
+ * component bundle that has no JavaScript file — org-verified on the
+ * pinned CLI versions — so the shell's own stylesheet is the supported
+ * single home.)
+ *
+ * SLDS utility classes and base-component styling hooks cover everything
+ * else; the rules below are the justified exceptions SLDS has no utility
+ * class for.
+ */
+:host {
+    /* Global Vista 360 color tokens, mapped onto SLDS 2 global styling
+       hooks with a literal fallback for orgs/themes where a given hook is
+       not yet defined. Every V360 component that needs a color reaches for
+       one of these instead of hardcoding a hex value, so dark mode and
+       future theme changes are absorbed here in one place. */
+    --v360-color-brand: var(--slds-g-color-brand-base-50, #0176d3);
+    --v360-color-text-subtle: var(--slds-g-color-neutral-base-30, #706e6b);
+    --v360-color-surface: var(--slds-g-color-surface-1, #ffffff);
+    --v360-color-skeleton: var(--slds-g-color-neutral-base-90, #dddbda);
+}
+
+/* SLDS has no utility class for a fixed-width vertical icon rail. */
+.v360-shell-sidebar {
+    width: 6.5rem;
+}
+
+/* The focused-view sidebar highlights the selected card with a rounded,
+   shaded rail item: the shading comes from the SLDS `slds-theme_shade`
+   utility, but SLDS has no utility class for the rounded-corner half of
+   that treatment. */
+.v360-shell-sidebar-item_active {
+    border-radius: 0.25rem;
+}

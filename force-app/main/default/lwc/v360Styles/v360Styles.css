@@ -1,8 +1,0 @@
-/**
- * Shared Vista 360 custom CSS. SLDS utility classes and base-component
- * styling hooks cover Vista 360's needs today, so this file is
- * intentionally near-empty -- it exists so that when a component genuinely
- * needs custom CSS SLDS cannot express, there is exactly one shared home
- * for it instead of duplicated rules scattered across component
- * stylesheets. Consumers pull this in with `@import 'c/v360Styles';`.
- */

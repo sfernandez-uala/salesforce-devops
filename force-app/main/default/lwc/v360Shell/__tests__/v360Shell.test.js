@@ -88,19 +88,25 @@ describe('c-v360-shell', () => {
         await flushPromises();
         await flushPromises();
 
+        // Gallery first: the tile launches the card, it never mounts it.
+        const tile = element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="v360AccountSnapshot"]');
+        expect(tile).not.toBeNull();
+        tile.click();
+        await flushPromises();
+        await flushPromises();
+
         expect(load).toHaveBeenCalledWith('v360AccountSnapshot');
-        const cardWrapper = element.shadowRoot.querySelector('[data-card-name="v360AccountSnapshot"]');
-        expect(cardWrapper).not.toBeNull();
-        const chrome = cardWrapper.querySelector('lightning-card');
-        expect(chrome).not.toBeNull();
-        expect(chrome.title).toBe('Snapshot');
+        const focusedTitle = element.shadowRoot.querySelector('[data-id="focused-title"]');
+        expect(focusedTitle).not.toBeNull();
+        expect(focusedTitle.textContent).toBe('Snapshot');
         // A dynamically instantiated component's tag name is
         // environment-defined (the Jest harness uses a synthetic one), so the
-        // mounted card is asserted through its position and the props it
-        // received rather than a tag selector.
-        const mountedCard = chrome.firstElementChild;
-        expect(mountedCard).not.toBeNull();
-        expect(mountedCard.recordId).toBe('001000000000404AAA');
+        // mounted card is asserted through the props it received rather than
+        // a tag selector: it is the element carrying the recordId.
+        const mounted = Array.from(element.shadowRoot.querySelectorAll('*')).find(
+            (node) => node.recordId === '001000000000404AAA'
+        );
+        expect(mounted).not.toBeUndefined();
         expect(element.shadowRoot.querySelector('[data-id="unknown-binding"]')).toBeNull();
     });
 
@@ -118,6 +124,11 @@ describe('c-v360-shell', () => {
         ]);
 
         const element = createShell('001000000000405AAA');
+        await flushPromises();
+
+        const tile = element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="someFlowCard"]');
+        expect(tile).not.toBeNull();
+        tile.click();
         await flushPromises();
 
         const placeholder = element.shadowRoot.querySelector('[data-id="flow-placeholder"]');
@@ -141,6 +152,11 @@ describe('c-v360-shell', () => {
         ]);
 
         const element = createShell('001000000000406AAA');
+        await flushPromises();
+
+        const tile = element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="unknownCard"]');
+        expect(tile).not.toBeNull();
+        tile.click();
         await flushPromises();
 
         const unknownBinding = element.shadowRoot.querySelector('[data-id="unknown-binding"]');
@@ -184,5 +200,62 @@ describe('c-v360-shell', () => {
         document.body.appendChild(element);
 
         expect(getVisibleCards).toHaveBeenCalledWith('001000000000408AAA', 'CreditCards');
+    });
+
+    it('focused view lists every card in the sidebar, switches selection, and returns to gallery via back', async () => {
+        has.mockReturnValue(true);
+        load.mockResolvedValue(V360AccountSnapshot);
+        getVisibleCards.mockResolvedValue([
+            { cardName: 'cardA', componentType: 'LWC', componentName: 'a', label: 'Card A', iconName: 'standard:account', buttonLabel: 'Open', order: 1 },
+            { cardName: 'cardB', componentType: 'LWC', componentName: 'b', label: 'Card B', iconName: 'standard:contact', buttonLabel: 'Open', order: 2 }
+        ]);
+
+        const element = createShell('001000000000409AAA');
+        await flushPromises();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="cardA"]').click();
+        await flushPromises();
+
+        const sidebarItems = element.shadowRoot.querySelectorAll('[data-id="sidebar-item"]');
+        expect(sidebarItems.length).toBe(2);
+        expect(element.shadowRoot.querySelector('[data-id="focused-title"]').textContent).toBe('Card A');
+
+        element.shadowRoot.querySelector('[data-id="sidebar-item"][data-card-name="cardB"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="focused-title"]').textContent).toBe('Card B');
+
+        element.shadowRoot.querySelector('[data-id="back-button"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="gallery-view"]')).not.toBeNull();
+        expect(element.shadowRoot.querySelector('[data-id="focused-view"]')).toBeNull();
+    });
+
+    it('renders the header actions a mounted card exposes and invokes them on click', async () => {
+        // The real snapshot card implements the optional protocol (a
+        // 'refresh' action wired to refreshApex) — mount it and assert the
+        // shell surfaces and invokes it.
+        const { refreshApex } = require('@salesforce/apex');
+        refreshApex.mockClear();
+        has.mockReturnValue(true);
+        load.mockResolvedValue(V360AccountSnapshot);
+        getVisibleCards.mockResolvedValue([
+            { cardName: 'protoCard', componentType: 'LWC', componentName: 'protoCard', label: 'Proto', iconName: 'standard:bot', buttonLabel: 'Open', order: 1 }
+        ]);
+
+        const element = createShell('001000000000410AAA');
+        await flushPromises();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="gallery-tile"][data-card-name="protoCard"]').click();
+        await flushPromises();
+        await flushPromises();
+
+        const actionButtons = element.shadowRoot.querySelectorAll('[data-id="header-action"]');
+        expect(actionButtons.length).toBe(1);
+        expect(actionButtons[0].iconName).toBe('utility:refresh');
+        expect(actionButtons[0].title).toBe('Refresh');
+
+        actionButtons[0].click();
+        expect(refreshApex).toHaveBeenCalled();
     });
 });

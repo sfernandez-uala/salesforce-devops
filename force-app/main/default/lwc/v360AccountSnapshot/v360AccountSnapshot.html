@@ -11,6 +11,13 @@
                 onretry={handleRetry}
             ></c-v360-empty-state>
         </template>
+        <template lwc:elseif={isSkeleton}>
+            <div class="slds-form" role="presentation" data-id="skeleton-state" aria-hidden="true">
+                <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+                <div class="v360-stencil-bar v360-stencil-bar_long"></div>
+                <div class="v360-stencil-bar v360-stencil-bar_short"></div>
+            </div>
+        </template>
         <template lwc:else>
             <div class="slds-form" role="list">
                 <template lwc:if={hasIndustry}>
