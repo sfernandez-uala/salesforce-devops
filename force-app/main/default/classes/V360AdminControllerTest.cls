@@ -30,7 +30,12 @@ private class V360AdminControllerTest {
         V360_Card__c firstCard = V360TestDataFactory.insertCard(
             tab.Id,
             'V360Test_AdminUi_CardA',
-            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+            new V360_Card__c(
+                ComponentType__c = 'LWC',
+                ComponentName__c = 'v360AccountSnapshot',
+                Order__c = 1,
+                ButtonLabel__c = 'Open'
+            )
         );
         V360TestDataFactory.insertCard(
             tab.Id,
@@ -54,6 +59,7 @@ private class V360AdminControllerTest {
                 'Cards must come back in Order__c sequence'
             );
             Assert.areEqual(1, adminTab.cards[0].ruleCount, 'The first card carries its one rule');
+            Assert.areEqual('Open', adminTab.cards[0].buttonLabel, 'The tile button label must round-trip');
             Assert.areEqual(0, adminTab.cards[1].ruleCount, 'A card with no rules reports zero');
         }
     }
@@ -107,6 +113,118 @@ private class V360AdminControllerTest {
             Test.stopTest();
             Assert.isTrue(threw, 'Reordering without the manage permission must be rejected');
         }
+    }
+
+    @IsTest
+    static void getCatalogReturnsRulesWithPredicatesOnTheirCard() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Rules_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Rules_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+        V360_CardRule__c rule = V360TestDataFactory.insertCardRule(
+            card.Id,
+            'V360Test_Rules_Rule',
+            'ISPICKVAL(Industry, \'Banking\')'
+        );
+        insert new V360_RulePredicate__c(
+            CardRule__c = rule.Id,
+            PredicateType__c = 'FLS_READ',
+            TargetApiName__c = 'AnnualRevenue'
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.AdminCatalog catalog = V360AdminController.getCatalog();
+            Test.stopTest();
+
+            V360AdminController.AdminCard adminCard = findTab(catalog, 'V360Test_Rules_Tab').cards[0];
+            Assert.areEqual(1, adminCard.rules.size(), 'The card carries its rule');
+            Assert.areEqual(
+                'ISPICKVAL(Industry, \'Banking\')',
+                adminCard.rules[0].formula,
+                'The rule formula must round-trip'
+            );
+            Assert.areEqual(1, adminCard.rules[0].predicates.size(), 'The rule carries its predicate');
+            Assert.areEqual('FLS_READ', adminCard.rules[0].predicates[0].predicateType, 'Predicate type round-trips');
+        }
+    }
+
+    @IsTest
+    static void validateRuleFormulaReportsValidAndInvalidFormulas() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Validate_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Validate_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.FormulaValidation good = V360AdminController.validateRuleFormula(
+                card.Id,
+                'ISPICKVAL(Industry, \'Banking\')'
+            );
+            V360AdminController.FormulaValidation bad = V360AdminController.validateRuleFormula(
+                card.Id,
+                'ISPICKVAL(Industry, \'Banking\''
+            );
+            Test.stopTest();
+
+            Assert.isTrue(good.isValid, 'A well-formed formula must validate: ' + good.message);
+            Assert.isFalse(bad.isValid, 'A malformed formula must be rejected');
+            Assert.isTrue(
+                bad.message.startsWith('Formula failed to validate'),
+                'The rejection carries the engine message: ' + bad.message
+            );
+        }
+    }
+
+    @IsTest
+    static void setCardActiveActivatesADraftCard() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Activate_Tab', 'Account');
+        V360_Card__c draft = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Activate_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Active__c = false)
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.setCardActive(draft.Id, true);
+            Test.stopTest();
+        }
+
+        Assert.isTrue(
+            [SELECT Active__c FROM V360_Card__c WHERE Id = :draft.Id].Active__c,
+            'The draft card must be active after activation'
+        );
+    }
+
+    @IsTest
+    static void saveCardPropertiesUpdatesPresentationAndBinding() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Props_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Props_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.saveCardProperties(card.Id, 'Renamed', 'Open', 'LWC', 'v360LifecycleDemo');
+            Test.stopTest();
+        }
+
+        V360_Card__c saved = [SELECT Label__c, ButtonLabel__c, ComponentName__c FROM V360_Card__c WHERE Id = :card.Id];
+        Assert.areEqual('Renamed', saved.Label__c, 'The label must round-trip');
+        Assert.areEqual('Open', saved.ButtonLabel__c, 'The button label must round-trip');
+        Assert.areEqual('v360LifecycleDemo', saved.ComponentName__c, 'The binding must round-trip');
     }
 
     private static V360AdminController.AdminTab findTab(

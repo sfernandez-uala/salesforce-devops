@@ -46,6 +46,30 @@ public with sharing class V360AdminService {
         return upsertRulePredicates(predicates);
     }
 
+    /**
+     * Validates a formula against a card's anchor SObject without saving
+     * anything -- the console's live "Validate" action. Throws with the
+     * engine's message when the formula does not build.
+     */
+    // System-mode config read, same rationale as validateRuleFormulas: it only
+    // resolves the card's anchor type and never leaves this validation path.
+    @SuppressWarnings('PMD.ApexCRUDViolation')
+    public static void validateFormula(Id cardId, String formulaText) {
+        requireManagePermission();
+        Map<Id, V360_Card__c> cardsById = new Map<Id, V360_Card__c>(
+            [SELECT Id, AnchorSObject__c, Tab__r.AnchorSObject__c FROM V360_Card__c WHERE Id = :cardId]
+        );
+        Schema.SObjectType sObjectType = resolveAnchorType(cardsById.get(cardId));
+        try {
+            new V360FormulaGateway().build(formulaText, sObjectType);
+        } catch (Exception buildException) {
+            throw new V360AdminServiceException(
+                'Formula failed to validate: ' + buildException.getMessage(),
+                buildException
+            );
+        }
+    }
+
     private static void requireManagePermission() {
         if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
             throw new V360AdminServiceException('You do not have permission to manage Vista 360 visibility rules.');

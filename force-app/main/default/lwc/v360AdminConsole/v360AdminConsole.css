@@ -1,13 +1,35 @@
 /**
- * Structural rules SLDS has no utility for: the fixed-width tab navigation
- * column, the card row's icon/identity/actions layout, and the loading
- * stage's stencil bars. Colors come from the shared tokens only.
+ * Structural rules SLDS has no utility for: the three-zone console layout
+ * (navigation rail, workspace, detail panel), the card row's
+ * icon/identity/actions composition, the rule editor's monospace formula,
+ * and the loading stage's stencil bars. Colors come from the shared
+ * tokens only.
  */
 @import 'c/v360Styles';
 
+.v360-admin-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
 .v360-admin-nav {
-    flex: 0 0 16rem;
-    width: 16rem;
+    flex: 0 0 14rem;
+    min-width: 0;
+}
+
+.v360-admin-workspace {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.v360-admin-panel {
+    flex: 0 0 24rem;
+    min-width: 0;
+    background: var(--v360-color-surface-hover);
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    padding: 0.875rem 1rem;
 }
 
 .v360-admin-card-row {
@@ -18,8 +40,24 @@
     border: 1px solid var(--v360-color-border);
     border-radius: var(--v360-radius);
     box-shadow: var(--v360-shadow-card);
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.875rem;
     margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease-out;
+}
+
+.v360-admin-card-row:hover {
+    box-shadow: var(--v360-shadow-raised);
+}
+
+.v360-admin-card-row:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: 2px;
+}
+
+.v360-admin-card-row_selected {
+    border-color: var(--v360-color-brand);
+    box-shadow: 0 0 0 1px var(--v360-color-brand), var(--v360-shadow-card);
 }
 
 /* The identity zone is the only shrinkable piece, so long labels and
@@ -33,6 +71,100 @@
     flex-shrink: 0;
     display: flex;
     gap: 0.25rem;
+}
+
+.v360-admin-section {
+    background: var(--v360-color-surface);
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.v360-admin-section-title {
+    display: flex;
+    align-items: center;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--v360-color-text-subtle);
+    margin: 0 0 0.5rem;
+}
+
+.v360-admin-rule {
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    padding: 0.625rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Formulas are code: the editor reads in monospace. */
+.v360-admin-formula textarea {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+}
+
+.v360-admin-validate-row {
+    flex-wrap: wrap;
+    row-gap: 0.25rem;
+}
+
+.v360-admin-validate-msg {
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.v360-admin-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+}
+
+.v360-admin-check {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+    padding: 0.5rem 0.25rem;
+    border-bottom: 1px solid var(--v360-color-border);
+}
+
+.v360-admin-check:last-child {
+    border-bottom: none;
+}
+
+.v360-admin-check-mark {
+    flex-shrink: 0;
+    width: 1.25rem;
+    text-align: center;
+    font-weight: 700;
+}
+
+.v360-admin-check_ok .v360-admin-check-mark {
+    color: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.v360-admin-check_warn {
+    background: var(--slds-g-color-warning-base-90, #fef1e5);
+    border-radius: var(--v360-radius);
+}
+
+.v360-admin-check_warn .v360-admin-check-mark {
+    color: var(--slds-g-color-warning-base-50, #dd7a01);
+}
+
+/* Narrow hosts stack the three zones instead of squeezing them. */
+@media (max-width: 64em) {
+    .v360-admin-layout {
+        flex-direction: column;
+    }
+
+    .v360-admin-nav,
+    .v360-admin-panel {
+        flex-basis: auto;
+        width: 100%;
+    }
 }
 
 .v360-stencil-bar {
@@ -70,5 +202,9 @@
     .v360-stencil-bar {
         animation: none;
         background: var(--v360-color-skeleton);
+    }
+
+    .v360-admin-card-row {
+        transition: none;
     }
 }

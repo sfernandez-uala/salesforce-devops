@@ -53,31 +53,31 @@
             </template>
 
             <template lwc:elseif={isCatalogVisible}>
-                <div class="slds-grid slds-gutters">
-                    <div class="slds-col slds-grow-none v360-admin-nav">
-                        <nav class="slds-nav-vertical" aria-label="Vista 360 tabs">
-                            <div class="slds-nav-vertical__section">
-                                <h2 class="slds-nav-vertical__title">Tabs</h2>
-                                <lightning-vertical-navigation
-                                    selected-item={selectedTabId}
-                                    onselect={handleTabSelect}
-                                    data-id="tab-navigation"
+                <div class="v360-admin-layout">
+                    <div class="v360-admin-nav">
+                        <lightning-vertical-navigation
+                            selected-item={selectedTabId}
+                            onselect={handleTabSelect}
+                            data-id="tab-navigation"
+                        >
+                            <template for:each={navigationSections} for:item="section">
+                                <lightning-vertical-navigation-section
+                                    key={section.sObjectApiName}
+                                    label={section.sObjectApiName}
                                 >
-                                    <lightning-vertical-navigation-section>
-                                        <template for:each={navigationTabs} for:item="navTab">
-                                            <lightning-vertical-navigation-item
-                                                key={navTab.tabId}
-                                                label={navTab.navLabel}
-                                                name={navTab.tabId}
-                                            ></lightning-vertical-navigation-item>
-                                        </template>
-                                    </lightning-vertical-navigation-section>
-                                </lightning-vertical-navigation>
-                            </div>
-                        </nav>
+                                    <template for:each={section.tabs} for:item="navTab">
+                                        <lightning-vertical-navigation-item
+                                            key={navTab.tabId}
+                                            label={navTab.navLabel}
+                                            name={navTab.tabId}
+                                        ></lightning-vertical-navigation-item>
+                                    </template>
+                                </lightning-vertical-navigation-section>
+                            </template>
+                        </lightning-vertical-navigation>
                     </div>
 
-                    <div class="slds-col" data-id="workspace">
+                    <div class="v360-admin-workspace" data-id="workspace">
                         <template lwc:if={workspace}>
                             <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
                                 <div class="slds-grow">
@@ -88,11 +88,25 @@
                                     {workspace.cardCountLabel}
                                 </span>
                                 <span class={workspace.statusClass}>{workspace.statusLabel}</span>
+                                <lightning-button
+                                    variant="brand"
+                                    label="New card"
+                                    class="slds-m-left_x-small"
+                                    data-id="new-card"
+                                    onclick={handleNewCard}
+                                ></lightning-button>
                             </div>
 
                             <ul aria-label="Cards in display order">
                                 <template for:each={workspace.cards} for:item="card">
-                                    <li key={card.cardId} class="v360-admin-card-row" data-id="card-row">
+                                    <li
+                                        key={card.cardId}
+                                        class={card.rowClass}
+                                        data-id="card-row"
+                                        data-card-id={card.cardId}
+                                        tabindex="0"
+                                        onclick={handleCardOpen}
+                                    >
                                         <lightning-icon icon-name={card.iconNameOrDefault} size="small"></lightning-icon>
                                         <div class="v360-admin-card-identity">
                                             <div class="slds-grid slds-grid_vertical-align-center">
@@ -142,8 +156,173 @@
                             </ul>
                         </template>
                     </div>
+
+                    <div class="v360-admin-panel" data-id="detail-panel">
+                        <template lwc:if={detail}>
+                            <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                <lightning-icon
+                                    icon-name={detail.iconNameOrDefault}
+                                    size="small"
+                                    class="slds-m-right_x-small"
+                                ></lightning-icon>
+                                <h3 class="slds-text-heading_small slds-grow slds-truncate" data-id="detail-title">{detail.label}</h3>
+                                <span class={detail.stateClass}>{detail.stateLabel}</span>
+                            </div>
+
+                            <template lwc:if={detail.isDraft}>
+                                <div class="slds-scoped-notification slds-media slds-media_center slds-theme_info slds-m-bottom_small" role="status" data-id="draft-banner">
+                                    <div class="slds-media__body slds-grid slds-grid_vertical-align-center">
+                                        <p class="slds-grow">This card is a draft — end users can't see it yet.</p>
+                                        <lightning-button
+                                            variant="brand"
+                                            label="Activate…"
+                                            data-id="activate-open"
+                                            onclick={handleOpenActivation}
+                                        ></lightning-button>
+                                    </div>
+                                </div>
+                            </template>
+                            <template lwc:if={detail.isKilled}>
+                                <div class="slds-scoped-notification slds-media slds-media_center slds-theme_warning slds-m-bottom_small" role="status" data-id="kill-banner">
+                                    <div class="slds-media__body">
+                                        <p>The kill switch is on — this card is hidden everywhere and rules are not evaluated.</p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="v360-admin-section">
+                                <p class="v360-admin-section-title">Properties</p>
+                                <lightning-input
+                                    label="Label"
+                                    value={detail.label}
+                                    data-id="prop-label"
+                                ></lightning-input>
+                                <lightning-combobox
+                                    label="Component"
+                                    value={detail.bindingValue}
+                                    options={componentOptions}
+                                    data-id="prop-component"
+                                    field-level-help="LWC options come from the card registry; Flow bindings are validated as active screen flows on save."
+                                ></lightning-combobox>
+                                <lightning-input
+                                    label="Tile button label"
+                                    value={detail.buttonLabel}
+                                    data-id="prop-button-label"
+                                ></lightning-input>
+                                <div class="slds-m-top_small slds-text-align_right">
+                                    <lightning-button
+                                        variant="brand"
+                                        label="Save card"
+                                        data-id="save-properties"
+                                        onclick={handleSaveProperties}
+                                    ></lightning-button>
+                                </div>
+                            </div>
+
+                            <div class="v360-admin-section">
+                                <p class="v360-admin-section-title">
+                                    <span class="slds-grow">Visibility rules</span>
+                                    <lightning-button
+                                        label="Add rule"
+                                        data-id="add-rule"
+                                        onclick={handleAddRule}
+                                    ></lightning-button>
+                                </p>
+                                <template lwc:if={detail.hasNoRules}>
+                                    <p class="slds-text-body_small" data-id="no-rules-note">
+                                        No rules yet. Without rules this card is visible to everyone who can see the page.
+                                    </p>
+                                </template>
+                                <template for:each={detail.rules} for:item="rule">
+                                    <div key={rule.ruleId} class="v360-admin-rule" data-id="rule">
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                            <span class="slds-text-heading_small slds-grow slds-truncate">{rule.developerName}</span>
+                                            <span class={rule.activeClass}>{rule.activeLabel}</span>
+                                        </div>
+                                        <lightning-textarea
+                                            label="Visibility formula"
+                                            value={rule.formula}
+                                            data-id={rule.formulaFieldId}
+                                            class="v360-admin-formula"
+                                            data-rule-id={rule.ruleId}
+                                        ></lightning-textarea>
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-top_xx-small v360-admin-validate-row">
+                                            <lightning-button
+                                                label="Validate"
+                                                data-id="validate-formula"
+                                                data-rule-id={rule.ruleId}
+                                                onclick={handleValidateFormula}
+                                            ></lightning-button>
+                                            <lightning-button
+                                                label="Save rule"
+                                                variant="brand-outline"
+                                                class="slds-m-left_x-small"
+                                                data-id="save-formula"
+                                                data-rule-id={rule.ruleId}
+                                                onclick={handleSaveFormula}
+                                            ></lightning-button>
+                                            <template lwc:if={rule.feedbackMessage}>
+                                                <span class={rule.feedbackClass} data-id="formula-feedback">{rule.feedbackMessage}</span>
+                                            </template>
+                                        </div>
+                                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                            $Permission, $Profile, $User and $UserRole are available · picklists need ISPICKVAL() · 3,900 characters max
+                                        </p>
+                                        <template lwc:if={rule.predicatePills.length}>
+                                            <div class="v360-admin-pills">
+                                                <template for:each={rule.predicatePills} for:item="pill">
+                                                    <span key={pill.key} class="slds-badge" data-id="predicate-pill">{pill.label}</span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <template lwc:else>
+                            <p class="slds-text-color_weak slds-text-align_center slds-p-top_large">
+                                Select a card to see its detail.
+                            </p>
+                        </template>
+                    </div>
                 </div>
             </template>
         </div>
     </lightning-card>
+
+    <template lwc:if={activationOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="activation-title" class="slds-modal slds-fade-in-open" data-id="activation-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="activation-title" class="slds-modal__title">Activate card</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <template for:each={activationChecklist} for:item="check">
+                        <div key={check.key} class={check.markClass} data-id="activation-check">
+                            <span class="v360-admin-check-mark" aria-hidden="true">{check.mark}</span>
+                            <span>
+                                <strong>{check.text}</strong><br />
+                                <span class="slds-text-body_small slds-text-color_weak">{check.detail}</span>
+                            </span>
+                        </div>
+                    </template>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button
+                        label="Cancel"
+                        data-id="activate-cancel"
+                        onclick={handleCloseActivation}
+                    ></lightning-button>
+                    <lightning-button
+                        variant="brand"
+                        label="Activate card"
+                        class="slds-m-left_x-small"
+                        data-id="activate-confirm"
+                        onclick={handleConfirmActivation}
+                    ></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
 </template>

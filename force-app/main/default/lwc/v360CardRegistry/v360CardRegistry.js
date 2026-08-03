@@ -26,6 +26,15 @@ const REGISTRY = {
 };
 
 /**
+ * @returns {string[]} every registered card component name -- the admin
+ * console's component picker offers exactly this list, so a configured
+ * LWC binding can only ever name a registered component.
+ */
+export function names() {
+    return Object.keys(REGISTRY);
+}
+
+/**
  * @param {string} componentName - the card's configured component name.
  * @returns {boolean} whether the name is a known registry entry.
  */
