@@ -56,6 +56,29 @@ public with sharing class V360AdminController {
         }
     }
 
+    /**
+     * Rewrites Order__c for every card of a tab from the given sequence
+     * (first id becomes 1, and so on). Routed through V360AdminService so
+     * the manage-permission gate and CRUD/FLS enforcement apply; the sparse
+     * records carry no component binding, so no binding validation fires.
+     */
+    @AuraEnabled
+    public static void updateCardOrder(List<Id> orderedCardIds) {
+        try {
+            List<V360_Card__c> reordered = new List<V360_Card__c>();
+            Integer position = 1;
+            for (Id cardId : orderedCardIds) {
+                reordered.add(new V360_Card__c(Id = cardId, Order__c = position));
+                position++;
+            }
+            V360AdminService.saveCards(reordered);
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to reorder the cards.');
+        }
+    }
+
     private static Map<Id, Integer> countRulesByCard() {
         Map<Id, Integer> ruleCountsByCardId = new Map<Id, Integer>();
         for (AggregateResult grouped : [

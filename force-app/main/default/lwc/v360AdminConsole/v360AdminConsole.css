@@ -1,10 +1,39 @@
 /**
- * The loading stage's stencil bars. SLDS ships no stencil/shimmer
- * treatment, so the bar shape and shimmer keyframes live here as this
- * component's own structural presentation; colors come from the shared
- * tokens so the treatment stays on-theme without a hardcoded hex value.
+ * Structural rules SLDS has no utility for: the fixed-width tab navigation
+ * column, the card row's icon/identity/actions layout, and the loading
+ * stage's stencil bars. Colors come from the shared tokens only.
  */
 @import 'c/v360Styles';
+
+.v360-admin-nav {
+    flex: 0 0 16rem;
+    width: 16rem;
+}
+
+.v360-admin-card-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--v360-color-surface);
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    box-shadow: var(--v360-shadow-card);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* The identity zone is the only shrinkable piece, so long labels and
+   bindings ellipsize instead of pushing the reorder controls out. */
+.v360-admin-card-identity {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.v360-admin-card-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 0.25rem;
+}
 
 .v360-stencil-bar {
     height: 0.75rem;

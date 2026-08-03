@@ -58,6 +58,57 @@ private class V360AdminControllerTest {
         }
     }
 
+    @IsTest
+    static void updateCardOrderRewritesTheSequenceForAdmins() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Reorder_Tab', 'Account');
+        V360_Card__c first = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Reorder_CardA',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+        V360_Card__c second = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Reorder_CardB',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360LifecycleDemo', Order__c = 2)
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.updateCardOrder(new List<Id>{ second.Id, first.Id });
+            Test.stopTest();
+        }
+
+        Map<Id, V360_Card__c> saved = new Map<Id, V360_Card__c>(
+            [SELECT Order__c FROM V360_Card__c WHERE Id IN :new List<Id>{ first.Id, second.Id }]
+        );
+        Assert.areEqual(1, saved.get(second.Id).Order__c, 'The first id in the sequence becomes order 1');
+        Assert.areEqual(2, saved.get(first.Id).Order__c, 'The second id in the sequence becomes order 2');
+    }
+
+    @IsTest
+    static void updateCardOrderThrowsWithoutTheManagePermission() {
+        User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_ReorderDenied_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_ReorderDenied_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+
+        System.runAs(plainUser) {
+            Test.startTest();
+            Boolean threw = false;
+            try {
+                V360AdminController.updateCardOrder(new List<Id>{ card.Id });
+            } catch (AuraHandledException expected) {
+                threw = true;
+            }
+            Test.stopTest();
+            Assert.isTrue(threw, 'Reordering without the manage permission must be rejected');
+        }
+    }
+
     private static V360AdminController.AdminTab findTab(
         V360AdminController.AdminCatalog catalog,
         String developerName

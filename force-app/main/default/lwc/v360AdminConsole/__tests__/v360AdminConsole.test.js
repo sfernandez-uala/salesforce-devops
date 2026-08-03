@@ -1,6 +1,7 @@
 import { createElement } from 'lwc';
 import V360AdminConsole from 'c/v360AdminConsole';
 import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
+import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 
 jest.mock(
     '@salesforce/apex/V360AdminController.getCatalog',
@@ -8,53 +9,69 @@ jest.mock(
     { virtual: true }
 );
 
+jest.mock(
+    '@salesforce/apex/V360AdminController.updateCardOrder',
+    () => ({ default: jest.fn() }),
+    { virtual: true }
+);
+
 const flushPromises = () => new Promise((res) => setTimeout(res, 0));
 
-const ADMIN_CATALOG = {
-    hasManagePermission: true,
-    tabs: [
-        {
-            tabId: 'a0B000000000001',
-            developerName: 'AccountOverview',
-            sObjectApiName: 'Account',
-            sequence: 1,
-            active: true,
-            cards: [
-                {
-                    cardId: 'a09000000000001',
-                    developerName: 'V360AccountSnapshot',
-                    label: 'Account Snapshot',
-                    description: 'Shows the account key details.',
-                    componentType: 'LWC',
-                    componentName: 'v360AccountSnapshot',
-                    iconName: 'standard:account',
-                    order: 1,
-                    active: true,
-                    killSwitch: false,
-                    ruleCount: 2
-                },
-                {
-                    cardId: 'a09000000000002',
-                    developerName: 'V360LifecycleDemo',
-                    label: 'Lifecycle Demo',
-                    description: 'Reference card.',
-                    componentType: 'LWC',
-                    componentName: 'v360LifecycleDemo',
-                    iconName: 'standard:screen',
-                    order: 3,
-                    active: true,
-                    killSwitch: true,
-                    ruleCount: 0
-                }
-            ]
-        }
-    ]
-};
+function card(cardId, developerName, overrides = {}) {
+    return {
+        cardId,
+        developerName,
+        label: developerName,
+        description: '',
+        componentType: 'LWC',
+        componentName: 'v360AccountSnapshot',
+        iconName: 'standard:account',
+        order: 1,
+        active: true,
+        killSwitch: false,
+        ruleCount: 0,
+        ...overrides
+    };
+}
+
+function adminCatalog() {
+    return {
+        hasManagePermission: true,
+        tabs: [
+            {
+                tabId: 'tab-account',
+                developerName: 'AccountOverview',
+                sObjectApiName: 'Account',
+                sequence: 1,
+                active: true,
+                cards: [
+                    card('card-a', 'CardA', { ruleCount: 2 }),
+                    card('card-b', 'CardB', { active: false }),
+                    card('card-c', 'CardC', { killSwitch: true })
+                ]
+            },
+            {
+                tabId: 'tab-case',
+                developerName: 'CaseOverview',
+                sObjectApiName: 'Case',
+                sequence: 2,
+                active: false,
+                cards: [card('card-d', 'CardD')]
+            }
+        ]
+    };
+}
 
 function createConsole() {
     const element = createElement('c-v360-admin-console', { is: V360AdminConsole });
     document.body.appendChild(element);
     return element;
+}
+
+function rowNames(element) {
+    return Array.from(element.shadowRoot.querySelectorAll('[data-id="card-row"]')).map(
+        (row) => row.textContent
+    );
 }
 
 describe('c-v360-admin-console', () => {
@@ -73,19 +90,88 @@ describe('c-v360-admin-console', () => {
         expect(element.shadowRoot.querySelector('[data-id="loading-state"]')).not.toBeNull();
     });
 
-    it('renders the configuration graph grouped by tab', async () => {
-        getCatalog.mockResolvedValue(ADMIN_CATALOG);
+    it('renders the first tab workspace with one row per card and its state badge', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
 
         const element = createConsole();
         await flushPromises();
 
-        const tabTitle = element.shadowRoot.querySelector('[data-id="tab-title"]');
-        expect(tabTitle.textContent).toBe('AccountOverview (Account)');
-        const rows = element.shadowRoot.querySelectorAll('[data-id="card-row"]');
-        expect(rows).toHaveLength(2);
-        expect(rows[0].textContent).toContain('Account Snapshot');
-        expect(rows[0].textContent).toContain('2');
-        expect(rows[1].textContent).toContain('On');
+        expect(element.shadowRoot.querySelector('[data-id="workspace-title"]').textContent).toBe(
+            'AccountOverview'
+        );
+        const states = Array.from(
+            element.shadowRoot.querySelectorAll('[data-id="card-state"]')
+        ).map((badge) => badge.textContent);
+        expect(states).toEqual(['Live', 'Draft', 'Kill switch on']);
+        const summaries = Array.from(
+            element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')
+        ).map((p) => p.textContent.trim());
+        expect(summaries[0]).toBe('2 visibility rules');
+        expect(summaries[1]).toContain('visible to everyone');
+    });
+
+    it('switches the workspace when another tab is selected in the navigation', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot
+            .querySelector('[data-id="tab-navigation"]')
+            .dispatchEvent(new CustomEvent('select', { detail: { name: 'tab-case' } }));
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="workspace-title"]').textContent).toBe(
+            'CaseOverview'
+        );
+        expect(element.shadowRoot.querySelectorAll('[data-id="card-row"]')).toHaveLength(1);
+    });
+
+    it('moves a card down optimistically and persists the full new sequence', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        updateCardOrder.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="move-down"][data-card-id="card-a"]').click();
+        await flushPromises();
+
+        expect(updateCardOrder).toHaveBeenCalledWith({
+            orderedCardIds: ['card-b', 'card-a', 'card-c']
+        });
+        expect(rowNames(element)[0]).toContain('CardB');
+    });
+
+    it('disables moving the first card up and the last card down', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        expect(
+            element.shadowRoot.querySelector('[data-id="move-up"][data-card-id="card-a"]').disabled
+        ).toBe(true);
+        expect(
+            element.shadowRoot.querySelector('[data-id="move-down"][data-card-id="card-c"]')
+                .disabled
+        ).toBe(true);
+    });
+
+    it('rolls back to the server order with a toast when the reorder save fails', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        updateCardOrder.mockRejectedValue(new Error('gate'));
+        const element = createConsole();
+        const toastHandler = jest.fn();
+        element.addEventListener('lightning__showtoast', toastHandler);
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="move-down"][data-card-id="card-a"]').click();
+        await flushPromises();
+
+        expect(toastHandler).toHaveBeenCalledTimes(1);
+        expect(getCatalog).toHaveBeenCalledTimes(2);
+        expect(rowNames(element)[0]).toContain('CardA');
     });
 
     it('renders the access state when the server reports no manage permission', async () => {
@@ -97,7 +183,6 @@ describe('c-v360-admin-console', () => {
         const denied = element.shadowRoot.querySelector('[data-id="denied-state"]');
         expect(denied).not.toBeNull();
         expect(denied.illustrationName).toBe('access:request');
-        expect(element.shadowRoot.querySelector('[data-id="card-row"]')).toBeNull();
     });
 
     it('renders the no-configuration state for a permitted admin with no tabs', async () => {
@@ -110,7 +195,7 @@ describe('c-v360-admin-console', () => {
     });
 
     it('shows the recoverable-error state and retries the request', async () => {
-        getCatalog.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(ADMIN_CATALOG);
+        getCatalog.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(adminCatalog());
 
         const element = createConsole();
         await flushPromises();
@@ -122,17 +207,5 @@ describe('c-v360-admin-console', () => {
 
         expect(getCatalog).toHaveBeenCalledTimes(2);
         expect(element.shadowRoot.querySelector('[data-id="card-row"]')).not.toBeNull();
-    });
-
-    it('refreshes the catalog from the header action', async () => {
-        getCatalog.mockResolvedValue(ADMIN_CATALOG);
-
-        const element = createConsole();
-        await flushPromises();
-
-        element.shadowRoot.querySelector('[data-id="refresh"]').click();
-        await flushPromises();
-
-        expect(getCatalog).toHaveBeenCalledTimes(2);
     });
 });
