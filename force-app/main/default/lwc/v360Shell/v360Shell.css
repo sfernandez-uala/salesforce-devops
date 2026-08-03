@@ -130,6 +130,18 @@
     padding: 0.875rem 1rem;
 }
 
+/* Flex discipline: the identity zone is the only one allowed to shrink
+   (its title ellipsizes); the back control and the action cluster keep
+   their size, so nothing ever pokes out of the header surface. */
+.v360-shell-header-identity {
+    min-width: 0;
+}
+
+.v360-shell-header-actions {
+    flex-shrink: 0;
+    align-items: center;
+}
+
 .v360-shell-content {
     flex-grow: 1;
     background: var(--v360-color-surface);
@@ -150,6 +162,7 @@
         flex: 0 0 auto;
         width: 100%;
         display: flex;
+        align-items: stretch;
         gap: 0.5rem;
         overflow-x: auto;
         padding-bottom: 0.25rem;
@@ -157,6 +170,7 @@
 
     .v360-shell-sidebar-item {
         flex: 0 0 auto;
+        justify-content: center;
         min-width: 5.5rem;
         max-width: 8rem;
         margin-bottom: 0;
