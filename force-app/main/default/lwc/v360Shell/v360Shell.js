@@ -72,6 +72,8 @@ export default class V360Shell extends LightningElement {
     error;
     selectedCardKey = null;
     headerActions = [];
+    railOverflowing = false;
+    railResizeObserver;
 
     connectedCallback() {
         this.customerState = v360CustomerState(this.recordId);
@@ -90,10 +92,58 @@ export default class V360Shell extends LightningElement {
         if (this.unsubscribeShellState) {
             this.unsubscribeShellState();
         }
+        if (this.railResizeObserver) {
+            this.railResizeObserver.disconnect();
+            this.railResizeObserver = null;
+        }
+    }
+
+    /**
+     * The sidebar rail advertises hidden items with a trailing-edge fade,
+     * but only while items actually overflow -- a permanent fade would
+     * signal more content when there is none. CSS cannot detect overflow,
+     * so the shell measures: on every render (item set may have changed)
+     * and on rail resizes (region width may have changed, without any
+     * re-render). ResizeObserver is absent in test DOMs; the fade then
+     * simply never engages.
+     */
+    syncRailOverflowObserver() {
+        if (typeof ResizeObserver === 'undefined') {
+            return;
+        }
+        const rail = this.refs?.sidebar ?? null;
+        if (rail === this.observedRail) {
+            return;
+        }
+        if (this.railResizeObserver) {
+            this.railResizeObserver.disconnect();
+            this.railResizeObserver = null;
+        }
+        this.observedRail = rail;
+        if (rail) {
+            this.railResizeObserver = new ResizeObserver(() => this.measureRailOverflow());
+            this.railResizeObserver.observe(rail);
+        }
+    }
+
+    measureRailOverflow() {
+        const rail = this.refs?.sidebar;
+        const overflowing = Boolean(rail) && rail.scrollWidth > rail.clientWidth;
+        if (overflowing !== this.railOverflowing) {
+            this.railOverflowing = overflowing;
+        }
+    }
+
+    get sidebarClass() {
+        return this.railOverflowing
+            ? 'v360-shell-sidebar v360-shell-sidebar_overflowing'
+            : 'v360-shell-sidebar';
     }
 
     renderedCallback() {
         this.syncHeaderActionsFromMountedCard();
+        this.syncRailOverflowObserver();
+        this.measureRailOverflow();
     }
 
     syncFromCustomerState() {

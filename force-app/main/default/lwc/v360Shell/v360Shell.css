@@ -177,6 +177,14 @@
         padding: 0.5rem 0.375rem;
     }
 
+    /* Scroll affordance: the shell sets this class only while rail items
+       actually overflow, and the trailing edge fades to signal more cards
+       off-screen. */
+    .v360-shell-sidebar_overflowing {
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+        mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+    }
+
     /* Typography steps down with the region so the header keeps its
        hierarchy without dominating a narrow workspace. */
     .v360-shell-title {
