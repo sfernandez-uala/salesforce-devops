@@ -12,6 +12,10 @@ module.exports = {
         // `@salesforce/apex/Controller.method` import, which sfdx-lwc-jest
         // already resolves) has no built-in stub either; only `refreshApex`
         // is needed from it today.
-        '^@salesforce/apex$': '<rootDir>/force-app/test/jest-mocks/apex/apex'
+        '^@salesforce/apex$': '<rootDir>/force-app/test/jest-mocks/apex/apex',
+        // c/v360Styles is a CSS-only bundle (stylesheet + metadata, no
+        // JavaScript — the documented shape for shared styles), so Jest's
+        // resolver needs a direct pointer at the stylesheet.
+        '^c/v360Styles$': '<rootDir>/force-app/main/default/lwc/v360Styles/v360Styles.css'
     }
 };

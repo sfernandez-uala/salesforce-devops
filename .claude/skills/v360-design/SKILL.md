@@ -22,7 +22,7 @@ places it is allowed to live, and no others:
 
 - **Shared chrome** (a rule any V360 component could plausibly reuse — a fixed-width
   rail, a rounded-corner treatment SLDS has no utility class for, etc.) lives in
-  the shell's global stylesheet (see section 3). This is the default home.
+  `c/v360Styles` (see section 3). This is the default home.
 - **Per-component structural CSS** (a card's own stencil/skeleton shape, a repeated
   internal layout used across more than one of the card's own templates, or any other
   rule that is genuinely that component's own presentation, not shared chrome) may
@@ -32,7 +32,7 @@ places it is allowed to live, and no others:
   template-specific stylesheet only overrides on top of that base. This is the
   exception, not the default — most components need no CSS of their own at all.
 
-Either way, every stylesheet that references a color reaches for a global
+Either way, every stylesheet that references a color reaches for a `c/v360Styles`
 token (section 3) instead of a hardcoded hex value, and every custom rule carries a
 one-line plain-language comment explaining what SLDS could not do.
 
@@ -87,22 +87,27 @@ external API (`title`, `illustrationName`, `size`, `alternativeText`, `descripti
 `retryLabel`, `retry` event, `cta` slot) so every consumer is unaffected by the
 swap.
 
-## 3. Global custom CSS: tokens defined on the shell
+## 3. Shared custom CSS: `c/v360Styles`
 
-Vista 360's global color tokens are defined once, on `c/v360Shell`'s own
-stylesheet (`:host`). CSS custom properties inherit down the DOM tree —
-shadow boundaries included — and every card is mounted inside the shell, so
-every card resolves the tokens without importing anything.
+`c/v360Styles` is a CSS-only module: its bundle contains exactly the
+stylesheet and the bundle metadata file — **no JavaScript file**. That shape
+is what makes it both deployable and importable (a bundle with only the
+`.css` is not recognized by the packaging tooling, and one with a JavaScript
+stub is not a valid `@import` target). Components pull it into their own
+stylesheet with:
 
-Why not a shared CSS module: the deploy tooling cannot package a Lightning
-component bundle that contains only a `.css` file (org-verified on the pinned
-CLI versions), and a bundle that keeps a JavaScript stub alongside the
-stylesheet is not a supported `@import` target. The shell — Vista 360's root
-by definition — is the platform-supported single home.
+```css
+@import 'c/v360Styles';
+```
+
+Only import it from components that actually have their own `.css` file with a
+real reason to need it. Note for unit tests: because the bundle has no
+JavaScript entry, `jest.config.js` maps `c/v360Styles` straight at the
+stylesheet.
 
 ### Global color tokens
 
-`v360Shell.css` defines the tokens as CSS custom properties on `:host`, each
+`v360Styles.css` defines the tokens as CSS custom properties on `:host`, each
 mapped onto an SLDS 2 global styling hook with a literal fallback so a theme or
 dark-mode change is absorbed by the hook and the fallback only matters in an
 org where the hook is not yet defined:
@@ -119,11 +124,11 @@ hardcoded hex value — that is what keeps dark mode and future theme changes a
 one-file fix. Add a new token here (with the same hook-plus-fallback shape) rather
 than inventing a bespoke color in a component stylesheet.
 
-`v360Shell.css` also carries the handful of shared, non-color chrome rules SLDS has
+`v360Styles.css` also carries the handful of shared, non-color chrome rules SLDS has
 no utility class for — for example the shell sidebar's rounded-corner selected-item
 treatment (section 9). Each such rule keeps its own one-line justification comment.
 A card's own structural rules (like its skeleton stencils) live in that card's own
-stylesheet, referencing the global tokens — never a hardcoded hex value.
+stylesheet, referencing the imported global tokens — never a hardcoded hex value.
 
 ## 4. The `{ status, data, error }` state contract
 
@@ -177,7 +182,7 @@ shell's responsibility; stages 2-5 belong entirely to the card itself.
    shape. The stencil CSS (bar shape, sizing, the shimmer `@keyframes`) is a
    justified per-component exception (section 1) living in the card's own
    stylesheet, since it is that card's own structural presentation; only the bar
-   and shimmer *colors* come from the shell-defined global tokens
+   and shimmer *colors* come from the imported `c/v360Styles` tokens
    (`--v360-color-skeleton`, `--v360-color-surface`). `c/v360AccountSnapshot` is
    the reference implementation — see its `isSkeleton` getter and
    `v360AccountSnapshot.css`.
