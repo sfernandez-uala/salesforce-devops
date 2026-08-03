@@ -64,9 +64,9 @@ without actions simply omit both members.
 ## 4. CSS rules (see v360-design section 3)
 
 - SLDS utility classes and base components first, always.
-- Colors only through the global `--v360-color-*` tokens (defined on the
-  shell's stylesheet; they cascade into every mounted card). Never hardcode a
-  hex value in a card stylesheet.
+- Colors only through the global `--v360-color-*` tokens: add
+  `@import 'c/v360Styles';` to the card's stylesheet when it needs one.
+  Never hardcode a hex value in a card stylesheet.
 - A card's own structural rules (stencil bars, layout quirks SLDS cannot
   express) live in the card's own `.css` with a one-line justification
   comment. No stylesheet at all is the best stylesheet.
