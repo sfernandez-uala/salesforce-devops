@@ -94,6 +94,13 @@ export default class V360AdminConsole extends LightningElement {
         this.formulaFeedback = {};
     }
 
+    handleCardKeydown(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.handleCardOpen(event);
+        }
+    }
+
     async handleMoveUp(event) {
         event.stopPropagation();
         this.moveCard(event.currentTarget.dataset.cardId, -1);
@@ -295,11 +302,14 @@ export default class V360AdminConsole extends LightningElement {
 
     toCardRow(card, index, lastIndex) {
         const presentation = this.cardPresentation(card);
+        const isSelected = card.cardId === this.selectedCardId;
         return {
             ...card,
             ...presentation,
-            inputId: `picker-${card.cardId}`,
-            isSelected: card.cardId === this.selectedCardId,
+            isSelected,
+            rowClass: isSelected
+                ? 'slds-box slds-box_link slds-box_x-small slds-media slds-m-bottom_x-small v360-admin-row_selected'
+                : 'slds-box slds-box_link slds-box_x-small slds-media slds-m-bottom_x-small',
             moveUpDisabled: index === 0 || this.savingOrder,
             moveDownDisabled: index === lastIndex || this.savingOrder
         };

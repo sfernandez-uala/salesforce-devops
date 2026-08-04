@@ -95,35 +95,32 @@
                             </div>
 
                             <template for:each={workspace.cards} for:item="card">
-                                <div key={card.cardId} class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small" data-id="card-row">
-                                    <div class="slds-col slds-grow-none">
-                                        <div class="slds-visual-picker slds-visual-picker_vertical">
-                                            <input
-                                                type="radio"
-                                                id={card.inputId}
-                                                name="admin-card-selection"
-                                                value={card.cardId}
-                                                checked={card.isSelected}
-                                                data-id="card-picker"
-                                                data-card-id={card.cardId}
-                                                onchange={handleCardOpen}
-                                            />
-                                            <label for={card.inputId}>
-                                                <span class="slds-visual-picker__figure slds-visual-picker__text slds-align_absolute-center">
-                                                    <span>
-                                                        <span class="slds-show slds-text-heading_small">{card.label}</span>
-                                                        <span class="slds-show slds-text-body_small slds-text-color_weak">
-                                                            {card.developerName} · {card.binding}
-                                                        </span>
-                                                        <span class="slds-show slds-text-body_small" data-id="rule-summary">{card.ruleSummary}</span>
-                                                    </span>
-                                                </span>
-                                            </label>
-                                        </div>
+                                <div
+                                    key={card.cardId}
+                                    class={card.rowClass}
+                                    data-id="card-row"
+                                    data-card-id={card.cardId}
+                                    role="button"
+                                    tabindex="0"
+                                    aria-pressed={card.isSelected}
+                                    onclick={handleCardOpen}
+                                    onkeydown={handleCardKeydown}
+                                >
+                                    <div class="slds-media__figure slds-media__figure_fixed-width slds-align_absolute-center">
+                                        <lightning-icon icon-name={card.iconNameOrDefault} size="small"></lightning-icon>
                                     </div>
-                                    <div class="slds-col slds-grow-none slds-p-left_x-small slds-text-align_center">
-                                        <span class={card.stateClass} data-id="card-state">{card.stateLabel}</span>
-                                        <div class="slds-grid slds-grid_vertical slds-m-top_x-small">
+                                    <div class="slds-media__body">
+                                        <div class="slds-grid slds-grid_vertical-align-center">
+                                            <span class="slds-text-heading_small slds-truncate slds-m-right_x-small">{card.label}</span>
+                                            <span class={card.stateClass} data-id="card-state">{card.stateLabel}</span>
+                                        </div>
+                                        <p class="slds-text-body_small slds-text-color_weak slds-truncate">
+                                            {card.developerName} · {card.binding}
+                                        </p>
+                                        <p class="slds-text-body_small slds-truncate" data-id="rule-summary">{card.ruleSummary}</p>
+                                    </div>
+                                    <div class="slds-media__figure slds-media__figure_reverse slds-align_absolute-center">
+                                        <div class="slds-grid slds-grid_vertical">
                                             <lightning-button-icon
                                                 icon-name="utility:arrowup"
                                                 variant="border-filled"
