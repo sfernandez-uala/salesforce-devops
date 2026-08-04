@@ -105,6 +105,50 @@ public with sharing class V360AdminController {
     }
 
     /**
+     * Creates or updates a tab. The anchor SObject is validated to resolve
+     * to a real object before anything is written.
+     *
+     * @param input the tab id (blank to create) plus every editable property
+     */
+    @AuraEnabled
+    public static void saveTab(TabInput input) {
+        try {
+            V360AdminService.saveTabs(
+                new List<V360_Tab__c>{
+                    new V360_Tab__c(
+                        Id = input.tabId,
+                        DeveloperName__c = input.developerName,
+                        AnchorSObject__c = input.sObjectApiName,
+                        Sequence__c = input.sequence,
+                        Active__c = input.active
+                    )
+                }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to save the tab.');
+        }
+    }
+
+    /**
+     * Deletes a tab; a tab that still has cards is rejected with a clear
+     * message.
+     *
+     * @param tabId the tab to delete
+     */
+    @AuraEnabled
+    public static void deleteTab(Id tabId) {
+        try {
+            V360AdminService.deleteTabs(new Set<Id>{ tabId });
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to delete the tab.');
+        }
+    }
+
+    /**
      * Creates a card as a draft: inactive, invisible to end users until an
      * admin activates it. The binding is validated the same way as an edit.
      *
@@ -475,6 +519,23 @@ public with sharing class V360AdminController {
         public String componentType { get; set; }
         @AuraEnabled
         public String componentName { get; set; }
+    }
+
+    /** Everything saveTab may change on a tab; a blank id creates one. */
+    // Transport properties named after the fields they carry; per-property
+    // ApexDoc would only restate each name.
+    @SuppressWarnings('PMD.ApexDoc')
+    public class TabInput {
+        @AuraEnabled
+        public Id tabId { get; set; }
+        @AuraEnabled
+        public String developerName { get; set; }
+        @AuraEnabled
+        public String sObjectApiName { get; set; }
+        @AuraEnabled
+        public Decimal sequence { get; set; }
+        @AuraEnabled
+        public Boolean active { get; set; }
     }
 
     /** Everything createCard needs: the tab, the identity, and the properties. */

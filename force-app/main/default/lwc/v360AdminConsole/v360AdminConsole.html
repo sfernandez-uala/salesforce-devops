@@ -118,6 +118,12 @@
                                 </lightning-vertical-navigation-section>
                             </template>
                         </lightning-vertical-navigation>
+                        <lightning-button
+                            label="New tab"
+                            class="slds-m-top_x-small slds-m-left_small"
+                            data-id="new-tab"
+                            onclick={handleNewTab}
+                        ></lightning-button>
                     </div>
 
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_9-of-12 slds-large-size_6-of-12" data-id="workspace">
@@ -131,6 +137,16 @@
                                     {workspace.cardCountLabel}
                                 </span>
                                 <span class={workspace.statusClass}>{workspace.statusLabel}</span>
+                                <lightning-button-icon
+                                    icon-name="utility:edit"
+                                    variant="border-filled"
+                                    size="small"
+                                    alternative-text="Edit tab"
+                                    title="Edit tab"
+                                    class="slds-m-left_x-small"
+                                    data-id="edit-tab"
+                                    onclick={handleEditTab}
+                                ></lightning-button-icon>
                                 <lightning-button
                                     variant="brand"
                                     label="New card"
@@ -279,6 +295,7 @@
                                     <lightning-input
                                         label="Label"
                                         value={detail.label}
+                                        required
                                         data-id="prop-label"
                                     ></lightning-input>
                                     <lightning-textarea
@@ -424,6 +441,7 @@
                                                     <lightning-input
                                                         label="Target API name"
                                                         placeholder="Permission set or field API name"
+                                                        required
                                                         data-id={rule.predicateTargetFieldId}
                                                     ></lightning-input>
                                                 </div>
@@ -492,6 +510,69 @@
         <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
     </template>
 
+    <template lwc:if={tabModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="tab-modal-title" class="slds-modal slds-fade-in-open" data-id="tab-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="tab-modal-title" class="slds-modal__title">{tabModalTitle}</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input
+                        label="Developer name"
+                        required
+                        value={tabForm.developerName}
+                        field-level-help="Stable unique name, e.g. AccountOverview. The shell references it from the record page."
+                        data-id="nt-devname"
+                    ></lightning-input>
+                    <lightning-input
+                        label="Anchor object"
+                        required
+                        value={tabForm.sObjectApiName}
+                        placeholder="Account"
+                        field-level-help="API name of the object whose record pages host this tab; validated on save."
+                        data-id="nt-anchor"
+                    ></lightning-input>
+                    <lightning-input
+                        type="number"
+                        label="Sequence"
+                        required
+                        value={tabForm.sequence}
+                        data-id="nt-sequence"
+                    ></lightning-input>
+                    <lightning-input
+                        type="checkbox"
+                        label="Active"
+                        checked={tabForm.active}
+                        data-id="nt-active"
+                    ></lightning-input>
+                </div>
+                <div class="slds-modal__footer slds-grid">
+                    <template lwc:if={isEditingTab}>
+                        <lightning-button
+                            variant="destructive-text"
+                            label="Delete tab"
+                            data-id="nt-delete"
+                            disabled={busy}
+                            onclick={handleRequestDeleteTab}
+                        ></lightning-button>
+                    </template>
+                    <div class="slds-col_bump-left">
+                        <lightning-button label="Cancel" data-id="nt-cancel" onclick={handleCloseTabModal}></lightning-button>
+                        <lightning-button
+                            variant="brand"
+                            label="Save tab"
+                            class="slds-m-left_x-small"
+                            data-id="nt-save"
+                            disabled={busy}
+                            onclick={handleSaveTab}
+                        ></lightning-button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
     <template lwc:if={newCardOpen}>
         <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="new-card-title" class="slds-modal slds-fade-in-open" data-id="new-card-modal">
             <div class="slds-modal__container">
@@ -527,6 +608,7 @@
                         <lightning-combobox
                             label="Component"
                             options={componentOptions}
+                            required
                             data-id="nc-component"
                             field-level-help="Only registered card components can be bound."
                         ></lightning-combobox>
@@ -534,6 +616,7 @@
                     <template lwc:else>
                         <lightning-input
                             label="Screen flow API name"
+                            required
                             data-id="nc-flow"
                             field-level-help="Must name an active screen flow; validated on save."
                         ></lightning-input>

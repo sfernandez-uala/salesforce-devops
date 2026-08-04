@@ -438,6 +438,97 @@ private class V360AdminControllerTest {
         );
     }
 
+    @IsTest
+    static void saveTabCreatesAndUpdatesATab() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.TabInput createInput = new V360AdminController.TabInput();
+            createInput.developerName = 'V360Test_TabAbm';
+            createInput.sObjectApiName = 'Case';
+            createInput.sequence = 5;
+            createInput.active = true;
+            V360AdminController.saveTab(createInput);
+
+            V360_Tab__c created = [SELECT Id, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'];
+            V360AdminController.TabInput updateInput = new V360AdminController.TabInput();
+            updateInput.tabId = created.Id;
+            updateInput.developerName = 'V360Test_TabAbm';
+            updateInput.sObjectApiName = 'Case';
+            updateInput.sequence = 6;
+            updateInput.active = false;
+            V360AdminController.saveTab(updateInput);
+            Test.stopTest();
+
+            V360_Tab__c updated = [
+                SELECT Sequence__c, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'
+            ];
+            Assert.areEqual(6, updated.Sequence__c, 'The sequence must round-trip on update');
+            Assert.isFalse(updated.Active__c, 'The active flag must round-trip on update');
+        }
+    }
+
+    @IsTest
+    static void saveTabRejectsAnUnknownAnchorSObject() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+
+        System.runAs(admin) {
+            Test.startTest();
+            Boolean threw = false;
+            try {
+                V360AdminController.TabInput input = new V360AdminController.TabInput();
+                input.developerName = 'V360Test_BadAnchor';
+                input.sObjectApiName = 'No_Such_Object__c';
+                input.sequence = 1;
+                input.active = true;
+                V360AdminController.saveTab(input);
+            } catch (AuraHandledException expected) {
+                threw = true;
+            }
+            Test.stopTest();
+            Assert.isTrue(threw, 'An unknown anchor SObject must be rejected at save');
+        }
+    }
+
+    @IsTest
+    static void deleteTabIsRejectedWhileItStillHasCards() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_TabBusy', 'Account');
+        V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_TabBusy_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            Boolean threw = false;
+            try {
+                V360AdminController.deleteTab(tab.Id);
+            } catch (AuraHandledException expected) {
+                threw = true;
+            }
+            Test.stopTest();
+            Assert.isTrue(threw, 'Deleting a tab that still has cards must be rejected');
+        }
+        Assert.areEqual(1, [SELECT COUNT() FROM V360_Tab__c WHERE Id = :tab.Id], 'The tab must survive');
+    }
+
+    @IsTest
+    static void deleteTabRemovesAnEmptyTab() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_TabEmpty', 'Account');
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.deleteTab(tab.Id);
+            Test.stopTest();
+        }
+
+        Assert.areEqual(0, [SELECT COUNT() FROM V360_Tab__c WHERE Id = :tab.Id], 'The empty tab must be gone');
+    }
+
     private static V360AdminController.AdminTab findTab(
         V360AdminController.AdminCatalog catalog,
         String developerName

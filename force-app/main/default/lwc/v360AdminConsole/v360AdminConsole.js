@@ -15,6 +15,8 @@ import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRule
 import deleteRule from '@salesforce/apex/V360AdminController.deleteRule';
 import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
 import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
+import saveTab from '@salesforce/apex/V360AdminController.saveTab';
+import deleteTab from '@salesforce/apex/V360AdminController.deleteTab';
 import releaseKillSwitch from '@salesforce/apex/V360AdminController.releaseKillSwitch';
 
 const STATUS_LOADING = 'loading';
@@ -58,6 +60,8 @@ export default class V360AdminConsole extends LightningElement {
     helpOpen = false;
     newCardOpen = false;
     newCardType = COMPONENT_TYPE_LWC;
+    tabModalOpen = false;
+    editingTabId = null;
     addRuleOpen = false;
     deleteTarget = null;
     formulaFeedback = {};
@@ -198,6 +202,9 @@ export default class V360AdminConsole extends LightningElement {
         if (this.busy) {
             return;
         }
+        if (!this.requiredFieldsValid(['[data-id="prop-label"]'])) {
+            return;
+        }
         this.busy = true;
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
@@ -295,6 +302,106 @@ export default class V360AdminConsole extends LightningElement {
         }
     }
 
+    /**
+     * Client-side gate before any create/save call: every listed field must
+     * be non-blank. Fields that support reportValidity surface their own
+     * inline error; the shared toast covers the rest.
+     */
+    requiredFieldsValid(selectors) {
+        let valid = true;
+        for (const selector of selectors) {
+            const field = this.template.querySelector(selector);
+            if (!field) {
+                continue;
+            }
+            if (typeof field.reportValidity === 'function') {
+                field.reportValidity();
+            }
+            if (!String(field.value ?? '').trim()) {
+                valid = false;
+            }
+        }
+        if (!valid) {
+            this.toast('Missing information', 'Complete the required fields.', 'error');
+        }
+        return valid;
+    }
+
+    handleNewTab() {
+        this.editingTabId = null;
+        this.tabModalOpen = true;
+    }
+
+    handleEditTab() {
+        this.editingTabId = this.selectedTabId;
+        this.tabModalOpen = true;
+    }
+
+    handleCloseTabModal() {
+        this.tabModalOpen = false;
+    }
+
+    async handleSaveTab() {
+        if (this.busy) {
+            return;
+        }
+        if (!this.requiredFieldsValid(['[data-id="nt-devname"]', '[data-id="nt-anchor"]', '[data-id="nt-sequence"]'])) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await saveTab({
+                input: {
+                    tabId: this.editingTabId,
+                    developerName: this.template.querySelector('[data-id="nt-devname"]').value,
+                    sObjectApiName: this.template.querySelector('[data-id="nt-anchor"]').value,
+                    sequence: Number(this.template.querySelector('[data-id="nt-sequence"]').value),
+                    active: this.template.querySelector('[data-id="nt-active"]').checked
+                }
+            });
+            this.tabModalOpen = false;
+            this.toast('Tab saved', 'The tab was saved.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Save failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    handleRequestDeleteTab() {
+        const tab = this.selectedTab;
+        this.tabModalOpen = false;
+        this.deleteTarget = { kind: 'tab', id: tab.tabId, label: tab.developerName };
+    }
+
+    get tabModalTitle() {
+        return this.editingTabId ? 'Edit tab' : 'New tab';
+    }
+
+    get isEditingTab() {
+        return Boolean(this.editingTabId);
+    }
+
+    /** The tab modal's field values: the edited tab, or create-mode defaults. */
+    get tabForm() {
+        const editing = this.data?.tabs.find((tab) => tab.tabId === this.editingTabId);
+        if (editing) {
+            return {
+                developerName: editing.developerName,
+                sObjectApiName: editing.sObjectApiName,
+                sequence: editing.sequence,
+                active: editing.active
+            };
+        }
+        return {
+            developerName: '',
+            sObjectApiName: '',
+            sequence: (this.data?.tabs.length ?? 0) + 1,
+            active: true
+        };
+    }
+
     handleNewCard() {
         this.newCardType = COMPONENT_TYPE_LWC;
         this.newCardOpen = true;
@@ -310,6 +417,10 @@ export default class V360AdminConsole extends LightningElement {
 
     async handleCreateCard() {
         if (this.busy) {
+            return;
+        }
+        const bindingField = this.isNewCardLwc ? '[data-id="nc-component"]' : '[data-id="nc-flow"]';
+        if (!this.requiredFieldsValid(['[data-id="nc-devname"]', '[data-id="nc-label"]', bindingField])) {
             return;
         }
         this.busy = true;
@@ -353,6 +464,9 @@ export default class V360AdminConsole extends LightningElement {
         if (this.busy) {
             return;
         }
+        if (!this.requiredFieldsValid(['[data-id="nr-devname"]'])) {
+            return;
+        }
         this.busy = true;
         try {
             await createRule({
@@ -374,8 +488,11 @@ export default class V360AdminConsole extends LightningElement {
         if (this.busy) {
             return;
         }
-        this.busy = true;
         const ruleId = event.currentTarget.dataset.ruleId;
+        if (!this.requiredFieldsValid([`[data-id="pred-target-${ruleId}"]`])) {
+            return;
+        }
+        this.busy = true;
         try {
             await addRulePredicate({
                 ruleId,
@@ -482,6 +599,9 @@ export default class V360AdminConsole extends LightningElement {
             if (target.kind === 'card') {
                 await deleteCard({ cardId: target.id });
                 this.toast('Card deleted', `“${target.label}” and its rules were deleted.`, 'success');
+            } else if (target.kind === 'tab') {
+                await deleteTab({ tabId: target.id });
+                this.toast('Tab deleted', `“${target.label}” was deleted.`, 'success');
             } else {
                 await deleteRule({ ruleId: target.id });
                 this.toast('Rule deleted', `“${target.label}” was deleted.`, 'success');
@@ -516,9 +636,13 @@ export default class V360AdminConsole extends LightningElement {
         if (!this.deleteTarget) {
             return '';
         }
-        return this.deleteTarget.kind === 'card'
-            ? `“${this.deleteTarget.label}” will be deleted together with its visibility rules. This cannot be undone.`
-            : `The rule “${this.deleteTarget.label}” and its predicates will be deleted. This cannot be undone.`;
+        if (this.deleteTarget.kind === 'card') {
+            return `“${this.deleteTarget.label}” will be deleted together with its visibility rules. This cannot be undone.`;
+        }
+        if (this.deleteTarget.kind === 'tab') {
+            return `The tab “${this.deleteTarget.label}” will be deleted. A tab that still has cards is rejected.`;
+        }
+        return `The rule “${this.deleteTarget.label}” and its predicates will be deleted. This cannot be undone.`;
     }
 
     toast(title, message, variant) {

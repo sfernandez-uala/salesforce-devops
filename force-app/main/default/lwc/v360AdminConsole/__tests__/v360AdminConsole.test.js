@@ -11,6 +11,8 @@ import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredic
 import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRulePredicate';
 import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
 import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
+import saveTab from '@salesforce/apex/V360AdminController.saveTab';
+import deleteTab from '@salesforce/apex/V360AdminController.deleteTab';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 
@@ -27,6 +29,8 @@ jest.mock('@salesforce/apex/V360AdminController.deleteRule', () => ({ default: j
 jest.mock('@salesforce/apex/V360AdminController.deleteCard', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.engageKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.releaseKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.saveTab', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteTab', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.validateRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 
@@ -449,6 +453,65 @@ describe('c-v360-admin-console', () => {
         element.shadowRoot.querySelector('[data-id="action-kill"]').click();
         await flushPromises();
         expect(engageKillSwitch).toHaveBeenCalledWith({ cardId: 'card-a' });
+    });
+
+    it('blocks card creation when required fields are blank', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-card"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nc-create"]').click();
+        await flushPromises();
+
+        expect(createCard).not.toHaveBeenCalled();
+        expect(element.shadowRoot.querySelector('[data-id="new-card-modal"]')).not.toBeNull();
+    });
+
+    it('creates a tab from the tab modal with the entered values', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        saveTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-tab"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nt-devname"]').value = 'CaseRisk';
+        element.shadowRoot.querySelector('[data-id="nt-anchor"]').value = 'Case';
+        element.shadowRoot.querySelector('[data-id="nt-sequence"]').value = '7';
+        element.shadowRoot.querySelector('[data-id="nt-active"]').checked = true;
+        element.shadowRoot.querySelector('[data-id="nt-save"]').click();
+        await flushPromises();
+
+        expect(saveTab).toHaveBeenCalledWith({
+            input: { tabId: null, developerName: 'CaseRisk', sObjectApiName: 'Case', sequence: 7, active: true }
+        });
+    });
+
+    it('deletes a tab from the edit modal through the confirm dialog', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deleteTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="edit-tab"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="nt-devname"]').value).toBe('AccountOverview');
+
+        element.shadowRoot.querySelector('[data-id="nt-delete"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="delete-message"]').textContent).toContain(
+            'AccountOverview'
+        );
+
+        element.shadowRoot.querySelector('[data-id="delete-confirm"]').click();
+        await flushPromises();
+
+        expect(deleteTab).toHaveBeenCalledWith({ tabId: 'tab-account' });
     });
 
     it('renders the access state when the server reports no manage permission', async () => {

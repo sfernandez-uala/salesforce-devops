@@ -32,7 +32,37 @@ public with sharing class V360AdminService {
      */
     public static List<Database.UpsertResult> saveTabs(List<V360_Tab__c> tabs) {
         requireManagePermission();
+        validateTabAnchors(tabs);
         return upsertEnforced(tabs);
+    }
+
+    /**
+     * Deletes tabs behind the manage-permission gate. A tab that still has
+     * cards is rejected with a clear message instead of the raw
+     * delete-restriction error.
+     *
+     * @param tabIds the tabs to delete
+     */
+    public static void deleteTabs(Set<Id> tabIds) {
+        requireManagePermission();
+        Integer cardCount = [SELECT COUNT() FROM V360_Card__c WHERE Tab__c IN :tabIds WITH USER_MODE];
+        if (cardCount > 0) {
+            throw new V360AdminServiceException(
+                'This tab still has cards. Delete or move its cards before deleting the tab.'
+            );
+        }
+        Database.delete(new List<Id>(tabIds), true, AccessLevel.USER_MODE);
+    }
+
+    private static void validateTabAnchors(List<V360_Tab__c> tabs) {
+        for (V360_Tab__c tab : tabs) {
+            if (String.isBlank(tab.AnchorSObject__c)) {
+                continue;
+            }
+            if (Schema.getGlobalDescribe().get(tab.AnchorSObject__c.toLowerCase()) == null) {
+                throw new V360AdminServiceException('Unknown anchor SObject: ' + tab.AnchorSObject__c);
+            }
+        }
     }
 
     /**
