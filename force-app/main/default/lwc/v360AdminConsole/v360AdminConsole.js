@@ -5,8 +5,17 @@ import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
 import activateCard from '@salesforce/apex/V360AdminController.activateCard';
+import deactivateCard from '@salesforce/apex/V360AdminController.deactivateCard';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
+import createCard from '@salesforce/apex/V360AdminController.createCard';
+import createRule from '@salesforce/apex/V360AdminController.createRule';
+import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredicate';
+import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRulePredicate';
+import deleteRule from '@salesforce/apex/V360AdminController.deleteRule';
+import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
+import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
+import releaseKillSwitch from '@salesforce/apex/V360AdminController.releaseKillSwitch';
 
 const STATUS_LOADING = 'loading';
 const STATUS_LOADED = 'loaded';
@@ -47,6 +56,10 @@ export default class V360AdminConsole extends LightningElement {
     busy = false;
     activationOpen = false;
     helpOpen = false;
+    newCardOpen = false;
+    newCardType = COMPONENT_TYPE_LWC;
+    addRuleOpen = false;
+    deleteTarget = null;
     formulaFeedback = {};
     iconDraft;
 
@@ -283,11 +296,229 @@ export default class V360AdminConsole extends LightningElement {
     }
 
     handleNewCard() {
-        this.toast('Not yet available', 'The new-card wizard ships in the next round; new cards will start as drafts.', 'info');
+        this.newCardType = COMPONENT_TYPE_LWC;
+        this.newCardOpen = true;
+    }
+
+    handleCloseNewCard() {
+        this.newCardOpen = false;
+    }
+
+    handleNewCardTypeChange(event) {
+        this.newCardType = event.detail.value;
+    }
+
+    async handleCreateCard() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const tab = this.selectedTab;
+        const componentName = this.isNewCardLwc
+            ? this.template.querySelector('[data-id="nc-component"]').value.slice(COMPONENT_TYPE_LWC.length + 1)
+            : this.template.querySelector('[data-id="nc-flow"]').value;
+        try {
+            await createCard({
+                input: {
+                    tabId: tab.tabId,
+                    developerName: this.template.querySelector('[data-id="nc-devname"]').value,
+                    label: this.template.querySelector('[data-id="nc-label"]').value,
+                    description: this.template.querySelector('[data-id="nc-description"]').value,
+                    iconName: this.template.querySelector('[data-id="nc-icon"]').value,
+                    buttonLabel: this.template.querySelector('[data-id="nc-button-label"]').value,
+                    componentType: this.newCardType,
+                    componentName,
+                    order: tab.cards.length + 1
+                }
+            });
+            this.newCardOpen = false;
+            this.toast('Card created', 'The card starts as a draft — activate it when it is ready.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Create failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
     }
 
     handleAddRule() {
-        this.toast('Not yet available', 'The rule builder ships in the next round.', 'info');
+        this.addRuleOpen = true;
+    }
+
+    handleCloseAddRule() {
+        this.addRuleOpen = false;
+    }
+
+    async handleCreateRule() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await createRule({
+                cardId: this.selectedCardId,
+                developerName: this.template.querySelector('[data-id="nr-devname"]').value,
+                formulaText: this.template.querySelector('[data-id="nr-formula"]').value
+            });
+            this.addRuleOpen = false;
+            this.toast('Rule created', 'The visibility rule was created.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Create failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleAddPredicate(event) {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const ruleId = event.currentTarget.dataset.ruleId;
+        try {
+            await addRulePredicate({
+                ruleId,
+                predicateType: this.template.querySelector(`[data-id="pred-type-${ruleId}"]`).value,
+                targetApiName: this.template.querySelector(`[data-id="pred-target-${ruleId}"]`).value
+            });
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Add failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleRemovePredicate(event) {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await deleteRulePredicate({ predicateId: event.currentTarget.dataset.predicateId });
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Delete failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleDeactivate() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await deactivateCard({ cardId: card.cardId });
+            this.toast('Card deactivated', `“${card.label}” is a draft again — end users no longer see it.`, 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Deactivation failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleEngageKillSwitch() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await engageKillSwitch({ cardId: card.cardId });
+            this.toast('Kill switch on', `“${card.label}” is hidden everywhere until the switch is released.`, 'warning');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Kill switch failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleReleaseKillSwitch() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await releaseKillSwitch({ cardId: card.cardId });
+            this.toast('Kill switch released', `“${card.label}” follows its visibility rules again.`, 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Release failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    handleRequestDeleteCard() {
+        const card = this.selectedCard;
+        this.deleteTarget = { kind: 'card', id: card.cardId, label: card.label };
+    }
+
+    handleRequestDeleteRule(event) {
+        const ruleId = event.currentTarget.dataset.ruleId;
+        const rule = this.selectedCard.rules.find((candidate) => candidate.ruleId === ruleId);
+        this.deleteTarget = { kind: 'rule', id: ruleId, label: rule.developerName };
+    }
+
+    handleCancelDelete() {
+        this.deleteTarget = null;
+    }
+
+    async handleConfirmDelete() {
+        if (this.busy || !this.deleteTarget) {
+            return;
+        }
+        this.busy = true;
+        const target = this.deleteTarget;
+        this.deleteTarget = null;
+        try {
+            if (target.kind === 'card') {
+                await deleteCard({ cardId: target.id });
+                this.toast('Card deleted', `“${target.label}” and its rules were deleted.`, 'success');
+            } else {
+                await deleteRule({ ruleId: target.id });
+                this.toast('Rule deleted', `“${target.label}” was deleted.`, 'success');
+            }
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Delete failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    get isNewCardLwc() {
+        return this.newCardType === COMPONENT_TYPE_LWC;
+    }
+
+    get newCardTypeOptions() {
+        return [
+            { label: 'Lightning component', value: COMPONENT_TYPE_LWC },
+            { label: 'Screen flow', value: COMPONENT_TYPE_FLOW }
+        ];
+    }
+
+    get predicateTypeOptions() {
+        return [
+            { label: 'Permission set', value: 'PERMISSION_SET' },
+            { label: 'Field read access', value: 'FLS_READ' }
+        ];
+    }
+
+    get deleteMessage() {
+        if (!this.deleteTarget) {
+            return '';
+        }
+        return this.deleteTarget.kind === 'card'
+            ? `“${this.deleteTarget.label}” will be deleted together with its visibility rules. This cannot be undone.`
+            : `The rule “${this.deleteTarget.label}” and its predicates will be deleted. This cannot be undone.`;
     }
 
     toast(title, message, variant) {
@@ -410,6 +641,7 @@ export default class V360AdminConsole extends LightningElement {
                 draft: 'slds-badge'
             }[state],
             isDraft: state === 'draft',
+            isLive: state === 'live',
             isKilled: state === 'killed',
             ruleSummary:
                 card.ruleCount > 0
@@ -433,10 +665,13 @@ export default class V360AdminConsole extends LightningElement {
                 return {
                     ...rule,
                     formulaFieldId: `formula-${rule.ruleId}`,
+                    predicateTypeFieldId: `pred-type-${rule.ruleId}`,
+                    predicateTargetFieldId: `pred-target-${rule.ruleId}`,
                     activeLabel: rule.active ? 'Active' : 'Off',
                     activeClass: rule.active ? 'slds-badge slds-theme_success' : 'slds-badge',
                     predicatePills: (rule.predicates ?? []).map((predicate, index) => ({
                         key: `${rule.ruleId}-${index}`,
+                        predicateId: predicate.predicateId,
                         label: `${predicate.predicateType} · ${predicate.targetApiName}`
                     })),
                     feedbackMessage: feedback?.message,

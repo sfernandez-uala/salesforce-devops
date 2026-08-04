@@ -4,6 +4,13 @@ import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
 import activateCard from '@salesforce/apex/V360AdminController.activateCard';
+import deactivateCard from '@salesforce/apex/V360AdminController.deactivateCard';
+import createCard from '@salesforce/apex/V360AdminController.createCard';
+import createRule from '@salesforce/apex/V360AdminController.createRule';
+import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredicate';
+import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRulePredicate';
+import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
+import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 
@@ -11,6 +18,15 @@ jest.mock('@salesforce/apex/V360AdminController.getCatalog', () => ({ default: j
 jest.mock('@salesforce/apex/V360AdminController.updateCardOrder', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveCardProperties', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.activateCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deactivateCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.createCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.createRule', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.addRulePredicate', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteRulePredicate', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteRule', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.engageKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.releaseKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.validateRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 
@@ -41,7 +57,7 @@ const BANKING_RULE = {
     description: '',
     formula: "ISPICKVAL(Industry, 'Banking')",
     active: true,
-    predicates: [{ predicateType: 'FLS_READ', targetApiName: 'AnnualRevenue' }]
+    predicates: [{ predicateId: 'pred-1', predicateType: 'FLS_READ', targetApiName: 'AnnualRevenue' }]
 };
 
 function adminCatalog() {
@@ -119,7 +135,7 @@ describe('c-v360-admin-console', () => {
         expect(states).toEqual(['Live', 'Draft', 'Kill switch on']);
         expect(element.shadowRoot.querySelector('[data-id="detail-title"]').textContent).toBe('CardA');
         expect(element.shadowRoot.querySelectorAll('[data-id="rule"]')).toHaveLength(1);
-        expect(element.shadowRoot.querySelector('[data-id="predicate-pill"]').textContent).toBe(
+        expect(element.shadowRoot.querySelector('[data-id="predicate-pill"]').label).toBe(
             'FLS_READ · AnnualRevenue'
         );
     });
@@ -315,6 +331,124 @@ describe('c-v360-admin-console', () => {
         expect(element.shadowRoot.querySelector('[data-id="refresh-spinner"]')).not.toBeNull();
         expect(element.shadowRoot.querySelectorAll('[data-id="card-row"]').length).toBeGreaterThan(0);
         expect(element.shadowRoot.querySelector('[data-id="loading-state"]')).toBeNull();
+    });
+
+    it('creates a card as a draft from the wizard with the next order', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        createCard.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-card"]').click();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="nc-devname"]').value = 'V360NewCard';
+        element.shadowRoot.querySelector('[data-id="nc-label"]').value = 'New Card';
+        element.shadowRoot.querySelector('[data-id="nc-description"]').value = 'Fresh.';
+        element.shadowRoot.querySelector('[data-id="nc-icon"]').value = 'standard:screen';
+        element.shadowRoot.querySelector('[data-id="nc-button-label"]').value = 'Open';
+        element.shadowRoot.querySelector('[data-id="nc-component"]').value = 'LWC:v360LifecycleDemo';
+        element.shadowRoot.querySelector('[data-id="nc-create"]').click();
+        await flushPromises();
+
+        expect(createCard).toHaveBeenCalledWith({
+            input: {
+                tabId: 'tab-account',
+                developerName: 'V360NewCard',
+                label: 'New Card',
+                description: 'Fresh.',
+                iconName: 'standard:screen',
+                buttonLabel: 'Open',
+                componentType: 'LWC',
+                componentName: 'v360LifecycleDemo',
+                order: 4
+            }
+        });
+        expect(element.shadowRoot.querySelector('[data-id="new-card-modal"]')).toBeNull();
+    });
+
+    it('creates a visibility rule from the add-rule modal', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        createRule.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="add-rule"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nr-devname"]').value = 'NewRule';
+        element.shadowRoot.querySelector('[data-id="nr-formula"]').value = '$Permission.X';
+        element.shadowRoot.querySelector('[data-id="nr-create"]').click();
+        await flushPromises();
+
+        expect(createRule).toHaveBeenCalledWith({
+            cardId: 'card-a',
+            developerName: 'NewRule',
+            formulaText: '$Permission.X'
+        });
+    });
+
+    it('adds and removes rule predicates', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        addRulePredicate.mockResolvedValue(undefined);
+        deleteRulePredicate.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="pred-type-rule-1"]').value = 'PERMISSION_SET';
+        element.shadowRoot.querySelector('[data-id="pred-target-rule-1"]').value = 'Advisor_Access';
+        element.shadowRoot.querySelector('[data-id="add-predicate"][data-rule-id="rule-1"]').click();
+        await flushPromises();
+
+        expect(addRulePredicate).toHaveBeenCalledWith({
+            ruleId: 'rule-1',
+            predicateType: 'PERMISSION_SET',
+            targetApiName: 'Advisor_Access'
+        });
+
+        element.shadowRoot
+            .querySelector('[data-id="predicate-pill"]')
+            .dispatchEvent(new CustomEvent('remove'));
+        await flushPromises();
+
+        expect(deleteRulePredicate).toHaveBeenCalledWith({ predicateId: 'pred-1' });
+    });
+
+    it('deletes the selected card through the confirm modal', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deleteCard.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="action-delete-card"]').click();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="delete-message"]').textContent).toContain('CardA');
+
+        element.shadowRoot.querySelector('[data-id="delete-confirm"]').click();
+        await flushPromises();
+
+        expect(deleteCard).toHaveBeenCalledWith({ cardId: 'card-a' });
+    });
+
+    it('deactivates a live card and engages its kill switch from the action row', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deactivateCard.mockResolvedValue(undefined);
+        engageKillSwitch.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="action-deactivate"]').click();
+        await flushPromises();
+        expect(deactivateCard).toHaveBeenCalledWith({ cardId: 'card-a' });
+
+        element.shadowRoot.querySelector('[data-id="action-kill"]').click();
+        await flushPromises();
+        expect(engageKillSwitch).toHaveBeenCalledWith({ cardId: 'card-a' });
     });
 
     it('renders the access state when the server reports no manage permission', async () => {

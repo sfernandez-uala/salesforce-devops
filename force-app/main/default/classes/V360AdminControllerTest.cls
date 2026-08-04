@@ -291,6 +291,153 @@ private class V360AdminControllerTest {
         }
     }
 
+    @IsTest
+    static void createCardCreatesADraftWithItsProperties() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Create_Tab', 'Account');
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.NewCardInput input = new V360AdminController.NewCardInput();
+            input.tabId = tab.Id;
+            input.developerName = 'V360Test_Created_Card';
+            input.label = 'Created';
+            input.description = 'Created from the wizard.';
+            input.iconName = 'standard:account';
+            input.buttonLabel = 'Open';
+            input.componentType = 'LWC';
+            input.componentName = 'v360AccountSnapshot';
+            input.order = 4;
+            V360AdminController.createCard(input);
+            Test.stopTest();
+        }
+
+        V360_Card__c created = [
+            SELECT Active__c, KillSwitch__c, Label__c, Order__c, Tab__c
+            FROM V360_Card__c
+            WHERE DeveloperName__c = 'V360Test_Created_Card'
+        ];
+        Assert.isFalse(created.Active__c, 'A new card must be born as a draft');
+        Assert.isFalse(created.KillSwitch__c, 'A new card must not be kill-switched');
+        Assert.areEqual('Created', created.Label__c, 'The label must round-trip');
+        Assert.areEqual(4, created.Order__c, 'The order must round-trip');
+        Assert.areEqual(tab.Id, created.Tab__c, 'The card must land on its tab');
+    }
+
+    @IsTest
+    static void createRuleAndPredicateThenDeleteThemRoundTrips() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_RuleCrud_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_RuleCrud_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.createRule(card.Id, 'V360Test_Crud_Rule', 'ISPICKVAL(Industry, \'Banking\')');
+            Id ruleId = [SELECT Id FROM V360_CardRule__c WHERE DeveloperName__c = 'V360Test_Crud_Rule'].Id;
+            V360AdminController.addRulePredicate(ruleId, 'FLS_READ', 'AnnualRevenue');
+            Id predicateId = [SELECT Id FROM V360_RulePredicate__c WHERE CardRule__c = :ruleId].Id;
+            V360AdminController.deleteRulePredicate(predicateId);
+            Assert.areEqual(
+                0,
+                [SELECT COUNT() FROM V360_RulePredicate__c WHERE CardRule__c = :ruleId],
+                'The predicate must be gone after its deletion'
+            );
+            V360AdminController.deleteRule(ruleId);
+            Test.stopTest();
+
+            Assert.areEqual(
+                0,
+                [SELECT COUNT() FROM V360_CardRule__c WHERE Card__c = :card.Id],
+                'The rule must be gone after its deletion'
+            );
+        }
+    }
+
+    @IsTest
+    static void deleteCardRemovesItsRulesAndPredicatesFirst() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_DeleteCard_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_DeleteCard_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+        V360_CardRule__c rule = V360TestDataFactory.insertCardRule(card.Id, 'V360Test_DeleteCard_Rule', null);
+        insert new V360_RulePredicate__c(
+            CardRule__c = rule.Id,
+            PredicateType__c = 'FLS_READ',
+            TargetApiName__c = 'AnnualRevenue'
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.deleteCard(card.Id);
+            Test.stopTest();
+        }
+
+        Assert.areEqual(0, [SELECT COUNT() FROM V360_Card__c WHERE Id = :card.Id], 'The card must be gone');
+        Assert.areEqual(0, [SELECT COUNT() FROM V360_CardRule__c WHERE Id = :rule.Id], 'Its rule must be gone');
+        Assert.areEqual(
+            0,
+            [SELECT COUNT() FROM V360_RulePredicate__c WHERE CardRule__c = :rule.Id],
+            'The rule predicates must cascade'
+        );
+    }
+
+    @IsTest
+    static void deleteCardThrowsWithoutTheManagePermission() {
+        User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_DeleteDenied_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_DeleteDenied_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+
+        System.runAs(plainUser) {
+            Test.startTest();
+            Boolean threw = false;
+            try {
+                V360AdminController.deleteCard(card.Id);
+            } catch (AuraHandledException expected) {
+                threw = true;
+            }
+            Test.stopTest();
+            Assert.isTrue(threw, 'Deleting a card without the manage permission must be rejected');
+        }
+    }
+
+    @IsTest
+    static void killSwitchEngagesAndReleases() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Kill_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_Kill_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.engageKillSwitch(card.Id);
+            Assert.isTrue(
+                [SELECT KillSwitch__c FROM V360_Card__c WHERE Id = :card.Id].KillSwitch__c,
+                'The kill switch must be on after engaging it'
+            );
+            V360AdminController.releaseKillSwitch(card.Id);
+            Test.stopTest();
+        }
+
+        Assert.isFalse(
+            [SELECT KillSwitch__c FROM V360_Card__c WHERE Id = :card.Id].KillSwitch__c,
+            'The kill switch must be off after releasing it'
+        );
+    }
+
     private static V360AdminController.AdminTab findTab(
         V360AdminController.AdminCatalog catalog,
         String developerName

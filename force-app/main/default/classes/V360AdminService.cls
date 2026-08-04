@@ -77,6 +77,46 @@ public with sharing class V360AdminService {
     }
 
     /**
+     * Deletes cards behind the manage-permission gate. Each card's rules go
+     * first (their predicates cascade through the master-detail): the
+     * rule-to-card lookup is delete-restricted, so a card cannot be deleted
+     * while rules still reference it.
+     *
+     * @param cardIds the cards to delete
+     */
+    public static void deleteCards(Set<Id> cardIds) {
+        requireManagePermission();
+        List<V360_CardRule__c> rules = [
+            SELECT Id FROM V360_CardRule__c WHERE Card__c IN :cardIds WITH USER_MODE
+        ];
+        if (!rules.isEmpty()) {
+            Database.delete(rules, true, AccessLevel.USER_MODE);
+        }
+        Database.delete(new List<Id>(cardIds), true, AccessLevel.USER_MODE);
+    }
+
+    /**
+     * Deletes visibility rules behind the manage-permission gate; their
+     * predicates cascade through the master-detail relationship.
+     *
+     * @param ruleIds the rules to delete
+     */
+    public static void deleteCardRules(Set<Id> ruleIds) {
+        requireManagePermission();
+        Database.delete(new List<Id>(ruleIds), true, AccessLevel.USER_MODE);
+    }
+
+    /**
+     * Deletes rule predicates behind the manage-permission gate.
+     *
+     * @param predicateIds the predicates to delete
+     */
+    public static void deleteRulePredicates(Set<Id> predicateIds) {
+        requireManagePermission();
+        Database.delete(new List<Id>(predicateIds), true, AccessLevel.USER_MODE);
+    }
+
+    /**
      * Validates a formula against a card's anchor SObject without saving
      * anything -- the console's live "Validate" action. Throws with the
      * engine's message when the formula does not build.
