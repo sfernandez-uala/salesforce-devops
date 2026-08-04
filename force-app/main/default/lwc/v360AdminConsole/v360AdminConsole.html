@@ -254,6 +254,24 @@
                                         data-id="prop-description"
                                         field-level-help="Shown on the gallery tile and under the title of the focused view."
                                     ></lightning-textarea>
+                                    <div class="slds-grid slds-grid_vertical-align-end">
+                                        <div class="slds-grow">
+                                            <lightning-input
+                                                label="Icon"
+                                                value={detail.iconName}
+                                                data-id="prop-icon"
+                                                field-level-help="An SLDS icon name, like standard:account or utility:screen. The preview updates as you type."
+                                                onchange={handleIconInput}
+                                            ></lightning-input>
+                                        </div>
+                                        <div class="slds-grow-none slds-p-left_x-small slds-p-bottom_xx-small">
+                                            <lightning-icon
+                                                icon-name={iconPreviewName}
+                                                size="small"
+                                                data-id="icon-preview"
+                                            ></lightning-icon>
+                                        </div>
+                                    </div>
                                     <lightning-combobox
                                         label="Component"
                                         value={detail.bindingValue}

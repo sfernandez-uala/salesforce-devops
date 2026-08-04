@@ -210,6 +210,7 @@ describe('c-v360-admin-console', () => {
             cardId: 'card-a',
             label: 'CardA',
             description: '',
+            iconName: 'standard:account',
             buttonLabel: 'Consultar',
             componentType: 'LWC',
             componentName: 'v360AccountSnapshot'

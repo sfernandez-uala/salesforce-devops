@@ -68,6 +68,7 @@ public with sharing class V360AdminController {
         Id cardId,
         String label,
         String description,
+        String iconName,
         String buttonLabel,
         String componentType,
         String componentName
@@ -79,6 +80,7 @@ public with sharing class V360AdminController {
                         Id = cardId,
                         Label__c = label,
                         Description__c = description,
+                        IconName__c = iconName,
                         ButtonLabel__c = buttonLabel,
                         ComponentType__c = componentType,
                         ComponentName__c = componentName

@@ -47,6 +47,7 @@ export default class V360AdminConsole extends LightningElement {
     activationOpen = false;
     helpOpen = false;
     formulaFeedback = {};
+    iconDraft;
 
     connectedCallback() {
         this.loadCatalog();
@@ -117,6 +118,17 @@ export default class V360AdminConsole extends LightningElement {
     handleCardOpen(event) {
         this.selectedCardId = event.currentTarget.dataset.cardId;
         this.formulaFeedback = {};
+        this.iconDraft = undefined;
+    }
+
+    handleIconInput(event) {
+        this.iconDraft = event.target.value;
+    }
+
+    /** The live preview next to the icon field; blank falls back like the shell does. */
+    get iconPreviewName() {
+        const candidate = this.iconDraft ?? this.selectedCard?.iconName;
+        return candidate || 'standard:default';
     }
 
     handleCardKeydown(event) {
@@ -171,6 +183,7 @@ export default class V360AdminConsole extends LightningElement {
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
         const description = this.template.querySelector('[data-id="prop-description"]').value;
+        const iconName = this.template.querySelector('[data-id="prop-icon"]').value;
         const buttonLabel = this.template.querySelector('[data-id="prop-button-label"]').value;
         const binding = this.template.querySelector('[data-id="prop-component"]').value;
         const separatorAt = binding.indexOf(BINDING_SEPARATOR);
@@ -181,6 +194,7 @@ export default class V360AdminConsole extends LightningElement {
                 cardId: card.cardId,
                 label,
                 description,
+                iconName,
                 buttonLabel,
                 componentType,
                 componentName
