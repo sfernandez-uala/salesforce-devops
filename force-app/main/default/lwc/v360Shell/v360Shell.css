@@ -52,6 +52,27 @@
     outline-offset: 2px;
 }
 
+/* The title is the only shrinkable piece of the tile's header row, so a
+   long label ellipsizes instead of pushing the pin control out. */
+.v360-shell-tile-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* The pin control stays quiet until the tile is engaged (pointer hover or
+   keyboard focus), but a pinned card keeps its pin visible -- the state
+   must be readable at rest. */
+.v360-shell-tile-pin {
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+}
+
+.v360-shell-tile:hover .v360-shell-tile-pin,
+.v360-shell-tile:focus-within .v360-shell-tile-pin,
+.v360-shell-tile-pin_active {
+    opacity: 1;
+}
+
 /* The description grows so every tile's action row sits on the same
    baseline regardless of copy length. */
 .v360-shell-tile-description {
@@ -69,8 +90,25 @@
 }
 
 .v360-shell-sidebar {
+    position: relative;
     flex: 0 0 7.5rem;
     width: 7.5rem;
+}
+
+/* The rail never dictates the workspace height: its scroller is out of
+   flow, so the row's height comes from the main column and a long card
+   list scrolls within it instead of stretching the whole view. */
+.v360-shell-sidebar-scroll {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+}
+
+/* Scroll affordance, vertical axis: set by the shell only while items
+   actually overflow, fading the bottom edge to signal more cards. */
+.v360-shell-sidebar_overflow-block .v360-shell-sidebar-scroll {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
 }
 
 .v360-shell-main {
@@ -93,7 +131,6 @@
     cursor: pointer;
     transition: background-color 0.15s ease-out;
 }
-
 .v360-shell-sidebar-item:hover {
     background: var(--v360-color-surface-hover);
 }
@@ -161,11 +198,22 @@
     .v360-shell-sidebar {
         flex: 0 0 auto;
         width: 100%;
+    }
+
+    .v360-shell-sidebar-scroll {
+        position: static;
         display: flex;
         align-items: stretch;
         gap: 0.5rem;
         overflow-x: auto;
+        overflow-y: hidden;
         padding-bottom: 0.25rem;
+    }
+
+    /* In the horizontal strip only the trailing-right fade applies. */
+    .v360-shell-sidebar_overflow-block .v360-shell-sidebar-scroll {
+        -webkit-mask-image: none;
+        mask-image: none;
     }
 
     .v360-shell-sidebar-item {
@@ -177,10 +225,9 @@
         padding: 0.5rem 0.375rem;
     }
 
-    /* Scroll affordance: the shell sets this class only while rail items
-       actually overflow, and the trailing edge fades to signal more cards
-       off-screen. */
-    .v360-shell-sidebar_overflowing {
+    /* Scroll affordance, horizontal axis: the trailing edge fades to
+       signal more cards off-screen. */
+    .v360-shell-sidebar_overflow-inline .v360-shell-sidebar-scroll {
         -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
         mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
     }
@@ -203,7 +250,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .v360-shell-tile,
-    .v360-shell-sidebar-item {
+    .v360-shell-sidebar-item,
+    .v360-shell-tile-pin {
         transition: none;
     }
 
