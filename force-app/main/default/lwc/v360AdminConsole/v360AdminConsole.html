@@ -102,6 +102,15 @@
                                 ></lightning-button>
                             </div>
 
+                            <template lwc:if={workspace.hasNoCards}>
+                                <c-v360-empty-state
+                                    data-id="workspace-empty"
+                                    title="No cards in this tab"
+                                    illustration-name="noresults:unknown"
+                                    alternative-text="No results illustration"
+                                    description="Create the first card for this tab. New cards start as drafts, invisible to end users until you activate them."
+                                ></c-v360-empty-state>
+                            </template>
                             <template for:each={workspace.cards} for:item="card">
                                 <div
                                     key={card.cardId}

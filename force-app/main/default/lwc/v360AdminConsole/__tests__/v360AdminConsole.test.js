@@ -74,7 +74,7 @@ function adminCatalog() {
                 sObjectApiName: 'Case',
                 sequence: 3,
                 active: false,
-                cards: [card('card-e', 'CardE')]
+                cards: []
             }
         ]
     };
@@ -256,6 +256,23 @@ describe('c-v360-admin-console', () => {
 
         expect(toastHandler).toHaveBeenCalledTimes(1);
         expect(getCatalog).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows a per-tab empty state when the selected tab has no cards', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot
+            .querySelector('[data-id="tab-navigation"]')
+            .dispatchEvent(new CustomEvent('select', { detail: { name: 'tab-case' } }));
+        await flushPromises();
+
+        const workspaceEmpty = element.shadowRoot.querySelector('[data-id="workspace-empty"]');
+        expect(workspaceEmpty).not.toBeNull();
+        expect(workspaceEmpty.illustrationName).toBe('noresults:unknown');
+        expect(element.shadowRoot.querySelectorAll('[data-id="card-row"]')).toHaveLength(0);
     });
 
     it('keeps the catalog on screen with an overlay spinner during a post-save refresh', async () => {

@@ -320,6 +320,7 @@ export default class V360AdminConsole extends LightningElement {
             statusLabel: tab.active ? 'Active' : 'Inactive',
             statusClass: tab.active ? 'slds-badge slds-theme_success' : 'slds-badge',
             cardCountLabel: `${tab.cards.length} card${tab.cards.length === 1 ? '' : 's'}`,
+            hasNoCards: tab.cards.length === 0,
             cards: tab.cards.map((card, index) => this.toCardRow(card, index, lastIndex))
         };
     }
