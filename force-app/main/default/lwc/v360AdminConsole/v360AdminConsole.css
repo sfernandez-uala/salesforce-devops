@@ -16,3 +16,12 @@
     border-color: var(--v360-color-brand);
     box-shadow: 0 0 0 1px var(--v360-color-brand);
 }
+
+/* The tab navigation uses the panel blueprint undocked: the docked
+   variant carries a fixed width and its own positioning, which overflow a
+   grid column, so the container border it would provide lives here. */
+.v360-admin-nav-panel {
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    overflow: hidden;
+}
