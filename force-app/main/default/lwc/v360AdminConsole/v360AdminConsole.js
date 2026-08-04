@@ -170,6 +170,7 @@ export default class V360AdminConsole extends LightningElement {
     async handleSaveProperties() {
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
+        const description = this.template.querySelector('[data-id="prop-description"]').value;
         const buttonLabel = this.template.querySelector('[data-id="prop-button-label"]').value;
         const binding = this.template.querySelector('[data-id="prop-component"]').value;
         const separatorAt = binding.indexOf(BINDING_SEPARATOR);
@@ -179,6 +180,7 @@ export default class V360AdminConsole extends LightningElement {
             await saveCardProperties({
                 cardId: card.cardId,
                 label,
+                description,
                 buttonLabel,
                 componentType,
                 componentName

@@ -217,12 +217,24 @@ private class V360AdminControllerTest {
 
         System.runAs(admin) {
             Test.startTest();
-            V360AdminController.saveCardProperties(card.Id, 'Renamed', 'Open', 'LWC', 'v360LifecycleDemo');
+            V360AdminController.saveCardProperties(
+                card.Id,
+                'Renamed',
+                'Shows the renamed details.',
+                'Open',
+                'LWC',
+                'v360LifecycleDemo'
+            );
             Test.stopTest();
         }
 
-        V360_Card__c saved = [SELECT Label__c, ButtonLabel__c, ComponentName__c FROM V360_Card__c WHERE Id = :card.Id];
+        V360_Card__c saved = [
+            SELECT Label__c, Description__c, ButtonLabel__c, ComponentName__c
+            FROM V360_Card__c
+            WHERE Id = :card.Id
+        ];
         Assert.areEqual('Renamed', saved.Label__c, 'The label must round-trip');
+        Assert.areEqual('Shows the renamed details.', saved.Description__c, 'The description must round-trip');
         Assert.areEqual('Open', saved.ButtonLabel__c, 'The button label must round-trip');
         Assert.areEqual('v360LifecycleDemo', saved.ComponentName__c, 'The binding must round-trip');
     }

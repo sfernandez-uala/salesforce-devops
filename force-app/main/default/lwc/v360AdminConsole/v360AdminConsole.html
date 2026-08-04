@@ -247,6 +247,13 @@
                                         value={detail.label}
                                         data-id="prop-label"
                                     ></lightning-input>
+                                    <lightning-textarea
+                                        label="Description"
+                                        value={detail.description}
+                                        max-length="1000"
+                                        data-id="prop-description"
+                                        field-level-help="Shown on the gallery tile and under the title of the focused view."
+                                    ></lightning-textarea>
                                     <lightning-combobox
                                         label="Component"
                                         value={detail.bindingValue}

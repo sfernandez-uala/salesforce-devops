@@ -209,6 +209,7 @@ describe('c-v360-admin-console', () => {
         expect(saveCardProperties).toHaveBeenCalledWith({
             cardId: 'card-a',
             label: 'CardA',
+            description: '',
             buttonLabel: 'Consultar',
             componentType: 'LWC',
             componentName: 'v360AccountSnapshot'

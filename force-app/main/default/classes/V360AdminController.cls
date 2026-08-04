@@ -67,6 +67,7 @@ public with sharing class V360AdminController {
     public static void saveCardProperties(
         Id cardId,
         String label,
+        String description,
         String buttonLabel,
         String componentType,
         String componentName
@@ -77,6 +78,7 @@ public with sharing class V360AdminController {
                     new V360_Card__c(
                         Id = cardId,
                         Label__c = label,
+                        Description__c = description,
                         ButtonLabel__c = buttonLabel,
                         ComponentType__c = componentType,
                         ComponentName__c = componentName
