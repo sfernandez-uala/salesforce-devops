@@ -1,16 +1,54 @@
 <template>
-    <lightning-card title="Vista 360 Configuration" icon-name="standard:settings">
-        <lightning-button-icon
-            slot="actions"
-            icon-name="utility:refresh"
-            variant="border-filled"
-            alternative-text="Refresh"
-            title="Refresh"
-            data-id="refresh"
-            onclick={handleRefresh}
-        ></lightning-button-icon>
+    <div class="slds-page-header slds-m-bottom_x-small">
+        <div class="slds-page-header__row">
+            <div class="slds-page-header__col-title">
+                <div class="slds-media">
+                    <div class="slds-media__figure">
+                        <lightning-icon icon-name="standard:settings" size="medium"></lightning-icon>
+                    </div>
+                    <div class="slds-media__body">
+                        <div class="slds-page-header__name">
+                            <div class="slds-page-header__name-title">
+                                <h1>
+                                    <span class="slds-page-header__title slds-truncate" title="Vista 360 Configuration">
+                                        Vista 360 Configuration
+                                    </span>
+                                </h1>
+                            </div>
+                        </div>
+                        <p class="slds-page-header__name-meta" data-id="header-meta">{headerMeta}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="slds-page-header__col-actions">
+                <div class="slds-page-header__controls">
+                    <div class="slds-page-header__control">
+                        <lightning-button-icon
+                            icon-name="utility:help"
+                            variant="border-filled"
+                            alternative-text="Help"
+                            title="Help"
+                            data-id="help-open"
+                            onclick={handleOpenHelp}
+                        ></lightning-button-icon>
+                    </div>
+                    <div class="slds-page-header__control">
+                        <lightning-button-icon
+                            icon-name="utility:refresh"
+                            variant="border-filled"
+                            alternative-text="Refresh"
+                            title="Refresh"
+                            data-id="refresh"
+                            onclick={handleRefresh}
+                        ></lightning-button-icon>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <div class="slds-p-horizontal_medium slds-p-bottom_small">
+    <div class="slds-card">
+        <div class="slds-p-around_medium">
             <template lwc:if={isLoading}>
                 <div class="slds-is-relative slds-p-around_xx-large" data-id="loading-state">
                     <lightning-spinner alternative-text="Loading configuration" size="small"></lightning-spinner>
@@ -307,7 +345,47 @@
                 </div>
             </template>
         </div>
-    </lightning-card>
+    </div>
+
+    <template lwc:if={helpOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="help-title" class="slds-modal slds-fade-in-open" data-id="help-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="help-title" class="slds-modal__title">How Vista 360 configuration works</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <ul class="slds-list_dotted">
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Tabs</strong> group cards under an anchor object. Each tab is one Vista 360 surface on that object's record page.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Cards</strong> bind to a registered Lightning component or an active screen flow. The component picker only offers registered components, so a saved binding always resolves.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Drafts</strong>: an inactive card is invisible to end users. Configure it fully, then activate it from its detail panel.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Visibility rules</strong> decide who sees a live card. A card with no rules is visible to everyone who can see the page.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Formulas</strong> can use $Permission, $Profile, $User and $UserRole; picklist fields need ISPICKVAL(); 3,900 characters max. Validate before saving.
+                        </li>
+                        <li>
+                            <strong>Kill switch</strong> hides a card everywhere instantly, without evaluating any rule. Use it for incidents.
+                        </li>
+                    </ul>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button
+                        label="Close"
+                        data-id="help-close"
+                        onclick={handleCloseHelp}
+                    ></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
 
     <template lwc:if={activationOpen}>
         <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="activation-title" class="slds-modal slds-fade-in-open" data-id="activation-modal">

@@ -258,6 +258,29 @@ describe('c-v360-admin-console', () => {
         expect(getCatalog).toHaveBeenCalledTimes(2);
     });
 
+    it('summarizes the catalog in the page header and opens the help guide', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="header-meta"]').textContent).toBe(
+            '3 tabs · 4 cards · 2 objects'
+        );
+
+        element.shadowRoot.querySelector('[data-id="help-open"]').click();
+        await flushPromises();
+
+        const helpModal = element.shadowRoot.querySelector('[data-id="help-modal"]');
+        expect(helpModal).not.toBeNull();
+        expect(helpModal.textContent).toContain('visible to everyone who can see the page');
+
+        element.shadowRoot.querySelector('[data-id="help-close"]').click();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="help-modal"]')).toBeNull();
+    });
+
     it('shows a per-tab empty state when the selected tab has no cards', async () => {
         getCatalog.mockResolvedValue(adminCatalog());
 

@@ -45,6 +45,7 @@ export default class V360AdminConsole extends LightningElement {
     savingOrder = false;
     refreshing = false;
     activationOpen = false;
+    helpOpen = false;
     formulaFeedback = {};
 
     connectedCallback() {
@@ -215,6 +216,14 @@ export default class V360AdminConsole extends LightningElement {
         }
     }
 
+    handleOpenHelp() {
+        this.helpOpen = true;
+    }
+
+    handleCloseHelp() {
+        this.helpOpen = false;
+    }
+
     handleOpenActivation() {
         this.activationOpen = true;
     }
@@ -276,6 +285,17 @@ export default class V360AdminConsole extends LightningElement {
 
     get isCatalogVisible() {
         return this.status === STATUS_LOADED && this.data.hasManagePermission && this.data.tabs.length > 0;
+    }
+
+    /** The page header's one-line summary of what this console manages. */
+    get headerMeta() {
+        if (this.status !== STATUS_LOADED || !this.data.hasManagePermission) {
+            return 'Cards, visibility rules, and activation for the Vista 360 shell';
+        }
+        const tabs = this.data.tabs;
+        const cardCount = tabs.reduce((total, tab) => total + tab.cards.length, 0);
+        const objectCount = new Set(tabs.map((tab) => tab.sObjectApiName)).size;
+        return `${tabs.length} tab${tabs.length === 1 ? '' : 's'} · ${cardCount} card${cardCount === 1 ? '' : 's'} · ${objectCount} object${objectCount === 1 ? '' : 's'}`;
     }
 
     /** Tabs grouped under their anchor SObject: one nav section per SObject. */
