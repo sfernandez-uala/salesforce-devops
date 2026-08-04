@@ -44,6 +44,7 @@ export default class V360AdminConsole extends LightningElement {
     selectedCardId;
     savingOrder = false;
     refreshing = false;
+    busy = false;
     activationOpen = false;
     helpOpen = false;
     formulaFeedback = {};
@@ -112,6 +113,7 @@ export default class V360AdminConsole extends LightningElement {
         this.selectedTabId = event.detail.name;
         this.selectedCardId = undefined;
         this.formulaFeedback = {};
+        this.iconDraft = undefined;
         this.ensureSelection();
     }
 
@@ -180,6 +182,10 @@ export default class V360AdminConsole extends LightningElement {
     }
 
     async handleSaveProperties() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
         const description = this.template.querySelector('[data-id="prop-description"]').value;
@@ -203,10 +209,16 @@ export default class V360AdminConsole extends LightningElement {
             await this.refreshCatalog();
         } catch (error) {
             this.toast('Save failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
         }
     }
 
     async handleValidateFormula(event) {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
         const ruleId = event.currentTarget.dataset.ruleId;
         const formulaText = this.template.querySelector(`[data-id="formula-${ruleId}"]`).value;
         try {
@@ -217,10 +229,16 @@ export default class V360AdminConsole extends LightningElement {
                 ...this.formulaFeedback,
                 [ruleId]: { isValid: false, message: this.errorMessage(error) }
             };
+        } finally {
+            this.busy = false;
         }
     }
 
     async handleSaveFormula(event) {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
         const ruleId = event.currentTarget.dataset.ruleId;
         const formulaText = this.template.querySelector(`[data-id="formula-${ruleId}"]`).value;
         try {
@@ -229,6 +247,8 @@ export default class V360AdminConsole extends LightningElement {
             await this.refreshCatalog();
         } catch (error) {
             this.toast('Save failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
         }
     }
 
@@ -419,8 +439,8 @@ export default class V360AdminConsole extends LightningElement {
                     })),
                     feedbackMessage: feedback?.message,
                     feedbackClass: feedback?.isValid
-                        ? 'slds-text-color_success v360-admin-validate-msg'
-                        : 'slds-text-color_error v360-admin-validate-msg'
+                        ? 'slds-text-body_small slds-text-color_success slds-m-left_x-small'
+                        : 'slds-text-body_small slds-text-color_error slds-m-left_x-small'
                 };
             })
         };

@@ -289,6 +289,7 @@
                                             variant="brand"
                                             label="Save card"
                                             data-id="save-properties"
+                                            disabled={busy}
                                             onclick={handleSaveProperties}
                                         ></lightning-button>
                                     </div>
@@ -330,12 +331,14 @@
                                                 <lightning-button
                                                     label="Validate"
                                                     data-id="validate-formula"
+                                                    disabled={busy}
                                                     data-rule-id={rule.ruleId}
                                                     onclick={handleValidateFormula}
                                                 ></lightning-button>
                                                 <lightning-button
                                                     label="Save rule"
                                                     variant="brand-outline"
+                                                    disabled={busy}
                                                     class="slds-m-left_x-small"
                                                     data-id="save-formula"
                                                     data-rule-id={rule.ruleId}

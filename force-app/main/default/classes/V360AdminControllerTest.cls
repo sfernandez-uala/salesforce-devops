@@ -241,6 +241,56 @@ private class V360AdminControllerTest {
         Assert.areEqual('v360LifecycleDemo', saved.ComponentName__c, 'The binding must round-trip');
     }
 
+    @IsTest
+    static void saveRuleFormulaPersistsThroughTheGatedWritePath() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_RuleSave_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_RuleSave_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+        V360_CardRule__c rule = V360TestDataFactory.insertCardRule(card.Id, 'V360Test_RuleSave_Rule', null);
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.saveRuleFormula(rule.Id, card.Id, 'ISPICKVAL(Industry, \'Banking\')');
+            Test.stopTest();
+        }
+
+        V360_CardRule__c saved = [SELECT VisibilityFormula__c, Card__c FROM V360_CardRule__c WHERE Id = :rule.Id];
+        Assert.areEqual(
+            'ISPICKVAL(Industry, \'Banking\')',
+            saved.VisibilityFormula__c,
+            'The formula must persist through the gated write path'
+        );
+        Assert.areEqual(card.Id, saved.Card__c, 'The card reference must survive the save');
+    }
+
+    @IsTest
+    static void saveRuleFormulaThrowsWithoutTheManagePermission() {
+        User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_RuleDenied_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_RuleDenied_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot')
+        );
+        V360_CardRule__c rule = V360TestDataFactory.insertCardRule(card.Id, 'V360Test_RuleDenied_Rule', null);
+
+        System.runAs(plainUser) {
+            Test.startTest();
+            Boolean threw = false;
+            try {
+                V360AdminController.saveRuleFormula(rule.Id, card.Id, '$Permission.V360_Advisor');
+            } catch (AuraHandledException expected) {
+                threw = true;
+            }
+            Test.stopTest();
+            Assert.isTrue(threw, 'Saving a rule without the manage permission must be rejected');
+        }
+    }
+
     private static V360AdminController.AdminTab findTab(
         V360AdminController.AdminCatalog catalog,
         String developerName
