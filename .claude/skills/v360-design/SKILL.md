@@ -36,6 +36,19 @@ Either way, every stylesheet that references a color reaches for a `c/v360Styles
 token (section 3) instead of a hardcoded hex value, and every custom rule carries a
 one-line plain-language comment explaining what SLDS could not do.
 
+Inline field rows (one or more fields plus a trailing button on a single line)
+align with `slds-grid_vertical-align-start`, never `_end`: a field's validation
+error grows below it, and bottom alignment shoves the neighboring controls when
+it does. Give the trailing button a hidden label spacer so its control lines up
+with the fields' controls:
+
+```html
+<div class="slds-form-element">
+    <span class="slds-form-element__label slds-hidden" aria-hidden="true">Add</span>
+    <div class="slds-form-element__control"><!-- button --></div>
+</div>
+```
+
 ## 2. Empty, error, and no-access states: always illustration-based
 
 Never render an empty, error, or no-access state as bare text (a lone `<p>` or a
