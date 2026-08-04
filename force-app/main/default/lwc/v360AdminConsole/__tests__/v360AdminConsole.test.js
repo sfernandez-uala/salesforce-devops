@@ -258,6 +258,21 @@ describe('c-v360-admin-console', () => {
         expect(getCatalog).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps the catalog on screen with an overlay spinner during a post-save refresh', async () => {
+        getCatalog.mockResolvedValueOnce(adminCatalog()).mockReturnValueOnce(new Promise(() => {}));
+        saveCardProperties.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="save-properties"]').click();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="refresh-spinner"]')).not.toBeNull();
+        expect(element.shadowRoot.querySelectorAll('[data-id="card-row"]').length).toBeGreaterThan(0);
+        expect(element.shadowRoot.querySelector('[data-id="loading-state"]')).toBeNull();
+    });
+
     it('renders the access state when the server reports no manage permission', async () => {
         getCatalog.mockResolvedValue({ hasManagePermission: false, tabs: [] });
 

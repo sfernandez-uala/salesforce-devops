@@ -50,6 +50,14 @@
             </template>
 
             <template lwc:elseif={isCatalogVisible}>
+                <div class="slds-is-relative">
+                <template lwc:if={refreshing}>
+                    <lightning-spinner
+                        alternative-text="Saving changes"
+                        size="small"
+                        data-id="refresh-spinner"
+                    ></lightning-spinner>
+                </template>
                 <div class="slds-grid slds-wrap slds-gutters_small">
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-12 slds-large-size_2-of-12">
                         <lightning-vertical-navigation
@@ -286,6 +294,7 @@
                             </p>
                         </template>
                     </div>
+                </div>
                 </div>
             </template>
         </div>

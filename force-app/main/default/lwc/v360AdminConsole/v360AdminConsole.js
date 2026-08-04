@@ -43,6 +43,7 @@ export default class V360AdminConsole extends LightningElement {
     selectedTabId;
     selectedCardId;
     savingOrder = false;
+    refreshing = false;
     activationOpen = false;
     formulaFeedback = {};
 
@@ -74,12 +75,35 @@ export default class V360AdminConsole extends LightningElement {
         }
     }
 
+    /**
+     * Re-reads the catalog while keeping the current one on screen, with a
+     * centered spinner overlaid on the console -- the treatment for every
+     * re-read after a save. Tearing the whole view down to the initial
+     * loading state is reserved for the first load and error retries,
+     * where there is nothing to keep on screen.
+     */
+    async refreshCatalog() {
+        if (this.status !== STATUS_LOADED) {
+            return this.loadCatalog();
+        }
+        this.refreshing = true;
+        try {
+            this.data = await getCatalog();
+            this.ensureSelection();
+        } catch (error) {
+            this.toast('Refresh failed', this.errorMessage(error), 'error');
+        } finally {
+            this.refreshing = false;
+        }
+        return undefined;
+    }
+
     handleRetry() {
         this.loadCatalog();
     }
 
     handleRefresh() {
-        this.loadCatalog();
+        this.refreshCatalog();
     }
 
     handleTabSelect(event) {
@@ -136,7 +160,7 @@ export default class V360AdminConsole extends LightningElement {
             await updateCardOrder({ orderedCardIds: cards.map((card) => card.cardId) });
         } catch (error) {
             this.toast('Reorder failed', 'The new order could not be saved. Showing the last saved order.', 'error');
-            await this.loadCatalog();
+            await this.refreshCatalog();
         } finally {
             this.savingOrder = false;
         }
@@ -159,7 +183,7 @@ export default class V360AdminConsole extends LightningElement {
                 componentName
             });
             this.toast('Card saved', `“${label}” was saved.`, 'success');
-            await this.loadCatalog();
+            await this.refreshCatalog();
         } catch (error) {
             this.toast('Save failed', this.errorMessage(error), 'error');
         }
@@ -185,7 +209,7 @@ export default class V360AdminConsole extends LightningElement {
         try {
             await saveRuleFormula({ ruleId, cardId: this.selectedCardId, formulaText });
             this.toast('Rule saved', 'The visibility formula was saved.', 'success');
-            await this.loadCatalog();
+            await this.refreshCatalog();
         } catch (error) {
             this.toast('Save failed', this.errorMessage(error), 'error');
         }
@@ -205,7 +229,7 @@ export default class V360AdminConsole extends LightningElement {
         try {
             await setCardActive({ cardId: card.cardId, isActive: true });
             this.toast('Card activated', `“${card.label}” is now live for end users.`, 'success');
-            await this.loadCatalog();
+            await this.refreshCatalog();
         } catch (error) {
             this.toast('Activation failed', this.errorMessage(error), 'error');
         }
