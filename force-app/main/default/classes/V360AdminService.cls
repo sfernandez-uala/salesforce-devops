@@ -24,23 +24,53 @@ public with sharing class V360AdminService {
     private static final String COMPONENT_TYPE_FLOW = 'Flow';
     private static final String SCREEN_FLOW_PROCESS_TYPE = 'Flow';
 
+    /**
+     * Upserts tabs behind the manage-permission gate with CRUD/FLS enforced.
+     *
+     * @param tabs the tabs to insert or update
+     * @return one upsert result per tab, in input order
+     */
     public static List<Database.UpsertResult> saveTabs(List<V360_Tab__c> tabs) {
         requireManagePermission();
         return upsertEnforced(tabs);
     }
 
+    /**
+     * Upserts cards behind the manage-permission gate with CRUD/FLS enforced
+     * and the component binding validated by type (non-blank LWC name,
+     * active screen flow).
+     *
+     * @param cards the cards to insert or update
+     * @return one upsert result per card, in input order
+     */
     public static List<Database.UpsertResult> saveCards(List<V360_Card__c> cards) {
         requireManagePermission();
         validateCardBindings(cards);
         return upsertEnforced(cards);
     }
 
+    /**
+     * Upserts visibility rules behind the manage-permission gate with
+     * CRUD/FLS enforced and every non-blank formula built against its
+     * card's anchor SObject before anything is written.
+     *
+     * @param rules the rules to insert or update
+     * @return one upsert result per rule, in input order
+     */
     public static List<Database.UpsertResult> saveCardRules(List<V360_CardRule__c> rules) {
         requireManagePermission();
         validateRuleFormulas(rules);
         return upsertEnforced(rules);
     }
 
+    /**
+     * Upserts rule predicates behind the manage-permission gate, enforcing
+     * object-level access on the DML itself (see upsertRulePredicates for
+     * why the strip pass is skipped on this all-required-fields object).
+     *
+     * @param predicates the predicates to insert or update
+     * @return one upsert result per predicate, in input order
+     */
     public static List<Database.UpsertResult> saveRulePredicates(List<V360_RulePredicate__c> predicates) {
         requireManagePermission();
         return upsertRulePredicates(predicates);
@@ -50,6 +80,9 @@ public with sharing class V360AdminService {
      * Validates a formula against a card's anchor SObject without saving
      * anything -- the console's live "Validate" action. Throws with the
      * engine's message when the formula does not build.
+     *
+     * @param cardId the card whose anchor SObject the formula resolves against
+     * @param formulaText the formula to build
      */
     // System-mode config read, same rationale as validateRuleFormulas: it only
     // resolves the card's anchor type and never leaves this validation path.
@@ -196,6 +229,7 @@ public with sharing class V360AdminService {
         return cardIds;
     }
 
+    /** Raised for permission, validation, and binding failures on this write path. */
     public class V360AdminServiceException extends Exception {
     }
 }

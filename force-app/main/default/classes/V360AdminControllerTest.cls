@@ -184,7 +184,7 @@ private class V360AdminControllerTest {
     }
 
     @IsTest
-    static void setCardActiveActivatesADraftCard() {
+    static void activateCardTakesADraftCardLive() {
         User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
         V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Activate_Tab', 'Account');
         V360_Card__c draft = V360TestDataFactory.insertCard(
@@ -195,7 +195,7 @@ private class V360AdminControllerTest {
 
         System.runAs(admin) {
             Test.startTest();
-            V360AdminController.setCardActive(draft.Id, true);
+            V360AdminController.activateCard(draft.Id);
             Test.stopTest();
         }
 
@@ -217,15 +217,15 @@ private class V360AdminControllerTest {
 
         System.runAs(admin) {
             Test.startTest();
-            V360AdminController.saveCardProperties(
-                card.Id,
-                'Renamed',
-                'Shows the renamed details.',
-                'standard:contact',
-                'Open',
-                'LWC',
-                'v360LifecycleDemo'
-            );
+            V360AdminController.CardPropertiesInput input = new V360AdminController.CardPropertiesInput();
+            input.cardId = card.Id;
+            input.label = 'Renamed';
+            input.description = 'Shows the renamed details.';
+            input.iconName = 'standard:contact';
+            input.buttonLabel = 'Open';
+            input.componentType = 'LWC';
+            input.componentName = 'v360LifecycleDemo';
+            V360AdminController.saveCardProperties(input);
             Test.stopTest();
         }
 

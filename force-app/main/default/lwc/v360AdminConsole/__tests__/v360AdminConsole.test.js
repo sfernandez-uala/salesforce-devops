@@ -3,14 +3,14 @@ import V360AdminConsole from 'c/v360AdminConsole';
 import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
-import setCardActive from '@salesforce/apex/V360AdminController.setCardActive';
+import activateCard from '@salesforce/apex/V360AdminController.activateCard';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 
 jest.mock('@salesforce/apex/V360AdminController.getCatalog', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.updateCardOrder', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveCardProperties', () => ({ default: jest.fn() }), { virtual: true });
-jest.mock('@salesforce/apex/V360AdminController.setCardActive', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.activateCard', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.validateRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 
@@ -139,7 +139,7 @@ describe('c-v360-admin-console', () => {
 
     it('activates a draft card through the checklist modal', async () => {
         getCatalog.mockResolvedValue(adminCatalog());
-        setCardActive.mockResolvedValue(undefined);
+        activateCard.mockResolvedValue(undefined);
 
         const element = createConsole();
         await flushPromises();
@@ -156,7 +156,7 @@ describe('c-v360-admin-console', () => {
         element.shadowRoot.querySelector('[data-id="activate-confirm"]').click();
         await flushPromises();
 
-        expect(setCardActive).toHaveBeenCalledWith({ cardId: 'card-b', isActive: true });
+        expect(activateCard).toHaveBeenCalledWith({ cardId: 'card-b' });
         expect(getCatalog).toHaveBeenCalledTimes(2);
     });
 
@@ -207,13 +207,15 @@ describe('c-v360-admin-console', () => {
         await flushPromises();
 
         expect(saveCardProperties).toHaveBeenCalledWith({
-            cardId: 'card-a',
-            label: 'CardA',
-            description: '',
-            iconName: 'standard:account',
-            buttonLabel: 'Consultar',
-            componentType: 'LWC',
-            componentName: 'v360AccountSnapshot'
+            input: {
+                cardId: 'card-a',
+                label: 'CardA',
+                description: '',
+                iconName: 'standard:account',
+                buttonLabel: 'Consultar',
+                componentType: 'LWC',
+                componentName: 'v360AccountSnapshot'
+            }
         });
     });
 

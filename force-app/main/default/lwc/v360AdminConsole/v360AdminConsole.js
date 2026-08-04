@@ -4,7 +4,7 @@ import { names as registeredCardNames } from 'c/v360CardRegistry';
 import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
-import setCardActive from '@salesforce/apex/V360AdminController.setCardActive';
+import activateCard from '@salesforce/apex/V360AdminController.activateCard';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 
@@ -197,13 +197,15 @@ export default class V360AdminConsole extends LightningElement {
         const componentName = binding.slice(separatorAt + 1);
         try {
             await saveCardProperties({
-                cardId: card.cardId,
-                label,
-                description,
-                iconName,
-                buttonLabel,
-                componentType,
-                componentName
+                input: {
+                    cardId: card.cardId,
+                    label,
+                    description,
+                    iconName,
+                    buttonLabel,
+                    componentType,
+                    componentName
+                }
             });
             this.toast('Card saved', `“${label}” was saved.`, 'success');
             await this.refreshCatalog();
@@ -272,7 +274,7 @@ export default class V360AdminConsole extends LightningElement {
         const card = this.selectedCard;
         this.activationOpen = false;
         try {
-            await setCardActive({ cardId: card.cardId, isActive: true });
+            await activateCard({ cardId: card.cardId });
             this.toast('Card activated', `“${card.label}” is now live for end users.`, 'success');
             await this.refreshCatalog();
         } catch (error) {
