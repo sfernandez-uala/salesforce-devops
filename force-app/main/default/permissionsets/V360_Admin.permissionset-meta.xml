@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <label>V360 Admin</label>
-    <description>Full CRUD and field access on Vista 360 configuration objects (Tab, Card, CardRule, RulePredicate) plus the V360_ManageVisibilityRules custom permission. Access to the admin LWC/app will be added once that component ships.</description>
+    <description>Full CRUD and field access on Vista 360 configuration objects (Tab, Card, CardRule, RulePredicate), the V360_ManageVisibilityRules custom permission, and access to the Vista 360 Admin console tab.</description>
     <hasActivationRequired>false</hasActivationRequired>
+    <classAccesses>
+        <apexClass>V360AdminController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
     <customPermissions>
         <enabled>true</enabled>
         <name>V360_ManageVisibilityRules</name>
@@ -108,4 +112,8 @@
         <field>V360_CardRule__c.VisibilityFormula__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <tabSettings>
+        <tab>V360_Admin_Console</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
 </PermissionSet>

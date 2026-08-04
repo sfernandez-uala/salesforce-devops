@@ -1,0 +1,18 @@
+/**
+ * The two rules SLDS cannot express; everything else in this component is
+ * SLDS blueprints and utilities. Colors come from the shared tokens.
+ */
+@import 'c/v360Styles';
+
+/* Formulas are code: the rule editor's textarea reads in monospace. */
+.v360-admin-formula {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+}
+
+/* SLDS link boxes have hover/focus treatments but no selected state; the
+   open card's row carries the brand ring the box blueprint lacks. */
+.v360-admin-row_selected {
+    border-color: var(--v360-color-brand);
+    box-shadow: 0 0 0 1px var(--v360-color-brand);
+}

@@ -25,6 +25,19 @@ const REGISTRY = {
     v360LifecycleDemo: V360LifecycleDemo
 };
 
+// Registered for runtime compatibility but not offered to admins: a card
+// bound to one of these still renders, yet the picker never suggests it.
+const NOT_SELECTABLE = new Set(['pipelineProbe']);
+
+/**
+ * @returns {string[]} every card component name an admin may bind -- the
+ * admin console's component picker offers exactly this list, so a newly
+ * configured LWC binding can only ever name a real, registered card.
+ */
+export function names() {
+    return Object.keys(REGISTRY).filter((componentName) => !NOT_SELECTABLE.has(componentName));
+}
+
 /**
  * @param {string} componentName - the card's configured component name.
  * @returns {boolean} whether the name is a known registry entry.
