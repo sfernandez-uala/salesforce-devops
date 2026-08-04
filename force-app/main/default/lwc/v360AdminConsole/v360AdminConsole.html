@@ -308,22 +308,27 @@
                                         data-id="prop-description"
                                         field-level-help="Shown on the gallery tile and under the title of the focused view."
                                     ></lightning-textarea>
-                                    <div class="slds-grid slds-grid_vertical-align-end">
-                                        <div class="slds-grow">
-                                            <lightning-input
-                                                label="Icon"
-                                                value={detail.iconName}
-                                                data-id="prop-icon"
-                                                field-level-help="An SLDS icon name, like standard:account or utility:screen. The preview updates as you type."
-                                                onchange={handleIconInput}
-                                            ></lightning-input>
-                                        </div>
-                                        <div class="slds-grow-none slds-p-left_x-small slds-p-bottom_xx-small">
+                                    <div class="slds-form-element">
+                                        <label class="slds-form-element__label" for="prop-icon">Icon</label>
+                                        <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_right">
                                             <lightning-icon
                                                 icon-name={iconPreviewName}
-                                                size="small"
+                                                size="x-small"
+                                                class="slds-input__icon slds-input__icon_right"
                                                 data-id="icon-preview"
                                             ></lightning-icon>
+                                            <input
+                                                id="prop-icon"
+                                                type="text"
+                                                class="slds-input"
+                                                value={detail.iconName}
+                                                placeholder="standard:account"
+                                                data-id="prop-icon"
+                                                oninput={handleIconInput}
+                                            />
+                                        </div>
+                                        <div class="slds-form-element__help" aria-live="polite">
+                                            An SLDS icon name; the preview updates as you type.
                                         </div>
                                     </div>
                                     <lightning-combobox
