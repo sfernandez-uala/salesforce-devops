@@ -118,12 +118,15 @@
                                 </lightning-vertical-navigation-section>
                             </template>
                         </lightning-vertical-navigation>
-                        <lightning-button
-                            label="New tab"
-                            class="slds-m-top_x-small slds-m-left_small"
-                            data-id="new-tab"
-                            onclick={handleNewTab}
-                        ></lightning-button>
+                        <div class="slds-p-left_large slds-p-vertical_x-small">
+                            <lightning-button
+                                variant="base"
+                                label="New tab"
+                                icon-name="utility:add"
+                                data-id="new-tab"
+                                onclick={handleNewTab}
+                            ></lightning-button>
+                        </div>
                     </div>
 
                     <div class="slds-col slds-size_1-of-1 slds-medium-size_9-of-12 slds-large-size_6-of-12" data-id="workspace">
@@ -428,7 +431,7 @@
                                                     </template>
                                                 </div>
                                             </template>
-                                            <div class="slds-grid slds-grid_vertical-align-end slds-m-top_x-small">
+                                            <div class="slds-grid slds-grid_vertical-align-start slds-m-top_x-small">
                                                 <div class="slds-size_1-of-3">
                                                     <lightning-combobox
                                                         label="Predicate"
@@ -445,13 +448,18 @@
                                                         data-id={rule.predicateTargetFieldId}
                                                     ></lightning-input>
                                                 </div>
-                                                <lightning-button
-                                                    label="Add"
-                                                    data-id="add-predicate"
-                                                    data-rule-id={rule.ruleId}
-                                                    disabled={busy}
-                                                    onclick={handleAddPredicate}
-                                                ></lightning-button>
+                                                <div class="slds-form-element">
+                                                    <span class="slds-form-element__label slds-hidden" aria-hidden="true">Add</span>
+                                                    <div class="slds-form-element__control">
+                                                        <lightning-button
+                                                            label="Add"
+                                                            data-id="add-predicate"
+                                                            data-rule-id={rule.ruleId}
+                                                            disabled={busy}
+                                                            onclick={handleAddPredicate}
+                                                        ></lightning-button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </template>
