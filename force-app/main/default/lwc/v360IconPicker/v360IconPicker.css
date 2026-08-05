@@ -1,7 +1,8 @@
 /**
- * SLDS ships no icon-browser blueprint: the tile grid, tile hover/focus/
- * selected treatment, and the name label are this component's own
- * structural presentation. Colors come from the shared tokens.
+ * SLDS ships no icon-browser blueprint: the row list and its hover/
+ * focus/selected treatment are this component's own structural
+ * presentation (each row's own icon/label split is plain SLDS grid
+ * columns, in the template). Colors come from the shared tokens.
  */
 @import 'c/v360Styles';
 
@@ -14,21 +15,14 @@
     overflow-y: auto;
 }
 
-.v360-icon-picker-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
-    gap: 0.25rem;
-}
-
 .v360-icon-picker-tile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.5rem 0.25rem;
+    display: block;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
     border: 1px solid transparent;
     border-radius: var(--v360-radius);
     background: none;
+    text-align: left;
 }
 
 .v360-icon-picker-tile:hover {
