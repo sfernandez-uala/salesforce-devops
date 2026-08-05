@@ -255,7 +255,7 @@ describe('c-v360-admin-console', () => {
         await flushPromises();
 
         expect(element.shadowRoot.querySelector('c-v360-icon-picker')).toBeNull();
-        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').title).toBe('standard:contact');
+        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').label).toBe('standard:contact');
 
         element.shadowRoot.querySelector('[data-id="save-properties"]').click();
         await flushPromises();
@@ -282,7 +282,7 @@ describe('c-v360-admin-console', () => {
         await flushPromises();
 
         // CardB's own saved icon, not CardA's picker selection carried over.
-        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').title).toBe('standard:account');
+        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').label).toBe('standard:account');
     });
 
     it('offers only registry names as LWC component options', async () => {

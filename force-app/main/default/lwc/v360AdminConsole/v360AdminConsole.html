@@ -300,16 +300,16 @@
                                             <div class="slds-form-element">
                                                 <span class="slds-form-element__label">Icon</span>
                                                 <div class="slds-form-element__control">
-                                                    <lightning-button-icon
+                                                    <lightning-button
+                                                        label={iconTriggerLabel}
                                                         icon-name={iconPreviewName}
-                                                        variant="border-filled"
-                                                        size="medium"
-                                                        alternative-text={iconTriggerLabel}
-                                                        title={iconTriggerLabel}
+                                                        icon-position="left"
+                                                        variant="neutral"
+                                                        stretch
                                                         data-id="prop-icon-trigger"
                                                         data-target="properties"
                                                         onclick={handleOpenIconPicker}
-                                                    ></lightning-button-icon>
+                                                    ></lightning-button>
                                                 </div>
                                             </div>
                                         </div>
@@ -605,16 +605,16 @@
                             <div class="slds-form-element">
                                 <span class="slds-form-element__label">Icon</span>
                                 <div class="slds-form-element__control">
-                                    <lightning-button-icon
+                                    <lightning-button
+                                        label={newCardIconTriggerLabel}
                                         icon-name={newCardIconPreviewName}
-                                        variant="border-filled"
-                                        size="medium"
-                                        alternative-text={newCardIconTriggerLabel}
-                                        title={newCardIconTriggerLabel}
+                                        icon-position="left"
+                                        variant="neutral"
+                                        stretch
                                         data-id="nc-icon-trigger"
                                         data-target="newCard"
                                         onclick={handleOpenIconPicker}
-                                    ></lightning-button-icon>
+                                    ></lightning-button>
                                 </div>
                             </div>
                         </div>

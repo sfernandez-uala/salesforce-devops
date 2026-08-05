@@ -31,7 +31,7 @@
                 </template>
 
                 <template lwc:if={hasResults}>
-                    <div class="slds-grid slds-grid_vertical" data-id="icon-grid">
+                    <div class="v360-icon-picker-grid" data-id="icon-grid">
                         <template for:each={visibleIcons} for:item="icon">
                             <button
                                 key={icon.fullName}
@@ -43,14 +43,8 @@
                                 data-icon={icon.fullName}
                                 onclick={handleSelect}
                             >
-                                <span class="slds-media slds-media_center slds-media_small">
-                                    <span class="slds-media__figure slds-m-right_small">
-                                        <lightning-icon icon-name={icon.fullName} size="small"></lightning-icon>
-                                    </span>
-                                    <span class="slds-media__body">
-                                        <span class="slds-truncate slds-text-body_small">{icon.name}</span>
-                                    </span>
-                                </span>
+                                <lightning-icon icon-name={icon.fullName} size="small"></lightning-icon>
+                                <span class="slds-truncate slds-text-body_small slds-text-color_weak">{icon.name}</span>
                             </button>
                         </template>
                     </div>
