@@ -14,7 +14,7 @@
                     ></lightning-input>
                 </div>
             </div>
-            <div class="slds-modal__content slds-p-around_medium">
+            <div class="slds-modal__content slds-p-around_medium v360-icon-picker-body">
                 <template lwc:if={isBrowsing}>
                     <lightning-button-group class="slds-m-bottom_small">
                         <template for:each={categories} for:item="category">
@@ -44,7 +44,7 @@
                                 onclick={handleSelect}
                             >
                                 <lightning-icon icon-name={icon.fullName} size="small"></lightning-icon>
-                                <span class="v360-icon-picker-name">{icon.name}</span>
+                                <span class="slds-truncate slds-text-body_small slds-text-color_weak">{icon.name}</span>
                             </button>
                         </template>
                     </div>

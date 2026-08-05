@@ -5,6 +5,15 @@
  */
 @import 'c/v360Styles';
 
+/* SLDS sizes modal content to its children, so switching between a full
+   category grid and a handful of search results visibly resized the
+   whole dialog on every keystroke. A fixed height with its own scroll
+   keeps the search bar and footer still regardless of match count. */
+.v360-icon-picker-body {
+    height: 24rem;
+    overflow-y: auto;
+}
+
 .v360-icon-picker-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
@@ -34,13 +43,4 @@
 .v360-icon-picker-tile_selected {
     border-color: var(--v360-color-brand);
     background: var(--v360-color-brand-tint);
-}
-
-.v360-icon-picker-name {
-    font-size: 0.6875rem;
-    color: var(--v360-color-text-subtle);
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
