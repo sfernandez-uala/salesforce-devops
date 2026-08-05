@@ -299,17 +299,18 @@
                                         <div class="slds-col slds-size_4-of-12">
                                             <div class="slds-form-element">
                                                 <span class="slds-form-element__label">Icon</span>
-                                                <div class="slds-form-element__control">
-                                                    <lightning-button
-                                                        label={iconTriggerLabel}
+                                                <div class="slds-form-element__control slds-grid slds-grid_vertical-align-center">
+                                                    <lightning-button-icon
                                                         icon-name={iconPreviewName}
-                                                        icon-position="left"
-                                                        variant="neutral"
-                                                        stretch
+                                                        variant="border-filled"
+                                                        alternative-text={iconTriggerLabel}
+                                                        title={iconTriggerLabel}
+                                                        class="slds-m-right_x-small slds-shrink-none"
                                                         data-id="prop-icon-trigger"
                                                         data-target="properties"
                                                         onclick={handleOpenIconPicker}
-                                                    ></lightning-button>
+                                                    ></lightning-button-icon>
+                                                    <span class="slds-truncate" title={iconTriggerLabel} data-id="prop-icon-value">{iconTriggerLabel}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -604,17 +605,18 @@
                         <div class="slds-col slds-size_4-of-12">
                             <div class="slds-form-element">
                                 <span class="slds-form-element__label">Icon</span>
-                                <div class="slds-form-element__control">
-                                    <lightning-button
-                                        label={newCardIconTriggerLabel}
+                                <div class="slds-form-element__control slds-grid slds-grid_vertical-align-center">
+                                    <lightning-button-icon
                                         icon-name={newCardIconPreviewName}
-                                        icon-position="left"
-                                        variant="neutral"
-                                        stretch
+                                        variant="border-filled"
+                                        alternative-text={newCardIconTriggerLabel}
+                                        title={newCardIconTriggerLabel}
+                                        class="slds-m-right_x-small slds-shrink-none"
                                         data-id="nc-icon-trigger"
                                         data-target="newCard"
                                         onclick={handleOpenIconPicker}
-                                    ></lightning-button>
+                                    ></lightning-button-icon>
+                                    <span class="slds-truncate" title={newCardIconTriggerLabel} data-id="nc-icon-value">{newCardIconTriggerLabel}</span>
                                 </div>
                             </div>
                         </div>
