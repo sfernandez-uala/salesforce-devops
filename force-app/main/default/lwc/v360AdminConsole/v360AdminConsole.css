@@ -1,8 +1,31 @@
 /**
- * The two rules SLDS cannot express; everything else in this component is
- * SLDS blueprints and utilities. Colors come from the shared tokens.
+ * The three rules SLDS cannot express; everything else in this component
+ * is SLDS blueprints and utilities. Colors come from the shared tokens.
  */
 @import 'c/v360Styles';
+
+/* Flex items default to min-width:auto, so they refuse to shrink below
+   their content's intrinsic width -- a long icon name pushed this
+   column wider than its 4-of-12 share instead of letting its button
+   truncate down to it. */
+.v360-admin-shrinkable-col {
+    min-width: 0;
+}
+
+/* A plain SLDS button, not lightning-button: only a value living in this
+   component's own light DOM can be truncated with slds-truncate --
+   lightning-button's label renders inside its own shadow root, which no
+   outer class can reach. Same slds-button classes keep it visually
+   identical to the base component. */
+.v360-admin-icon-trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.v360-admin-icon-value {
+    min-width: 0;
+}
 
 /* Formulas are code: the rule editor's textarea reads in monospace. */
 .v360-admin-formula {

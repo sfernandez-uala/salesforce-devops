@@ -296,21 +296,21 @@
                                 <div class="slds-box slds-box_small slds-theme_default slds-m-bottom_small">
                                     <p class="slds-text-title_caps slds-m-bottom_x-small">Properties</p>
                                     <div class="slds-grid slds-grid_vertical-align-end">
-                                        <div class="slds-col slds-size_4-of-12">
+                                        <div class="slds-col slds-size_4-of-12 v360-admin-shrinkable-col">
                                             <div class="slds-form-element">
                                                 <span class="slds-form-element__label">Icon</span>
-                                                <div class="slds-form-element__control slds-grid slds-grid_vertical-align-center">
-                                                    <lightning-button-icon
-                                                        icon-name={iconPreviewName}
-                                                        variant="border-filled"
-                                                        alternative-text={iconTriggerLabel}
+                                                <div class="slds-form-element__control">
+                                                    <button
+                                                        type="button"
+                                                        class="slds-button slds-button_neutral v360-admin-icon-trigger"
                                                         title={iconTriggerLabel}
-                                                        class="slds-m-right_x-small slds-shrink-none"
                                                         data-id="prop-icon-trigger"
                                                         data-target="properties"
                                                         onclick={handleOpenIconPicker}
-                                                    ></lightning-button-icon>
-                                                    <span class="slds-truncate" title={iconTriggerLabel} data-id="prop-icon-value">{iconTriggerLabel}</span>
+                                                    >
+                                                        <lightning-icon icon-name={iconPreviewName} size="x-small" class="slds-m-right_x-small slds-shrink-none"></lightning-icon>
+                                                        <span class="slds-truncate v360-admin-icon-value">{iconTriggerLabel}</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -602,21 +602,21 @@
                         data-id="nc-devname"
                     ></lightning-input>
                     <div class="slds-grid slds-grid_vertical-align-end">
-                        <div class="slds-col slds-size_4-of-12">
+                        <div class="slds-col slds-size_4-of-12 v360-admin-shrinkable-col">
                             <div class="slds-form-element">
                                 <span class="slds-form-element__label">Icon</span>
-                                <div class="slds-form-element__control slds-grid slds-grid_vertical-align-center">
-                                    <lightning-button-icon
-                                        icon-name={newCardIconPreviewName}
-                                        variant="border-filled"
-                                        alternative-text={newCardIconTriggerLabel}
+                                <div class="slds-form-element__control">
+                                    <button
+                                        type="button"
+                                        class="slds-button slds-button_neutral v360-admin-icon-trigger"
                                         title={newCardIconTriggerLabel}
-                                        class="slds-m-right_x-small slds-shrink-none"
                                         data-id="nc-icon-trigger"
                                         data-target="newCard"
                                         onclick={handleOpenIconPicker}
-                                    ></lightning-button-icon>
-                                    <span class="slds-truncate" title={newCardIconTriggerLabel} data-id="nc-icon-value">{newCardIconTriggerLabel}</span>
+                                    >
+                                        <lightning-icon icon-name={newCardIconPreviewName} size="x-small" class="slds-m-right_x-small slds-shrink-none"></lightning-icon>
+                                        <span class="slds-truncate v360-admin-icon-value">{newCardIconTriggerLabel}</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
