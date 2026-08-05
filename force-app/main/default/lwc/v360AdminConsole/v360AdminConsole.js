@@ -60,6 +60,9 @@ export default class V360AdminConsole extends LightningElement {
     helpOpen = false;
     newCardOpen = false;
     newCardType = COMPONENT_TYPE_LWC;
+    newCardIcon = '';
+    iconPickerOpen = false;
+    iconPickerTarget = null;
     tabModalOpen = false;
     editingTabId = null;
     addRuleOpen = false;
@@ -140,14 +143,55 @@ export default class V360AdminConsole extends LightningElement {
         this.iconDraft = undefined;
     }
 
-    handleIconInput(event) {
-        this.iconDraft = event.target.value;
+    /**
+     * Opens the shared icon picker for either the card-properties panel or
+     * the new-card wizard, recorded in iconPickerTarget so the single
+     * onselect handler below knows which draft to update.
+     */
+    handleOpenIconPicker(event) {
+        this.iconPickerTarget = event.currentTarget.dataset.target;
+        this.iconPickerOpen = true;
     }
 
-    /** The live preview next to the icon field; blank falls back like the shell does. */
+    handleCloseIconPicker() {
+        this.iconPickerOpen = false;
+    }
+
+    handleIconSelect(event) {
+        const iconName = event.detail.value;
+        if (this.iconPickerTarget === 'newCard') {
+            this.newCardIcon = iconName;
+        } else {
+            this.iconDraft = iconName;
+        }
+        this.iconPickerOpen = false;
+    }
+
+    /** The card-properties icon, from an open picker selection or the card's saved value. */
+    get iconRawValue() {
+        return this.iconDraft ?? this.selectedCard?.iconName ?? '';
+    }
+
+    get iconTriggerLabel() {
+        return this.iconRawValue || 'Choose an icon';
+    }
+
+    /** The glyph shown on the properties trigger button; blank falls back like the shell does. */
     get iconPreviewName() {
-        const candidate = this.iconDraft ?? this.selectedCard?.iconName;
-        return candidate || 'standard:default';
+        return this.iconRawValue || 'standard:default';
+    }
+
+    get newCardIconTriggerLabel() {
+        return this.newCardIcon || 'Choose an icon';
+    }
+
+    get newCardIconPreviewName() {
+        return this.newCardIcon || 'standard:default';
+    }
+
+    /** Preselects the picker's category and highlights the value for whichever field opened it. */
+    get selectedIconForPicker() {
+        return this.iconPickerTarget === 'newCard' ? this.newCardIcon : this.iconRawValue;
     }
 
     handleCardKeydown(event) {
@@ -209,7 +253,7 @@ export default class V360AdminConsole extends LightningElement {
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
         const description = this.template.querySelector('[data-id="prop-description"]').value;
-        const iconName = this.template.querySelector('[data-id="prop-icon"]').value;
+        const iconName = this.iconRawValue;
         const buttonLabel = this.template.querySelector('[data-id="prop-button-label"]').value;
         const binding = this.template.querySelector('[data-id="prop-component"]').value;
         const separatorAt = binding.indexOf(BINDING_SEPARATOR);
@@ -404,6 +448,7 @@ export default class V360AdminConsole extends LightningElement {
 
     handleNewCard() {
         this.newCardType = COMPONENT_TYPE_LWC;
+        this.newCardIcon = '';
         this.newCardOpen = true;
     }
 
@@ -435,7 +480,7 @@ export default class V360AdminConsole extends LightningElement {
                     developerName: this.template.querySelector('[data-id="nc-devname"]').value,
                     label: this.template.querySelector('[data-id="nc-label"]').value,
                     description: this.template.querySelector('[data-id="nc-description"]').value,
-                    iconName: this.template.querySelector('[data-id="nc-icon"]').value,
+                    iconName: this.newCardIcon,
                     buttonLabel: this.template.querySelector('[data-id="nc-button-label"]').value,
                     componentType: this.newCardType,
                     componentName,

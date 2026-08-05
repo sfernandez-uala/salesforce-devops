@@ -1,0 +1,46 @@
+/**
+ * SLDS ships no icon-browser blueprint: the tile grid, tile hover/focus/
+ * selected treatment, and the name label are this component's own
+ * structural presentation. Colors come from the shared tokens.
+ */
+@import 'c/v360Styles';
+
+.v360-icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: 0.25rem;
+}
+
+.v360-icon-picker-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--v360-radius);
+    background: none;
+}
+
+.v360-icon-picker-tile:hover {
+    background: var(--v360-color-surface-hover);
+}
+
+.v360-icon-picker-tile:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: 2px;
+}
+
+.v360-icon-picker-tile_selected {
+    border-color: var(--v360-color-brand);
+    background: var(--v360-color-brand-tint);
+}
+
+.v360-icon-picker-name {
+    font-size: 0.6875rem;
+    color: var(--v360-color-text-subtle);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

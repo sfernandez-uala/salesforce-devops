@@ -1,0 +1,73 @@
+<template>
+    <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="icon-picker-title" class="slds-modal slds-fade-in-open slds-modal_medium" data-id="icon-picker-modal">
+        <div class="slds-modal__container">
+            <div class="slds-modal__header">
+                <h2 id="icon-picker-title" class="slds-modal__title">Choose an icon</h2>
+                <div class="slds-m-top_small">
+                    <lightning-input
+                        type="search"
+                        label="Search icons"
+                        variant="label-hidden"
+                        placeholder="Search all icons"
+                        data-id="icon-search"
+                        onchange={handleSearch}
+                    ></lightning-input>
+                </div>
+            </div>
+            <div class="slds-modal__content slds-p-around_medium">
+                <template lwc:if={isBrowsing}>
+                    <lightning-button-group class="slds-m-bottom_small">
+                        <template for:each={categories} for:item="category">
+                            <lightning-button
+                                key={category.key}
+                                label={category.label}
+                                variant={category.variant}
+                                data-id="category-tab"
+                                data-category={category.key}
+                                onclick={handleCategorySelect}
+                            ></lightning-button>
+                        </template>
+                    </lightning-button-group>
+                </template>
+
+                <template lwc:if={hasResults}>
+                    <div class="v360-icon-picker-grid" data-id="icon-grid">
+                        <template for:each={visibleIcons} for:item="icon">
+                            <button
+                                key={icon.fullName}
+                                type="button"
+                                class={icon.tileClass}
+                                title={icon.fullName}
+                                aria-label={icon.fullName}
+                                data-id="icon-tile"
+                                data-icon={icon.fullName}
+                                onclick={handleSelect}
+                            >
+                                <lightning-icon icon-name={icon.fullName} size="small"></lightning-icon>
+                                <span class="v360-icon-picker-name">{icon.name}</span>
+                            </button>
+                        </template>
+                    </div>
+                    <template lwc:if={isTruncated}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_small" data-id="truncated-hint">
+                            Showing {visibleCount} of {totalCount} icons in this category — search to find a specific one.
+                        </p>
+                    </template>
+                </template>
+                <template lwc:else>
+                    <c-v360-empty-state
+                        data-id="no-results-state"
+                        title="No icons found"
+                        illustration-name="noresults:unknown"
+                        alternative-text="No results illustration"
+                        description="Try a different search term."
+                    ></c-v360-empty-state>
+                </template>
+            </div>
+            <div class="slds-modal__footer">
+                <lightning-button label="Cancel" data-id="cancel" onclick={handleCancel}></lightning-button>
+            </div>
+        </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

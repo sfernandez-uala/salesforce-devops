@@ -239,6 +239,52 @@ describe('c-v360-admin-console', () => {
         });
     });
 
+    it('picks a new icon for the open card from the icon picker and saves it', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        saveCardProperties.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').click();
+        await flushPromises();
+        const picker = element.shadowRoot.querySelector('c-v360-icon-picker');
+        expect(picker).not.toBeNull();
+        expect(picker.selectedIcon).toBe('standard:account');
+        picker.dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:contact' } }));
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('c-v360-icon-picker')).toBeNull();
+        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').label).toBe('standard:contact');
+
+        element.shadowRoot.querySelector('[data-id="save-properties"]').click();
+        await flushPromises();
+
+        expect(saveCardProperties).toHaveBeenCalledWith({
+            input: expect.objectContaining({ cardId: 'card-a', iconName: 'standard:contact' })
+        });
+    });
+
+    it('resets the icon draft when switching cards, so the picker preselects the newly opened card', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').click();
+        await flushPromises();
+        element.shadowRoot
+            .querySelector('c-v360-icon-picker')
+            .dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:contact' } }));
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        await flushPromises();
+
+        // CardB's own saved icon, not CardA's picker selection carried over.
+        expect(element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').label).toBe('standard:account');
+    });
+
     it('offers only registry names as LWC component options', async () => {
         getCatalog.mockResolvedValue(adminCatalog());
 
@@ -347,10 +393,16 @@ describe('c-v360-admin-console', () => {
         element.shadowRoot.querySelector('[data-id="new-card"]').click();
         await flushPromises();
 
+        element.shadowRoot.querySelector('[data-id="nc-icon-trigger"]').click();
+        await flushPromises();
+        element.shadowRoot
+            .querySelector('c-v360-icon-picker')
+            .dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:screen' } }));
+        await flushPromises();
+
         element.shadowRoot.querySelector('[data-id="nc-devname"]').value = 'V360NewCard';
         element.shadowRoot.querySelector('[data-id="nc-label"]').value = 'New Card';
         element.shadowRoot.querySelector('[data-id="nc-description"]').value = 'Fresh.';
-        element.shadowRoot.querySelector('[data-id="nc-icon"]').value = 'standard:screen';
         element.shadowRoot.querySelector('[data-id="nc-button-label"]').value = 'Open';
         element.shadowRoot.querySelector('[data-id="nc-component"]').value = 'LWC:v360LifecycleDemo';
         element.shadowRoot.querySelector('[data-id="nc-create"]').click();

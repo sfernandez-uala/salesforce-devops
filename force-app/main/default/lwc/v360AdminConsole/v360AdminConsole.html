@@ -309,26 +309,17 @@
                                         field-level-help="Shown on the gallery tile and under the title of the focused view."
                                     ></lightning-textarea>
                                     <div class="slds-form-element">
-                                        <label class="slds-form-element__label" for="prop-icon">Icon</label>
-                                        <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_right">
-                                            <lightning-icon
+                                        <span class="slds-form-element__label">Icon</span>
+                                        <div class="slds-form-element__control">
+                                            <lightning-button
+                                                label={iconTriggerLabel}
                                                 icon-name={iconPreviewName}
-                                                size="x-small"
-                                                class="slds-input__icon slds-input__icon_right"
-                                                data-id="icon-preview"
-                                            ></lightning-icon>
-                                            <input
-                                                id="prop-icon"
-                                                type="text"
-                                                class="slds-input"
-                                                value={detail.iconName}
-                                                placeholder="standard:account"
-                                                data-id="prop-icon"
-                                                oninput={handleIconInput}
-                                            />
-                                        </div>
-                                        <div class="slds-form-element__help" aria-live="polite">
-                                            An SLDS icon name; the preview updates as you type.
+                                                icon-position="left"
+                                                variant="neutral"
+                                                data-id="prop-icon-trigger"
+                                                data-target="properties"
+                                                onclick={handleOpenIconPicker}
+                                            ></lightning-button>
                                         </div>
                                     </div>
                                     <lightning-combobox
@@ -604,11 +595,20 @@
                     ></lightning-input>
                     <lightning-input label="Label" required data-id="nc-label"></lightning-input>
                     <lightning-textarea label="Description" max-length="1000" data-id="nc-description"></lightning-textarea>
-                    <lightning-input
-                        label="Icon"
-                        placeholder="standard:account"
-                        data-id="nc-icon"
-                    ></lightning-input>
+                    <div class="slds-form-element">
+                        <span class="slds-form-element__label">Icon</span>
+                        <div class="slds-form-element__control">
+                            <lightning-button
+                                label={newCardIconTriggerLabel}
+                                icon-name={newCardIconPreviewName}
+                                icon-position="left"
+                                variant="neutral"
+                                data-id="nc-icon-trigger"
+                                data-target="newCard"
+                                onclick={handleOpenIconPicker}
+                            ></lightning-button>
+                        </div>
+                    </div>
                     <lightning-input label="Tile button label" placeholder="Consultar" data-id="nc-button-label"></lightning-input>
                     <lightning-combobox
                         label="Component type"
@@ -713,6 +713,14 @@
             </div>
         </section>
         <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <template lwc:if={iconPickerOpen}>
+        <c-v360-icon-picker
+            selected-icon={selectedIconForPicker}
+            onselect={handleIconSelect}
+            onclose={handleCloseIconPicker}
+        ></c-v360-icon-picker>
     </template>
 
     <template lwc:if={activationOpen}>
