@@ -295,12 +295,33 @@
 
                                 <div class="slds-box slds-box_small slds-theme_default slds-m-bottom_small">
                                     <p class="slds-text-title_caps slds-m-bottom_x-small">Properties</p>
-                                    <lightning-input
-                                        label="Label"
-                                        value={detail.label}
-                                        required
-                                        data-id="prop-label"
-                                    ></lightning-input>
+                                    <div class="slds-grid slds-grid_vertical-align-end">
+                                        <div class="slds-col slds-size_4-of-12">
+                                            <div class="slds-form-element">
+                                                <span class="slds-form-element__label">Icon</span>
+                                                <div class="slds-form-element__control">
+                                                    <lightning-button-icon
+                                                        icon-name={iconPreviewName}
+                                                        variant="border-filled"
+                                                        size="medium"
+                                                        alternative-text={iconTriggerLabel}
+                                                        title={iconTriggerLabel}
+                                                        data-id="prop-icon-trigger"
+                                                        data-target="properties"
+                                                        onclick={handleOpenIconPicker}
+                                                    ></lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="slds-col slds-size_8-of-12">
+                                            <lightning-input
+                                                label="Label"
+                                                value={detail.label}
+                                                required
+                                                data-id="prop-label"
+                                            ></lightning-input>
+                                        </div>
+                                    </div>
                                     <lightning-textarea
                                         label="Description"
                                         value={detail.description}
@@ -308,20 +329,6 @@
                                         data-id="prop-description"
                                         field-level-help="Shown on the gallery tile and under the title of the focused view."
                                     ></lightning-textarea>
-                                    <div class="slds-form-element">
-                                        <span class="slds-form-element__label">Icon</span>
-                                        <div class="slds-form-element__control">
-                                            <lightning-button
-                                                label={iconTriggerLabel}
-                                                icon-name={iconPreviewName}
-                                                icon-position="left"
-                                                variant="neutral"
-                                                data-id="prop-icon-trigger"
-                                                data-target="properties"
-                                                onclick={handleOpenIconPicker}
-                                            ></lightning-button>
-                                        </div>
-                                    </div>
                                     <lightning-combobox
                                         label="Component"
                                         value={detail.bindingValue}
@@ -593,22 +600,29 @@
                         field-level-help="Stable unique name, e.g. V360AccountRisk."
                         data-id="nc-devname"
                     ></lightning-input>
-                    <lightning-input label="Label" required data-id="nc-label"></lightning-input>
-                    <lightning-textarea label="Description" max-length="1000" data-id="nc-description"></lightning-textarea>
-                    <div class="slds-form-element">
-                        <span class="slds-form-element__label">Icon</span>
-                        <div class="slds-form-element__control">
-                            <lightning-button
-                                label={newCardIconTriggerLabel}
-                                icon-name={newCardIconPreviewName}
-                                icon-position="left"
-                                variant="neutral"
-                                data-id="nc-icon-trigger"
-                                data-target="newCard"
-                                onclick={handleOpenIconPicker}
-                            ></lightning-button>
+                    <div class="slds-grid slds-grid_vertical-align-end">
+                        <div class="slds-col slds-size_4-of-12">
+                            <div class="slds-form-element">
+                                <span class="slds-form-element__label">Icon</span>
+                                <div class="slds-form-element__control">
+                                    <lightning-button-icon
+                                        icon-name={newCardIconPreviewName}
+                                        variant="border-filled"
+                                        size="medium"
+                                        alternative-text={newCardIconTriggerLabel}
+                                        title={newCardIconTriggerLabel}
+                                        data-id="nc-icon-trigger"
+                                        data-target="newCard"
+                                        onclick={handleOpenIconPicker}
+                                    ></lightning-button-icon>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="slds-col slds-size_8-of-12">
+                            <lightning-input label="Label" required data-id="nc-label"></lightning-input>
                         </div>
                     </div>
+                    <lightning-textarea label="Description" max-length="1000" data-id="nc-description"></lightning-textarea>
                     <lightning-input label="Tile button label" placeholder="Consultar" data-id="nc-button-label"></lightning-input>
                     <lightning-combobox
                         label="Component type"
