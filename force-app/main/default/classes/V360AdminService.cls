@@ -55,11 +55,15 @@ public with sharing class V360AdminService {
     }
 
     private static void validateTabAnchors(List<V360_Tab__c> tabs) {
+        // getGlobalDescribe() is among the most expensive describe calls in
+        // Apex and its result cannot change between iterations, so a batch of
+        // tabs pays for it once instead of once per tab.
+        Map<String, Schema.SObjectType> objectsByApiName = Schema.getGlobalDescribe();
         for (V360_Tab__c tab : tabs) {
             if (String.isBlank(tab.AnchorSObject__c)) {
                 continue;
             }
-            if (Schema.getGlobalDescribe().get(tab.AnchorSObject__c.toLowerCase()) == null) {
+            if (objectsByApiName.get(tab.AnchorSObject__c.toLowerCase()) == null) {
                 throw new V360AdminServiceException('Unknown anchor SObject: ' + tab.AnchorSObject__c);
             }
         }

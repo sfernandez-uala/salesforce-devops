@@ -543,8 +543,11 @@ public with sharing class V360AdminController {
 
     /** Everything saveTab may change on a tab; a blank id creates one. */
     // Transport properties named after the fields they carry; per-property
-    // ApexDoc would only restate each name.
-    @SuppressWarnings('PMD.ApexDoc')
+    // ApexDoc would only restate each name. AvoidBooleanMethodParameters
+    // fires on the implicit setter of the `active` property, which is not the
+    // control-flow flag that rule guards against -- a checkbox field cannot
+    // cross the @AuraEnabled boundary without one.
+    @SuppressWarnings('PMD.ApexDoc,PMD.AvoidBooleanMethodParameters')
     public class TabInput {
         @AuraEnabled
         public Id tabId { get; set; }
