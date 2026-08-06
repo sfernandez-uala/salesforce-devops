@@ -800,6 +800,7 @@ export default class V360AdminConsole extends LightningElement {
 
     cardPresentation(card) {
         const state = card.killSwitch ? 'killed' : card.active ? 'live' : 'draft';
+        const { total, enforced } = this.ruleEnforcement(card);
         return {
             iconNameOrDefault: card.iconName || 'standard:default',
             binding: `${card.componentType}: ${card.componentName}`,
@@ -812,12 +813,61 @@ export default class V360AdminConsole extends LightningElement {
             isDraft: state === 'draft',
             isLive: state === 'live',
             isKilled: state === 'killed',
-            ruleSummary:
-                card.ruleCount > 0
-                    ? `${card.ruleCount} visibility rule${card.ruleCount === 1 ? '' : 's'}`
-                    : 'No rules — visible to everyone who can see the page',
-            hasNoRules: card.ruleCount === 0
+            ruleSummary: this.ruleSummary(total, enforced, state === 'live'),
+            hasNoEnforcedRules: enforced === 0,
+            exposureNote: this.exposureNote(total, state === 'live')
         };
+    }
+
+    /**
+     * How many of a card's rules actually restrict someone. The visibility
+     * evaluator only lets an *active* rule block a card, so a parked rule
+     * protects nobody: a card whose every rule is parked is as open as one
+     * with no rules at all. The stored total and the enforced count are two
+     * different facts, and every warning in this console is computed from the
+     * second one.
+     *
+     * A catalog that does not report the enforced count is not assumed to be
+     * fully protected -- the count is derived from the rules themselves.
+     */
+    ruleEnforcement(card) {
+        const rules = card.rules ?? [];
+        return {
+            total: card.ruleCount ?? rules.length,
+            enforced: card.activeRuleCount ?? rules.filter((rule) => rule.active).length
+        };
+    }
+
+    /**
+     * The card row's one-line answer to "who sees this?". Only a live card can
+     * actually be exposed: the evaluator gates on state before it reads a
+     * single rule, so claiming a draft or a killed card is visible to everyone
+     * would contradict the banner its own detail panel renders.
+     */
+    ruleSummary(total, enforced, isLive) {
+        if (enforced > 0) {
+            return enforced === total
+                ? `${enforced} visibility rule${enforced === 1 ? '' : 's'}`
+                : `${enforced} of ${total} visibility rules active`;
+        }
+        const parked = total === 0 ? 'No rules' : `${total} rule${total === 1 ? '' : 's'}, none active`;
+        return isLive ? `${parked} — visible to everyone who can see the page` : parked;
+    }
+
+    /**
+     * Why a card restricts nobody. Two axes: whether it has no rules at all or
+     * only parked ones -- the second is the case an admin cannot infer from a
+     * rule count -- and whether that openness is happening now or only once
+     * the card goes live.
+     */
+    exposureNote(total, isLive) {
+        const cause =
+            total === 0
+                ? 'No rules yet.'
+                : `This card stores ${total} rule${total === 1 ? '' : 's'}, but none of them are active. The evaluator skips an inactive rule, so they restrict nobody.`;
+        return isLive
+            ? `${cause} This card is visible to everyone who can see the page.`
+            : `${cause} Once this card is live it will be open to everyone who can see the page.`;
     }
 
     get detail() {
@@ -885,12 +935,21 @@ export default class V360AdminConsole extends LightningElement {
                 detail: `${card.componentType}: ${card.componentName} is configured.`
             }
         ];
-        if (card.ruleCount > 0) {
+        const { total, enforced } = this.ruleEnforcement(card);
+        if (enforced > 0) {
             checks.push({
                 key: 'rules',
                 ok: true,
-                text: `${card.ruleCount} visibility rule${card.ruleCount === 1 ? '' : 's'} configured`,
-                detail: 'Only users passing the rules will see this card.'
+                text: `${enforced} active visibility rule${enforced === 1 ? '' : 's'} configured`,
+                detail: 'Only users passing every active rule will see this card.'
+            });
+        } else if (total > 0) {
+            checks.push({
+                key: 'rules',
+                ok: false,
+                text: `${total} rule${total === 1 ? '' : 's'}, none active`,
+                detail:
+                    'The evaluator skips an inactive rule, so these restrict nobody. Everyone who can see the page will see this card.'
             });
         } else {
             checks.push({

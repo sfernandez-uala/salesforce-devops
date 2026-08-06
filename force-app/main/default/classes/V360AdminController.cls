@@ -497,7 +497,27 @@ public with sharing class V360AdminController {
         List<AdminRule> rules = rulesByCardId.get(card.Id);
         adminCard.rules = rules == null ? new List<AdminRule>() : rules;
         adminCard.ruleCount = adminCard.rules.size();
+        adminCard.activeRuleCount = countActiveRules(adminCard.rules);
         return adminCard;
+    }
+
+    /**
+     * The rules that actually restrict someone. V360VisibilityEvaluator only
+     * lets an active rule block a card, so a parked rule protects nobody --
+     * a card whose every rule is parked is as open as one with no rules at
+     * all. The console warns on this count, never on the stored total.
+     *
+     * @param rules every rule of one card, active or not
+     * @return how many of them the evaluator will actually enforce
+     */
+    private static Integer countActiveRules(List<AdminRule> rules) {
+        Integer enforced = 0;
+        for (AdminRule rule : rules) {
+            if (rule.active == true) {
+                enforced++;
+            }
+        }
+        return enforced;
     }
 
     /** Everything saveCardProperties may change on a card, plus its id. */
@@ -613,6 +633,8 @@ public with sharing class V360AdminController {
         public Boolean killSwitch;
         @AuraEnabled
         public Integer ruleCount;
+        @AuraEnabled
+        public Integer activeRuleCount;
         @AuraEnabled
         public List<AdminRule> rules;
     }

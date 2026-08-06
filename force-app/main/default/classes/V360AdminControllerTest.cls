@@ -64,6 +64,65 @@ private class V360AdminControllerTest {
         }
     }
 
+    /**
+     * The evaluator only lets an *active* rule block a card
+     * (V360VisibilityEvaluator: `if (rule.active && !rulePasses(...))`), so a
+     * card whose rules are all inactive is visible to everyone -- exactly as
+     * if it had none. A single total cannot express that difference, so the
+     * catalog reports both counts and the console warns on the effective one.
+     */
+    @IsTest
+    static void getCatalogCountsActiveRulesSeparatelyFromTheTotal() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_ActiveRules_Tab', 'Account');
+        V360_Card__c guarded = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_ActiveRules_Guarded',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+        V360_Card__c parkedOnly = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_ActiveRules_ParkedOnly',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360LifecycleDemo', Order__c = 2)
+        );
+        V360TestDataFactory.insertCardRule(guarded.Id, 'V360Test_ActiveRules_On', null);
+        // The factory activates every rule it inserts, so park these two in a
+        // second DML -- the state a data load or a sandbox refresh can produce.
+        V360_CardRule__c parkedOnGuarded = V360TestDataFactory.insertCardRule(
+            guarded.Id,
+            'V360Test_ActiveRules_OffA',
+            null
+        );
+        V360_CardRule__c parkedOnOpenCard = V360TestDataFactory.insertCardRule(
+            parkedOnly.Id,
+            'V360Test_ActiveRules_OffB',
+            null
+        );
+        parkedOnGuarded.Active__c = false;
+        parkedOnOpenCard.Active__c = false;
+        update new List<V360_CardRule__c>{ parkedOnGuarded, parkedOnOpenCard };
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.AdminCatalog catalog = V360AdminController.getCatalog();
+            Test.stopTest();
+
+            V360AdminController.AdminTab adminTab = findTab(catalog, 'V360Test_ActiveRules_Tab');
+            Assert.areEqual(2, adminTab.cards[0].ruleCount, 'Both of the guarded card rules count toward the total');
+            Assert.areEqual(
+                1,
+                adminTab.cards[0].activeRuleCount,
+                'Only the active rule of the guarded card restricts anyone'
+            );
+            Assert.areEqual(1, adminTab.cards[1].ruleCount, 'The parked-only card still reports its stored rule');
+            Assert.areEqual(
+                0,
+                adminTab.cards[1].activeRuleCount,
+                'A card whose every rule is parked restricts nobody and must report zero'
+            );
+        }
+    }
+
     @IsTest
     static void updateCardOrderRewritesTheSequenceForAdmins() {
         User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });

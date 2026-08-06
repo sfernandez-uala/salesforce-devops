@@ -50,6 +50,7 @@ function card(cardId, developerName, overrides = {}) {
         active: true,
         killSwitch: false,
         ruleCount: 0,
+        activeRuleCount: 0,
         rules: [],
         ...overrides
     };
@@ -75,7 +76,7 @@ function adminCatalog() {
                 sequence: 1,
                 active: true,
                 cards: [
-                    card('card-a', 'CardA', { ruleCount: 1, rules: [BANKING_RULE] }),
+                    card('card-a', 'CardA', { ruleCount: 1, activeRuleCount: 1, rules: [BANKING_RULE] }),
                     card('card-b', 'CardB', { active: false }),
                     card('card-c', 'CardC', { killSwitch: true })
                 ]
@@ -178,6 +179,145 @@ describe('c-v360-admin-console', () => {
 
         expect(activateCard).toHaveBeenCalledWith({ cardId: 'card-b' });
         expect(getCatalog).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads a live card whose every rule is parked as open to everyone', async () => {
+        // The exposure a stored total cannot express: one rule on record, and
+        // the evaluator skips it because it is inactive.
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            ruleCount: 1,
+            activeRuleCount: 0,
+            rules: [{ ...BANKING_RULE, active: false }]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('1 rule, none active');
+        expect(summary.textContent).toContain('visible to everyone');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note).not.toBeNull();
+        expect(note.textContent).toContain('none of them are active');
+    });
+
+    it('separates the enforced rule count from the stored total on a partly parked card', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            ruleCount: 3,
+            activeRuleCount: 2,
+            rules: [
+                BANKING_RULE,
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'SecondActive' },
+                { ...BANKING_RULE, ruleId: 'rule-3', developerName: 'Parked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('2 of 3 visibility rules active');
+        // Two of three still protect somebody, so this is not an exposure.
+        expect(element.shadowRoot.querySelector('[data-id="no-rules-note"]')).toBeNull();
+    });
+
+    it('fails the activation checklist when every rule of the draft is parked', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[1] = card('card-b', 'CardB', {
+            active: false,
+            ruleCount: 2,
+            activeRuleCount: 0,
+            rules: [
+                { ...BANKING_RULE, active: false },
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'AlsoParked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="activate-open"]').click();
+        await flushPromises();
+
+        const checks = element.shadowRoot.querySelectorAll('[data-id="activation-check"]');
+        expect(checks[1].textContent).toContain('2 rules, none active');
+        expect(checks[1].textContent).toContain('restrict nobody');
+        // The copy alone would still pass with a green check, which is the
+        // regression: assert the check actually failed.
+        expect(checks[1].querySelector('lightning-icon').iconName).toBe('utility:warning');
+        expect(checks[1].className).toContain('slds-theme_warning');
+    });
+
+    it('does not claim a card the kill switch already hides is visible to everyone', async () => {
+        // The evaluator gates on state before it reads any rule
+        // (V360VisibilityEvaluator: `if (card.killSwitch || !card.active)`), so
+        // parked rules on a hidden card are not an exposure -- and saying so
+        // would contradict the kill banner rendered right above.
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            killSwitch: true,
+            ruleCount: 2,
+            activeRuleCount: 0,
+            rules: [
+                { ...BANKING_RULE, active: false },
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'AlsoParked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('2 rules, none active');
+        expect(summary.textContent).not.toContain('visible to everyone');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note.textContent).toContain('Once this card is live');
+        expect(note.textContent).not.toContain('is visible to everyone');
+    });
+
+    it('states a draft card is not yet exposed, only prospectively open', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', { active: false });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent.trim()).toBe('No rules');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note.textContent).toContain('Once this card is live');
+    });
+
+    it('derives the enforced rule count when the catalog omits it', async () => {
+        // Deployment skew: the LWC lands before the Apex that reports
+        // activeRuleCount. The console must count the rules itself rather than
+        // assume the stored total protects anyone.
+        const catalog = adminCatalog();
+        const withoutCount = card('card-a', 'CardA', {
+            ruleCount: 2,
+            rules: [BANKING_RULE, { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'Parked', active: false }]
+        });
+        delete withoutCount.activeRuleCount;
+        catalog.tabs[0].cards[0] = withoutCount;
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('1 of 2 visibility rules active');
     });
 
     it('validates a rule formula server-side and shows the verdict', async () => {

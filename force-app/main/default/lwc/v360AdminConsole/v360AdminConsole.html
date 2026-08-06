@@ -191,7 +191,13 @@
                                         <p class="slds-text-body_small slds-text-color_weak slds-truncate">
                                             {card.developerName} · {card.binding}
                                         </p>
-                                        <p class="slds-text-body_small slds-truncate" data-id="rule-summary">{card.ruleSummary}</p>
+                                        <p
+                                            class="slds-text-body_small slds-truncate"
+                                            title={card.ruleSummary}
+                                            data-id="rule-summary"
+                                        >
+                                            {card.ruleSummary}
+                                        </p>
                                     </div>
                                     <div class="slds-media__figure slds-media__figure_reverse slds-align_absolute-center">
                                         <div class="slds-grid slds-grid_vertical">
@@ -362,9 +368,9 @@
                                             onclick={handleAddRule}
                                         ></lightning-button>
                                     </div>
-                                    <template lwc:if={detail.hasNoRules}>
+                                    <template lwc:if={detail.hasNoEnforcedRules}>
                                         <p class="slds-text-body_small" data-id="no-rules-note">
-                                            No rules yet. Without rules this card is visible to everyone who can see the page.
+                                            {detail.exposureNote}
                                         </p>
                                     </template>
                                     <template for:each={detail.rules} for:item="rule">
