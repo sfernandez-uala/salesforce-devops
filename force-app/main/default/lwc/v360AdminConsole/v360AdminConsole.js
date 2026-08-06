@@ -130,7 +130,7 @@ export default class V360AdminConsole extends LightningElement {
     }
 
     handleTabSelect(event) {
-        this.selectedTabId = event.detail.name;
+        this.selectedTabId = event.detail.value;
         this.selectedCardId = undefined;
         this.formulaFeedback = {};
         this.iconDraft = undefined;
@@ -736,10 +736,23 @@ export default class V360AdminConsole extends LightningElement {
         return `${tabs.length} tab${tabs.length === 1 ? '' : 's'} · ${cardCount} card${cardCount === 1 ? '' : 's'} · ${objectCount} object${objectCount === 1 ? '' : 's'}`;
     }
 
-    /** Tabs grouped under their anchor SObject: one nav section per SObject. */
+    /**
+     * The switcher's own label. A tab's developer name is only unique within
+     * its anchor object, so the object travels with it -- otherwise two tabs
+     * named Overview on different objects read identically on the control
+     * that is supposed to tell you where you are.
+     */
+    get selectedTabLabel() {
+        const tab = this.selectedTab;
+        return tab ? `${tab.developerName} · ${tab.sObjectApiName}` : 'Select a tab';
+    }
+
+    /** Tabs grouped under their anchor SObject: one menu section per SObject. */
     get navigationSections() {
         const sections = [];
-        for (const tab of this.data.tabs) {
+        // The switcher lives in the page header, which renders before the
+        // catalog resolves -- so this runs with no data on the first paint.
+        for (const tab of this.data?.tabs ?? []) {
             let section = sections.find((candidate) => candidate.sObjectApiName === tab.sObjectApiName);
             if (!section) {
                 section = { sObjectApiName: tab.sObjectApiName, tabs: [] };

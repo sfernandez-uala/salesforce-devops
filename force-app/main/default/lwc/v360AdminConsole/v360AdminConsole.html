@@ -22,6 +22,45 @@
             </div>
             <div class="slds-page-header__col-actions">
                 <div class="slds-page-header__controls">
+                    <!-- The tab switcher is context, not an action: it names where you
+                         are and moves you elsewhere without a navigation column eating
+                         a sixth of the width. Both controls are meaningless until a
+                         catalog exists, and the empty state carries its own New tab. -->
+                    <template lwc:if={isCatalogVisible}>
+                    <div class="slds-page-header__control">
+                        <lightning-button-menu
+                            label={selectedTabLabel}
+                            icon-name="utility:chevrondown"
+                            menu-alignment="auto"
+                            alternative-text="Switch tab"
+                            data-id="tab-switcher"
+                            onselect={handleTabSelect}
+                        >
+                            <template for:each={navigationSections} for:item="section">
+                                <lightning-menu-subheader
+                                    key={section.sObjectApiName}
+                                    label={section.sObjectApiName}
+                                ></lightning-menu-subheader>
+                                <template for:each={section.tabs} for:item="navTab">
+                                    <lightning-menu-item
+                                        key={navTab.tabId}
+                                        label={navTab.navLabel}
+                                        value={navTab.tabId}
+                                    ></lightning-menu-item>
+                                </template>
+                            </template>
+                        </lightning-button-menu>
+                    </div>
+                    <div class="slds-page-header__control">
+                        <lightning-button
+                            variant="base"
+                            label="New tab"
+                            icon-name="utility:add"
+                            data-id="new-tab"
+                            onclick={handleNewTab}
+                        ></lightning-button>
+                    </div>
+                    </template>
                     <div class="slds-page-header__control">
                         <lightning-button-icon
                             icon-name="utility:help"
@@ -108,39 +147,7 @@
                     ></lightning-spinner>
                 </template>
                 <div class="slds-grid slds-wrap slds-gutters_small">
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_3-of-12 slds-large-size_2-of-12">
-                        <lightning-vertical-navigation
-                            selected-item={selectedTabId}
-                            onselect={handleTabSelect}
-                            data-id="tab-navigation"
-                        >
-                            <template for:each={navigationSections} for:item="section">
-                                <lightning-vertical-navigation-section
-                                    key={section.sObjectApiName}
-                                    label={section.sObjectApiName}
-                                >
-                                    <template for:each={section.tabs} for:item="navTab">
-                                        <lightning-vertical-navigation-item
-                                            key={navTab.tabId}
-                                            label={navTab.navLabel}
-                                            name={navTab.tabId}
-                                        ></lightning-vertical-navigation-item>
-                                    </template>
-                                </lightning-vertical-navigation-section>
-                            </template>
-                        </lightning-vertical-navigation>
-                        <div class="slds-p-left_large slds-p-vertical_x-small">
-                            <lightning-button
-                                variant="base"
-                                label="New tab"
-                                icon-name="utility:add"
-                                data-id="new-tab"
-                                onclick={handleNewTab}
-                            ></lightning-button>
-                        </div>
-                    </div>
-
-                    <div class="slds-col slds-size_1-of-1 slds-medium-size_9-of-12 slds-large-size_6-of-12" data-id="workspace">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_7-of-12" data-id="workspace">
                         <template lwc:if={workspace}>
                             <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
                                 <div class="slds-grow">
@@ -242,7 +249,7 @@
                         </template>
                     </div>
 
-                    <div class="slds-col slds-size_1-of-1 slds-large-size_4-of-12" data-id="detail-panel">
+                    <div class="slds-col slds-size_1-of-1 slds-large-size_5-of-12" data-id="detail-panel">
                         <template lwc:if={detail}>
                             <div class="slds-box slds-box_small slds-theme_shade">
                                 <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">

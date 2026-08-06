@@ -121,11 +121,26 @@ describe('c-v360-admin-console', () => {
         const element = createConsole();
         await flushPromises();
 
-        const sections = element.shadowRoot.querySelectorAll('lightning-vertical-navigation-section');
-        expect(sections).toHaveLength(2);
-        expect(sections[0].label).toBe('Account');
-        expect(sections[1].label).toBe('Case');
-        expect(sections[0].querySelectorAll('lightning-vertical-navigation-item')).toHaveLength(2);
+        const headers = Array.from(
+            element.shadowRoot.querySelectorAll('lightning-menu-subheader')
+        ).map((header) => header.label);
+        expect(headers).toEqual(['Account', 'Case']);
+
+        const items = Array.from(element.shadowRoot.querySelectorAll('lightning-menu-item')).map(
+            (item) => item.value
+        );
+        expect(items).toEqual(['tab-account', 'tab-account-risk', 'tab-case']);
+    });
+
+    it('names the open tab and its anchor object on the switcher', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="tab-switcher"]').label).toBe(
+            'AccountOverview · Account'
+        );
     });
 
     it('renders the workspace rows with state badges and opens the first card in the detail panel', async () => {
@@ -502,8 +517,8 @@ describe('c-v360-admin-console', () => {
         await flushPromises();
 
         element.shadowRoot
-            .querySelector('[data-id="tab-navigation"]')
-            .dispatchEvent(new CustomEvent('select', { detail: { name: 'tab-case' } }));
+            .querySelector('[data-id="tab-switcher"]')
+            .dispatchEvent(new CustomEvent('select', { detail: { value: 'tab-case' } }));
         await flushPromises();
 
         const workspaceEmpty = element.shadowRoot.querySelector('[data-id="workspace-empty"]');
