@@ -4,6 +4,15 @@ import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
 import activateCard from '@salesforce/apex/V360AdminController.activateCard';
+import deactivateCard from '@salesforce/apex/V360AdminController.deactivateCard';
+import createCard from '@salesforce/apex/V360AdminController.createCard';
+import createRule from '@salesforce/apex/V360AdminController.createRule';
+import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredicate';
+import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRulePredicate';
+import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
+import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
+import saveTab from '@salesforce/apex/V360AdminController.saveTab';
+import deleteTab from '@salesforce/apex/V360AdminController.deleteTab';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 
@@ -11,6 +20,17 @@ jest.mock('@salesforce/apex/V360AdminController.getCatalog', () => ({ default: j
 jest.mock('@salesforce/apex/V360AdminController.updateCardOrder', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveCardProperties', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.activateCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deactivateCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.createCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.createRule', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.addRulePredicate', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteRulePredicate', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteRule', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteCard', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.engageKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.releaseKillSwitch', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.saveTab', () => ({ default: jest.fn() }), { virtual: true });
+jest.mock('@salesforce/apex/V360AdminController.deleteTab', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.validateRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 jest.mock('@salesforce/apex/V360AdminController.saveRuleFormula', () => ({ default: jest.fn() }), { virtual: true });
 
@@ -30,6 +50,7 @@ function card(cardId, developerName, overrides = {}) {
         active: true,
         killSwitch: false,
         ruleCount: 0,
+        activeRuleCount: 0,
         rules: [],
         ...overrides
     };
@@ -41,7 +62,7 @@ const BANKING_RULE = {
     description: '',
     formula: "ISPICKVAL(Industry, 'Banking')",
     active: true,
-    predicates: [{ predicateType: 'FLS_READ', targetApiName: 'AnnualRevenue' }]
+    predicates: [{ predicateId: 'pred-1', predicateType: 'FLS_READ', targetApiName: 'AnnualRevenue' }]
 };
 
 function adminCatalog() {
@@ -55,7 +76,7 @@ function adminCatalog() {
                 sequence: 1,
                 active: true,
                 cards: [
-                    card('card-a', 'CardA', { ruleCount: 1, rules: [BANKING_RULE] }),
+                    card('card-a', 'CardA', { ruleCount: 1, activeRuleCount: 1, rules: [BANKING_RULE] }),
                     card('card-b', 'CardB', { active: false }),
                     card('card-c', 'CardC', { killSwitch: true })
                 ]
@@ -119,7 +140,7 @@ describe('c-v360-admin-console', () => {
         expect(states).toEqual(['Live', 'Draft', 'Kill switch on']);
         expect(element.shadowRoot.querySelector('[data-id="detail-title"]').textContent).toBe('CardA');
         expect(element.shadowRoot.querySelectorAll('[data-id="rule"]')).toHaveLength(1);
-        expect(element.shadowRoot.querySelector('[data-id="predicate-pill"]').textContent).toBe(
+        expect(element.shadowRoot.querySelector('[data-id="predicate-pill"]').label).toBe(
             'FLS_READ · AnnualRevenue'
         );
     });
@@ -158,6 +179,145 @@ describe('c-v360-admin-console', () => {
 
         expect(activateCard).toHaveBeenCalledWith({ cardId: 'card-b' });
         expect(getCatalog).toHaveBeenCalledTimes(2);
+    });
+
+    it('reads a live card whose every rule is parked as open to everyone', async () => {
+        // The exposure a stored total cannot express: one rule on record, and
+        // the evaluator skips it because it is inactive.
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            ruleCount: 1,
+            activeRuleCount: 0,
+            rules: [{ ...BANKING_RULE, active: false }]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('1 rule, none active');
+        expect(summary.textContent).toContain('visible to everyone');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note).not.toBeNull();
+        expect(note.textContent).toContain('none of them are active');
+    });
+
+    it('separates the enforced rule count from the stored total on a partly parked card', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            ruleCount: 3,
+            activeRuleCount: 2,
+            rules: [
+                BANKING_RULE,
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'SecondActive' },
+                { ...BANKING_RULE, ruleId: 'rule-3', developerName: 'Parked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('2 of 3 visibility rules active');
+        // Two of three still protect somebody, so this is not an exposure.
+        expect(element.shadowRoot.querySelector('[data-id="no-rules-note"]')).toBeNull();
+    });
+
+    it('fails the activation checklist when every rule of the draft is parked', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[1] = card('card-b', 'CardB', {
+            active: false,
+            ruleCount: 2,
+            activeRuleCount: 0,
+            rules: [
+                { ...BANKING_RULE, active: false },
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'AlsoParked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="activate-open"]').click();
+        await flushPromises();
+
+        const checks = element.shadowRoot.querySelectorAll('[data-id="activation-check"]');
+        expect(checks[1].textContent).toContain('2 rules, none active');
+        expect(checks[1].textContent).toContain('restrict nobody');
+        // The copy alone would still pass with a green check, which is the
+        // regression: assert the check actually failed.
+        expect(checks[1].querySelector('lightning-icon').iconName).toBe('utility:warning');
+        expect(checks[1].className).toContain('slds-theme_warning');
+    });
+
+    it('does not claim a card the kill switch already hides is visible to everyone', async () => {
+        // The evaluator gates on state before it reads any rule
+        // (V360VisibilityEvaluator: `if (card.killSwitch || !card.active)`), so
+        // parked rules on a hidden card are not an exposure -- and saying so
+        // would contradict the kill banner rendered right above.
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', {
+            killSwitch: true,
+            ruleCount: 2,
+            activeRuleCount: 0,
+            rules: [
+                { ...BANKING_RULE, active: false },
+                { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'AlsoParked', active: false }
+            ]
+        });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('2 rules, none active');
+        expect(summary.textContent).not.toContain('visible to everyone');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note.textContent).toContain('Once this card is live');
+        expect(note.textContent).not.toContain('is visible to everyone');
+    });
+
+    it('states a draft card is not yet exposed, only prospectively open', async () => {
+        const catalog = adminCatalog();
+        catalog.tabs[0].cards[0] = card('card-a', 'CardA', { active: false });
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent.trim()).toBe('No rules');
+
+        const note = element.shadowRoot.querySelector('[data-id="no-rules-note"]');
+        expect(note.textContent).toContain('Once this card is live');
+    });
+
+    it('derives the enforced rule count when the catalog omits it', async () => {
+        // Deployment skew: the LWC lands before the Apex that reports
+        // activeRuleCount. The console must count the rules itself rather than
+        // assume the stored total protects anyone.
+        const catalog = adminCatalog();
+        const withoutCount = card('card-a', 'CardA', {
+            ruleCount: 2,
+            rules: [BANKING_RULE, { ...BANKING_RULE, ruleId: 'rule-2', developerName: 'Parked', active: false }]
+        });
+        delete withoutCount.activeRuleCount;
+        catalog.tabs[0].cards[0] = withoutCount;
+        getCatalog.mockResolvedValue(catalog);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const summary = element.shadowRoot.querySelectorAll('[data-id="rule-summary"]')[0];
+        expect(summary.textContent).toContain('1 of 2 visibility rules active');
     });
 
     it('validates a rule formula server-side and shows the verdict', async () => {
@@ -217,6 +377,56 @@ describe('c-v360-admin-console', () => {
                 componentName: 'v360AccountSnapshot'
             }
         });
+    });
+
+    it('picks a new icon for the open card from the icon picker and saves it', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        saveCardProperties.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').click();
+        await flushPromises();
+        const picker = element.shadowRoot.querySelector('c-v360-icon-picker');
+        expect(picker).not.toBeNull();
+        expect(picker.selectedIcon).toBe('standard:account');
+        picker.dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:contact' } }));
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('c-v360-icon-picker')).toBeNull();
+        expect(
+            element.shadowRoot.querySelector('[data-id="prop-icon-trigger"] .v360-admin-icon-value').textContent
+        ).toBe('standard:contact');
+
+        element.shadowRoot.querySelector('[data-id="save-properties"]').click();
+        await flushPromises();
+
+        expect(saveCardProperties).toHaveBeenCalledWith({
+            input: expect.objectContaining({ cardId: 'card-a', iconName: 'standard:contact' })
+        });
+    });
+
+    it('resets the icon draft when switching cards, so the picker preselects the newly opened card', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="prop-icon-trigger"]').click();
+        await flushPromises();
+        element.shadowRoot
+            .querySelector('c-v360-icon-picker')
+            .dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:contact' } }));
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="card-row"][data-card-id="card-b"]').click();
+        await flushPromises();
+
+        // CardB's own saved icon, not CardA's picker selection carried over.
+        expect(
+            element.shadowRoot.querySelector('[data-id="prop-icon-trigger"] .v360-admin-icon-value').textContent
+        ).toBe('standard:account');
     });
 
     it('offers only registry names as LWC component options', async () => {
@@ -317,6 +527,189 @@ describe('c-v360-admin-console', () => {
         expect(element.shadowRoot.querySelector('[data-id="loading-state"]')).toBeNull();
     });
 
+    it('creates a card as a draft from the wizard with the next order', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        createCard.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-card"]').click();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="nc-icon-trigger"]').click();
+        await flushPromises();
+        element.shadowRoot
+            .querySelector('c-v360-icon-picker')
+            .dispatchEvent(new CustomEvent('select', { detail: { value: 'standard:screen' } }));
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="nc-devname"]').value = 'V360NewCard';
+        element.shadowRoot.querySelector('[data-id="nc-label"]').value = 'New Card';
+        element.shadowRoot.querySelector('[data-id="nc-description"]').value = 'Fresh.';
+        element.shadowRoot.querySelector('[data-id="nc-button-label"]').value = 'Open';
+        element.shadowRoot.querySelector('[data-id="nc-component"]').value = 'LWC:v360LifecycleDemo';
+        element.shadowRoot.querySelector('[data-id="nc-create"]').click();
+        await flushPromises();
+
+        expect(createCard).toHaveBeenCalledWith({
+            input: {
+                tabId: 'tab-account',
+                developerName: 'V360NewCard',
+                label: 'New Card',
+                description: 'Fresh.',
+                iconName: 'standard:screen',
+                buttonLabel: 'Open',
+                componentType: 'LWC',
+                componentName: 'v360LifecycleDemo',
+                order: 4
+            }
+        });
+        expect(element.shadowRoot.querySelector('[data-id="new-card-modal"]')).toBeNull();
+    });
+
+    it('creates a visibility rule from the add-rule modal', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        createRule.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="add-rule"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nr-devname"]').value = 'NewRule';
+        element.shadowRoot.querySelector('[data-id="nr-formula"]').value = '$Permission.X';
+        element.shadowRoot.querySelector('[data-id="nr-create"]').click();
+        await flushPromises();
+
+        expect(createRule).toHaveBeenCalledWith({
+            cardId: 'card-a',
+            developerName: 'NewRule',
+            formulaText: '$Permission.X'
+        });
+    });
+
+    it('adds and removes rule predicates', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        addRulePredicate.mockResolvedValue(undefined);
+        deleteRulePredicate.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="pred-type-rule-1"]').value = 'PERMISSION_SET';
+        element.shadowRoot.querySelector('[data-id="pred-target-rule-1"]').value = 'Advisor_Access';
+        element.shadowRoot.querySelector('[data-id="add-predicate"][data-rule-id="rule-1"]').click();
+        await flushPromises();
+
+        expect(addRulePredicate).toHaveBeenCalledWith({
+            ruleId: 'rule-1',
+            predicateType: 'PERMISSION_SET',
+            targetApiName: 'Advisor_Access'
+        });
+
+        element.shadowRoot
+            .querySelector('[data-id="predicate-pill"]')
+            .dispatchEvent(new CustomEvent('remove'));
+        await flushPromises();
+
+        expect(deleteRulePredicate).toHaveBeenCalledWith({ predicateId: 'pred-1' });
+    });
+
+    it('deletes the selected card through the confirm modal', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deleteCard.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="action-delete-card"]').click();
+        await flushPromises();
+
+        expect(element.shadowRoot.querySelector('[data-id="delete-message"]').textContent).toContain('CardA');
+
+        element.shadowRoot.querySelector('[data-id="delete-confirm"]').click();
+        await flushPromises();
+
+        expect(deleteCard).toHaveBeenCalledWith({ cardId: 'card-a' });
+    });
+
+    it('deactivates a live card and engages its kill switch from the action row', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deactivateCard.mockResolvedValue(undefined);
+        engageKillSwitch.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="action-deactivate"]').click();
+        await flushPromises();
+        expect(deactivateCard).toHaveBeenCalledWith({ cardId: 'card-a' });
+
+        element.shadowRoot.querySelector('[data-id="action-kill"]').click();
+        await flushPromises();
+        expect(engageKillSwitch).toHaveBeenCalledWith({ cardId: 'card-a' });
+    });
+
+    it('blocks card creation when required fields are blank', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-card"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nc-create"]').click();
+        await flushPromises();
+
+        expect(createCard).not.toHaveBeenCalled();
+        expect(element.shadowRoot.querySelector('[data-id="new-card-modal"]')).not.toBeNull();
+    });
+
+    it('creates a tab from the tab modal with the entered values', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        saveTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="new-tab"]').click();
+        await flushPromises();
+        element.shadowRoot.querySelector('[data-id="nt-devname"]').value = 'CaseRisk';
+        element.shadowRoot.querySelector('[data-id="nt-anchor"]').value = 'Case';
+        element.shadowRoot.querySelector('[data-id="nt-sequence"]').value = '7';
+        element.shadowRoot.querySelector('[data-id="nt-active"]').checked = true;
+        element.shadowRoot.querySelector('[data-id="nt-save"]').click();
+        await flushPromises();
+
+        expect(saveTab).toHaveBeenCalledWith({
+            input: { tabId: null, developerName: 'CaseRisk', sObjectApiName: 'Case', sequence: 7, active: true }
+        });
+    });
+
+    it('deletes a tab from the edit modal through the confirm dialog', async () => {
+        getCatalog.mockResolvedValue(adminCatalog());
+        deleteTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        element.shadowRoot.querySelector('[data-id="edit-tab"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="nt-devname"]').value).toBe('AccountOverview');
+
+        element.shadowRoot.querySelector('[data-id="nt-delete"]').click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="delete-message"]').textContent).toContain(
+            'AccountOverview'
+        );
+
+        element.shadowRoot.querySelector('[data-id="delete-confirm"]').click();
+        await flushPromises();
+
+        expect(deleteTab).toHaveBeenCalledWith({ tabId: 'tab-account' });
+    });
+
     it('renders the access state when the server reports no manage permission', async () => {
         getCatalog.mockResolvedValue({ hasManagePermission: false, tabs: [] });
 
@@ -335,6 +728,42 @@ describe('c-v360-admin-console', () => {
         await flushPromises();
 
         expect(element.shadowRoot.querySelector('[data-id="empty-state"]')).not.toBeNull();
+    });
+
+    it('lets an org with no configuration create its first tab', async () => {
+        // Regression guard: the only New tab control used to live inside the
+        // catalog branch, which renders solely when at least one tab exists.
+        // A fresh org -- or one whose last tab was just deleted -- had no path
+        // to a first tab at all.
+        getCatalog.mockResolvedValue({ hasManagePermission: true, tabs: [] });
+        saveTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const create = element.shadowRoot.querySelector('[data-id="empty-new-tab"]');
+        expect(create).not.toBeNull();
+
+        create.click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="tab-modal"]')).not.toBeNull();
+
+        element.shadowRoot.querySelector('[data-id="nt-devname"]').value = 'AccountOverview';
+        element.shadowRoot.querySelector('[data-id="nt-anchor"]').value = 'Account';
+        element.shadowRoot.querySelector('[data-id="nt-sequence"]').value = '1';
+        element.shadowRoot.querySelector('[data-id="nt-active"]').checked = true;
+        element.shadowRoot.querySelector('[data-id="nt-save"]').click();
+        await flushPromises();
+
+        expect(saveTab).toHaveBeenCalledWith({
+            input: {
+                tabId: null,
+                developerName: 'AccountOverview',
+                sObjectApiName: 'Account',
+                sequence: 1,
+                active: true
+            }
+        });
     });
 
     it('shows the recoverable-error state and retries the request', async () => {

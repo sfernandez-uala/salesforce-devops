@@ -32,7 +32,41 @@ public with sharing class V360AdminService {
      */
     public static List<Database.UpsertResult> saveTabs(List<V360_Tab__c> tabs) {
         requireManagePermission();
+        validateTabAnchors(tabs);
         return upsertEnforced(tabs);
+    }
+
+    /**
+     * Deletes tabs behind the manage-permission gate. A tab that still has
+     * cards is rejected with a clear message instead of the raw
+     * delete-restriction error.
+     *
+     * @param tabIds the tabs to delete
+     */
+    public static void deleteTabs(Set<Id> tabIds) {
+        requireManagePermission();
+        Integer cardCount = [SELECT COUNT() FROM V360_Card__c WHERE Tab__c IN :tabIds WITH USER_MODE];
+        if (cardCount > 0) {
+            throw new V360AdminServiceException(
+                'This tab still has cards. Delete or move its cards before deleting the tab.'
+            );
+        }
+        Database.delete(new List<Id>(tabIds), true, AccessLevel.USER_MODE);
+    }
+
+    private static void validateTabAnchors(List<V360_Tab__c> tabs) {
+        // getGlobalDescribe() is among the most expensive describe calls in
+        // Apex and its result cannot change between iterations, so a batch of
+        // tabs pays for it once instead of once per tab.
+        Map<String, Schema.SObjectType> objectsByApiName = Schema.getGlobalDescribe();
+        for (V360_Tab__c tab : tabs) {
+            if (String.isBlank(tab.AnchorSObject__c)) {
+                continue;
+            }
+            if (objectsByApiName.get(tab.AnchorSObject__c.toLowerCase()) == null) {
+                throw new V360AdminServiceException('Unknown anchor SObject: ' + tab.AnchorSObject__c);
+            }
+        }
     }
 
     /**
@@ -74,6 +108,46 @@ public with sharing class V360AdminService {
     public static List<Database.UpsertResult> saveRulePredicates(List<V360_RulePredicate__c> predicates) {
         requireManagePermission();
         return upsertRulePredicates(predicates);
+    }
+
+    /**
+     * Deletes cards behind the manage-permission gate. Each card's rules go
+     * first (their predicates cascade through the master-detail): the
+     * rule-to-card lookup is delete-restricted, so a card cannot be deleted
+     * while rules still reference it.
+     *
+     * @param cardIds the cards to delete
+     */
+    public static void deleteCards(Set<Id> cardIds) {
+        requireManagePermission();
+        List<V360_CardRule__c> rules = [
+            SELECT Id FROM V360_CardRule__c WHERE Card__c IN :cardIds WITH USER_MODE
+        ];
+        if (!rules.isEmpty()) {
+            Database.delete(rules, true, AccessLevel.USER_MODE);
+        }
+        Database.delete(new List<Id>(cardIds), true, AccessLevel.USER_MODE);
+    }
+
+    /**
+     * Deletes visibility rules behind the manage-permission gate; their
+     * predicates cascade through the master-detail relationship.
+     *
+     * @param ruleIds the rules to delete
+     */
+    public static void deleteCardRules(Set<Id> ruleIds) {
+        requireManagePermission();
+        Database.delete(new List<Id>(ruleIds), true, AccessLevel.USER_MODE);
+    }
+
+    /**
+     * Deletes rule predicates behind the manage-permission gate.
+     *
+     * @param predicateIds the predicates to delete
+     */
+    public static void deleteRulePredicates(Set<Id> predicateIds) {
+        requireManagePermission();
+        Database.delete(new List<Id>(predicateIds), true, AccessLevel.USER_MODE);
     }
 
     /**

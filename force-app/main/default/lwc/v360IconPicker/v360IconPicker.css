@@ -1,0 +1,46 @@
+/**
+ * SLDS ships no icon-browser blueprint: the tile grid and its hover/
+ * focus/selected treatment are this component's own structural
+ * presentation. Colors come from the shared tokens.
+ */
+@import 'c/v360Styles';
+
+/* SLDS sizes modal content to its children, so switching between a full
+   category grid and a handful of search results visibly resized the
+   whole dialog on every keystroke. A fixed height with its own scroll
+   keeps the search bar and footer still regardless of match count. */
+.v360-icon-picker-body {
+    height: 24rem;
+    overflow-y: auto;
+}
+
+.v360-icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+    gap: 0.25rem;
+}
+
+.v360-icon-picker-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem 0.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--v360-radius);
+    background: none;
+}
+
+.v360-icon-picker-tile:hover {
+    background: var(--v360-color-surface-hover);
+}
+
+.v360-icon-picker-tile:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: 2px;
+}
+
+.v360-icon-picker-tile_selected {
+    border-color: var(--v360-color-brand);
+    background: var(--v360-color-brand-tint);
+}

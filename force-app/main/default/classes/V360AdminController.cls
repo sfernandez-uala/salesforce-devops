@@ -105,6 +105,218 @@ public with sharing class V360AdminController {
     }
 
     /**
+     * Creates or updates a tab. The anchor SObject is validated to resolve
+     * to a real object before anything is written.
+     *
+     * @param input the tab id (blank to create) plus every editable property
+     */
+    @AuraEnabled
+    public static void saveTab(TabInput input) {
+        try {
+            V360AdminService.saveTabs(
+                new List<V360_Tab__c>{
+                    new V360_Tab__c(
+                        Id = input.tabId,
+                        DeveloperName__c = input.developerName,
+                        AnchorSObject__c = input.sObjectApiName,
+                        Sequence__c = input.sequence,
+                        Active__c = input.active
+                    )
+                }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to save the tab.');
+        }
+    }
+
+    /**
+     * Deletes a tab; a tab that still has cards is rejected with a clear
+     * message.
+     *
+     * @param tabId the tab to delete
+     */
+    @AuraEnabled
+    public static void deleteTab(Id tabId) {
+        try {
+            V360AdminService.deleteTabs(new Set<Id>{ tabId });
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to delete the tab.');
+        }
+    }
+
+    /**
+     * Creates a card as a draft: inactive, invisible to end users until an
+     * admin activates it. The binding is validated the same way as an edit.
+     *
+     * @param input the tab, developer name, and every editable property
+     */
+    @AuraEnabled
+    public static void createCard(NewCardInput input) {
+        try {
+            V360AdminService.saveCards(
+                new List<V360_Card__c>{
+                    new V360_Card__c(
+                        Tab__c = input.tabId,
+                        DeveloperName__c = input.developerName,
+                        Label__c = input.label,
+                        Description__c = input.description,
+                        IconName__c = input.iconName,
+                        ButtonLabel__c = input.buttonLabel,
+                        ComponentType__c = input.componentType,
+                        ComponentName__c = input.componentName,
+                        Order__c = input.order,
+                        Active__c = false,
+                        KillSwitch__c = false
+                    )
+                }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to create the card.');
+        }
+    }
+
+    /**
+     * Creates a visibility rule for a card; a non-blank formula is built
+     * against the card's anchor SObject before anything is written.
+     *
+     * @param cardId the card the rule belongs to
+     * @param developerName the rule's stable unique name
+     * @param formulaText the visibility formula, optional
+     */
+    @AuraEnabled
+    public static void createRule(Id cardId, String developerName, String formulaText) {
+        try {
+            V360AdminService.saveCardRules(
+                new List<V360_CardRule__c>{
+                    new V360_CardRule__c(
+                        Card__c = cardId,
+                        DeveloperName__c = developerName,
+                        VisibilityFormula__c = formulaText,
+                        Active__c = true
+                    )
+                }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to create the rule.');
+        }
+    }
+
+    /**
+     * Adds a structured predicate to a rule.
+     *
+     * @param ruleId the rule the predicate belongs to
+     * @param predicateType PERMISSION_SET or FLS_READ
+     * @param targetApiName the permission set or field the predicate checks
+     */
+    @AuraEnabled
+    public static void addRulePredicate(Id ruleId, String predicateType, String targetApiName) {
+        try {
+            V360AdminService.saveRulePredicates(
+                new List<V360_RulePredicate__c>{
+                    new V360_RulePredicate__c(
+                        CardRule__c = ruleId,
+                        PredicateType__c = predicateType,
+                        TargetApiName__c = targetApiName
+                    )
+                }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to add the predicate.');
+        }
+    }
+
+    /**
+     * Deletes a rule predicate.
+     *
+     * @param predicateId the predicate to delete
+     */
+    @AuraEnabled
+    public static void deleteRulePredicate(Id predicateId) {
+        try {
+            V360AdminService.deleteRulePredicates(new Set<Id>{ predicateId });
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to delete the predicate.');
+        }
+    }
+
+    /**
+     * Deletes a visibility rule; its predicates cascade.
+     *
+     * @param ruleId the rule to delete
+     */
+    @AuraEnabled
+    public static void deleteRule(Id ruleId) {
+        try {
+            V360AdminService.deleteCardRules(new Set<Id>{ ruleId });
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to delete the rule.');
+        }
+    }
+
+    /**
+     * Deletes a card together with its rules and their predicates.
+     *
+     * @param cardId the card to delete
+     */
+    @AuraEnabled
+    public static void deleteCard(Id cardId) {
+        try {
+            V360AdminService.deleteCards(new Set<Id>{ cardId });
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to delete the card.');
+        }
+    }
+
+    /**
+     * Hides a card everywhere immediately, without evaluating any rule --
+     * the incident control.
+     *
+     * @param cardId the card to hide
+     */
+    @AuraEnabled
+    public static void engageKillSwitch(Id cardId) {
+        setKillSwitch(cardId, true);
+    }
+
+    /**
+     * Releases a card's kill switch; visibility rules apply again.
+     *
+     * @param cardId the card to release
+     */
+    @AuraEnabled
+    public static void releaseKillSwitch(Id cardId) {
+        setKillSwitch(cardId, false);
+    }
+
+    private static void setKillSwitch(Id cardId, Boolean engaged) {
+        try {
+            V360AdminService.saveCards(
+                new List<V360_Card__c>{ new V360_Card__c(Id = cardId, KillSwitch__c = engaged) }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to change the kill switch.');
+        }
+    }
+
+    /**
      * Takes a draft card live for end users.
      *
      * @param cardId the card to activate
@@ -224,7 +436,7 @@ public with sharing class V360AdminController {
                 Description__c,
                 VisibilityFormula__c,
                 Active__c,
-                (SELECT PredicateType__c, TargetApiName__c FROM V360_Rule_Predicates__r ORDER BY PredicateType__c)
+                (SELECT Id, PredicateType__c, TargetApiName__c FROM V360_Rule_Predicates__r ORDER BY PredicateType__c)
             FROM V360_CardRule__c
             WITH USER_MODE
             ORDER BY DeveloperName__c
@@ -247,6 +459,7 @@ public with sharing class V360AdminController {
         adminRule.predicates = new List<AdminPredicate>();
         for (V360_RulePredicate__c predicate : rule.V360_Rule_Predicates__r) {
             AdminPredicate adminPredicate = new AdminPredicate();
+            adminPredicate.predicateId = predicate.Id;
             adminPredicate.predicateType = predicate.PredicateType__c;
             adminPredicate.targetApiName = predicate.TargetApiName__c;
             adminRule.predicates.add(adminPredicate);
@@ -284,7 +497,27 @@ public with sharing class V360AdminController {
         List<AdminRule> rules = rulesByCardId.get(card.Id);
         adminCard.rules = rules == null ? new List<AdminRule>() : rules;
         adminCard.ruleCount = adminCard.rules.size();
+        adminCard.activeRuleCount = countActiveRules(adminCard.rules);
         return adminCard;
+    }
+
+    /**
+     * The rules that actually restrict someone. V360VisibilityEvaluator only
+     * lets an active rule block a card, so a parked rule protects nobody --
+     * a card whose every rule is parked is as open as one with no rules at
+     * all. The console warns on this count, never on the stored total.
+     *
+     * @param rules every rule of one card, active or not
+     * @return how many of them the evaluator will actually enforce
+     */
+    private static Integer countActiveRules(List<AdminRule> rules) {
+        Integer enforced = 0;
+        for (AdminRule rule : rules) {
+            if (rule.active == true) {
+                enforced++;
+            }
+        }
+        return enforced;
     }
 
     /** Everything saveCardProperties may change on a card, plus its id. */
@@ -306,6 +539,51 @@ public with sharing class V360AdminController {
         public String componentType { get; set; }
         @AuraEnabled
         public String componentName { get; set; }
+    }
+
+    /** Everything saveTab may change on a tab; a blank id creates one. */
+    // Transport properties named after the fields they carry; per-property
+    // ApexDoc would only restate each name. AvoidBooleanMethodParameters
+    // fires on the implicit setter of the `active` property, which is not the
+    // control-flow flag that rule guards against -- a checkbox field cannot
+    // cross the @AuraEnabled boundary without one.
+    @SuppressWarnings('PMD.ApexDoc,PMD.AvoidBooleanMethodParameters')
+    public class TabInput {
+        @AuraEnabled
+        public Id tabId { get; set; }
+        @AuraEnabled
+        public String developerName { get; set; }
+        @AuraEnabled
+        public String sObjectApiName { get; set; }
+        @AuraEnabled
+        public Decimal sequence { get; set; }
+        @AuraEnabled
+        public Boolean active { get; set; }
+    }
+
+    /** Everything createCard needs: the tab, the identity, and the properties. */
+    // Transport properties named after the fields they carry; per-property
+    // ApexDoc would only restate each name.
+    @SuppressWarnings('PMD.ApexDoc')
+    public class NewCardInput {
+        @AuraEnabled
+        public Id tabId { get; set; }
+        @AuraEnabled
+        public String developerName { get; set; }
+        @AuraEnabled
+        public String label { get; set; }
+        @AuraEnabled
+        public String description { get; set; }
+        @AuraEnabled
+        public String iconName { get; set; }
+        @AuraEnabled
+        public String buttonLabel { get; set; }
+        @AuraEnabled
+        public String componentType { get; set; }
+        @AuraEnabled
+        public String componentName { get; set; }
+        @AuraEnabled
+        public Decimal order { get; set; }
     }
 
     /** The console's root payload: the permission verdict and the tab graph. */
@@ -359,6 +637,8 @@ public with sharing class V360AdminController {
         @AuraEnabled
         public Integer ruleCount;
         @AuraEnabled
+        public Integer activeRuleCount;
+        @AuraEnabled
         public List<AdminRule> rules;
     }
 
@@ -380,6 +660,8 @@ public with sharing class V360AdminController {
 
     /** One structured predicate of a rule (permission set or FLS check). */
     public class AdminPredicate {
+        @AuraEnabled
+        public Id predicateId;
         @AuraEnabled
         public String predicateType;
         @AuraEnabled

@@ -5,8 +5,19 @@ import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
 import updateCardOrder from '@salesforce/apex/V360AdminController.updateCardOrder';
 import saveCardProperties from '@salesforce/apex/V360AdminController.saveCardProperties';
 import activateCard from '@salesforce/apex/V360AdminController.activateCard';
+import deactivateCard from '@salesforce/apex/V360AdminController.deactivateCard';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
+import createCard from '@salesforce/apex/V360AdminController.createCard';
+import createRule from '@salesforce/apex/V360AdminController.createRule';
+import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredicate';
+import deleteRulePredicate from '@salesforce/apex/V360AdminController.deleteRulePredicate';
+import deleteRule from '@salesforce/apex/V360AdminController.deleteRule';
+import deleteCard from '@salesforce/apex/V360AdminController.deleteCard';
+import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
+import saveTab from '@salesforce/apex/V360AdminController.saveTab';
+import deleteTab from '@salesforce/apex/V360AdminController.deleteTab';
+import releaseKillSwitch from '@salesforce/apex/V360AdminController.releaseKillSwitch';
 
 const STATUS_LOADING = 'loading';
 const STATUS_LOADED = 'loaded';
@@ -47,6 +58,15 @@ export default class V360AdminConsole extends LightningElement {
     busy = false;
     activationOpen = false;
     helpOpen = false;
+    newCardOpen = false;
+    newCardType = COMPONENT_TYPE_LWC;
+    newCardIcon = '';
+    iconPickerOpen = false;
+    iconPickerTarget = null;
+    tabModalOpen = false;
+    editingTabId = null;
+    addRuleOpen = false;
+    deleteTarget = null;
     formulaFeedback = {};
     iconDraft;
 
@@ -123,14 +143,55 @@ export default class V360AdminConsole extends LightningElement {
         this.iconDraft = undefined;
     }
 
-    handleIconInput(event) {
-        this.iconDraft = event.target.value;
+    /**
+     * Opens the shared icon picker for either the card-properties panel or
+     * the new-card wizard, recorded in iconPickerTarget so the single
+     * onselect handler below knows which draft to update.
+     */
+    handleOpenIconPicker(event) {
+        this.iconPickerTarget = event.currentTarget.dataset.target;
+        this.iconPickerOpen = true;
     }
 
-    /** The live preview next to the icon field; blank falls back like the shell does. */
+    handleCloseIconPicker() {
+        this.iconPickerOpen = false;
+    }
+
+    handleIconSelect(event) {
+        const iconName = event.detail.value;
+        if (this.iconPickerTarget === 'newCard') {
+            this.newCardIcon = iconName;
+        } else {
+            this.iconDraft = iconName;
+        }
+        this.iconPickerOpen = false;
+    }
+
+    /** The card-properties icon, from an open picker selection or the card's saved value. */
+    get iconRawValue() {
+        return this.iconDraft ?? this.selectedCard?.iconName ?? '';
+    }
+
+    get iconTriggerLabel() {
+        return this.iconRawValue || 'Choose an icon';
+    }
+
+    /** The glyph shown on the properties trigger button; blank falls back like the shell does. */
     get iconPreviewName() {
-        const candidate = this.iconDraft ?? this.selectedCard?.iconName;
-        return candidate || 'standard:default';
+        return this.iconRawValue || 'standard:default';
+    }
+
+    get newCardIconTriggerLabel() {
+        return this.newCardIcon || 'Choose an icon';
+    }
+
+    get newCardIconPreviewName() {
+        return this.newCardIcon || 'standard:default';
+    }
+
+    /** Preselects the picker's category and highlights the value for whichever field opened it. */
+    get selectedIconForPicker() {
+        return this.iconPickerTarget === 'newCard' ? this.newCardIcon : this.iconRawValue;
     }
 
     handleCardKeydown(event) {
@@ -185,11 +246,14 @@ export default class V360AdminConsole extends LightningElement {
         if (this.busy) {
             return;
         }
+        if (!this.requiredFieldsValid(['[data-id="prop-label"]'])) {
+            return;
+        }
         this.busy = true;
         const card = this.selectedCard;
         const label = this.template.querySelector('[data-id="prop-label"]').value;
         const description = this.template.querySelector('[data-id="prop-description"]').value;
-        const iconName = this.template.querySelector('[data-id="prop-icon"]').value;
+        const iconName = this.iconRawValue;
         const buttonLabel = this.template.querySelector('[data-id="prop-button-label"]').value;
         const binding = this.template.querySelector('[data-id="prop-component"]').value;
         const separatorAt = binding.indexOf(BINDING_SEPARATOR);
@@ -282,12 +346,348 @@ export default class V360AdminConsole extends LightningElement {
         }
     }
 
+    /**
+     * Client-side gate before any create/save call: every listed field must
+     * be non-blank. Fields that support reportValidity surface their own
+     * inline error; the shared toast covers the rest.
+     */
+    requiredFieldsValid(selectors) {
+        let valid = true;
+        for (const selector of selectors) {
+            const field = this.template.querySelector(selector);
+            if (!field) {
+                continue;
+            }
+            if (typeof field.reportValidity === 'function') {
+                field.reportValidity();
+            }
+            if (!String(field.value ?? '').trim()) {
+                valid = false;
+            }
+        }
+        if (!valid) {
+            this.toast('Missing information', 'Complete the required fields.', 'error');
+        }
+        return valid;
+    }
+
+    handleNewTab() {
+        this.editingTabId = null;
+        this.tabModalOpen = true;
+    }
+
+    handleEditTab() {
+        this.editingTabId = this.selectedTabId;
+        this.tabModalOpen = true;
+    }
+
+    handleCloseTabModal() {
+        this.tabModalOpen = false;
+    }
+
+    async handleSaveTab() {
+        if (this.busy) {
+            return;
+        }
+        if (!this.requiredFieldsValid(['[data-id="nt-devname"]', '[data-id="nt-anchor"]', '[data-id="nt-sequence"]'])) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await saveTab({
+                input: {
+                    tabId: this.editingTabId,
+                    developerName: this.template.querySelector('[data-id="nt-devname"]').value,
+                    sObjectApiName: this.template.querySelector('[data-id="nt-anchor"]').value,
+                    sequence: Number(this.template.querySelector('[data-id="nt-sequence"]').value),
+                    active: this.template.querySelector('[data-id="nt-active"]').checked
+                }
+            });
+            this.tabModalOpen = false;
+            this.toast('Tab saved', 'The tab was saved.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Save failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    handleRequestDeleteTab() {
+        const tab = this.selectedTab;
+        this.tabModalOpen = false;
+        this.deleteTarget = { kind: 'tab', id: tab.tabId, label: tab.developerName };
+    }
+
+    get tabModalTitle() {
+        return this.editingTabId ? 'Edit tab' : 'New tab';
+    }
+
+    get isEditingTab() {
+        return Boolean(this.editingTabId);
+    }
+
+    /** The tab modal's field values: the edited tab, or create-mode defaults. */
+    get tabForm() {
+        const editing = this.data?.tabs.find((tab) => tab.tabId === this.editingTabId);
+        if (editing) {
+            return {
+                developerName: editing.developerName,
+                sObjectApiName: editing.sObjectApiName,
+                sequence: editing.sequence,
+                active: editing.active
+            };
+        }
+        return {
+            developerName: '',
+            sObjectApiName: '',
+            sequence: (this.data?.tabs.length ?? 0) + 1,
+            active: true
+        };
+    }
+
     handleNewCard() {
-        this.toast('Not yet available', 'The new-card wizard ships in the next round; new cards will start as drafts.', 'info');
+        this.newCardType = COMPONENT_TYPE_LWC;
+        this.newCardIcon = '';
+        this.newCardOpen = true;
+    }
+
+    handleCloseNewCard() {
+        this.newCardOpen = false;
+    }
+
+    handleNewCardTypeChange(event) {
+        this.newCardType = event.detail.value;
+    }
+
+    async handleCreateCard() {
+        if (this.busy) {
+            return;
+        }
+        const bindingField = this.isNewCardLwc ? '[data-id="nc-component"]' : '[data-id="nc-flow"]';
+        if (!this.requiredFieldsValid(['[data-id="nc-devname"]', '[data-id="nc-label"]', bindingField])) {
+            return;
+        }
+        this.busy = true;
+        const tab = this.selectedTab;
+        const componentName = this.isNewCardLwc
+            ? this.template.querySelector('[data-id="nc-component"]').value.slice(COMPONENT_TYPE_LWC.length + 1)
+            : this.template.querySelector('[data-id="nc-flow"]').value;
+        try {
+            await createCard({
+                input: {
+                    tabId: tab.tabId,
+                    developerName: this.template.querySelector('[data-id="nc-devname"]').value,
+                    label: this.template.querySelector('[data-id="nc-label"]').value,
+                    description: this.template.querySelector('[data-id="nc-description"]').value,
+                    iconName: this.newCardIcon,
+                    buttonLabel: this.template.querySelector('[data-id="nc-button-label"]').value,
+                    componentType: this.newCardType,
+                    componentName,
+                    order: tab.cards.length + 1
+                }
+            });
+            this.newCardOpen = false;
+            this.toast('Card created', 'The card starts as a draft — activate it when it is ready.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Create failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
     }
 
     handleAddRule() {
-        this.toast('Not yet available', 'The rule builder ships in the next round.', 'info');
+        this.addRuleOpen = true;
+    }
+
+    handleCloseAddRule() {
+        this.addRuleOpen = false;
+    }
+
+    async handleCreateRule() {
+        if (this.busy) {
+            return;
+        }
+        if (!this.requiredFieldsValid(['[data-id="nr-devname"]'])) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await createRule({
+                cardId: this.selectedCardId,
+                developerName: this.template.querySelector('[data-id="nr-devname"]').value,
+                formulaText: this.template.querySelector('[data-id="nr-formula"]').value
+            });
+            this.addRuleOpen = false;
+            this.toast('Rule created', 'The visibility rule was created.', 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Create failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleAddPredicate(event) {
+        if (this.busy) {
+            return;
+        }
+        const ruleId = event.currentTarget.dataset.ruleId;
+        if (!this.requiredFieldsValid([`[data-id="pred-target-${ruleId}"]`])) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await addRulePredicate({
+                ruleId,
+                predicateType: this.template.querySelector(`[data-id="pred-type-${ruleId}"]`).value,
+                targetApiName: this.template.querySelector(`[data-id="pred-target-${ruleId}"]`).value
+            });
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Add failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleRemovePredicate(event) {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await deleteRulePredicate({ predicateId: event.currentTarget.dataset.predicateId });
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Delete failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleDeactivate() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await deactivateCard({ cardId: card.cardId });
+            this.toast('Card deactivated', `“${card.label}” is a draft again — end users no longer see it.`, 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Deactivation failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleEngageKillSwitch() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await engageKillSwitch({ cardId: card.cardId });
+            this.toast('Kill switch on', `“${card.label}” is hidden everywhere until the switch is released.`, 'warning');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Kill switch failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    async handleReleaseKillSwitch() {
+        if (this.busy) {
+            return;
+        }
+        this.busy = true;
+        const card = this.selectedCard;
+        try {
+            await releaseKillSwitch({ cardId: card.cardId });
+            this.toast('Kill switch released', `“${card.label}” follows its visibility rules again.`, 'success');
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Release failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    handleRequestDeleteCard() {
+        const card = this.selectedCard;
+        this.deleteTarget = { kind: 'card', id: card.cardId, label: card.label };
+    }
+
+    handleRequestDeleteRule(event) {
+        const ruleId = event.currentTarget.dataset.ruleId;
+        const rule = this.selectedCard.rules.find((candidate) => candidate.ruleId === ruleId);
+        this.deleteTarget = { kind: 'rule', id: ruleId, label: rule.developerName };
+    }
+
+    handleCancelDelete() {
+        this.deleteTarget = null;
+    }
+
+    async handleConfirmDelete() {
+        if (this.busy || !this.deleteTarget) {
+            return;
+        }
+        this.busy = true;
+        const target = this.deleteTarget;
+        this.deleteTarget = null;
+        try {
+            if (target.kind === 'card') {
+                await deleteCard({ cardId: target.id });
+                this.toast('Card deleted', `“${target.label}” and its rules were deleted.`, 'success');
+            } else if (target.kind === 'tab') {
+                await deleteTab({ tabId: target.id });
+                this.toast('Tab deleted', `“${target.label}” was deleted.`, 'success');
+            } else {
+                await deleteRule({ ruleId: target.id });
+                this.toast('Rule deleted', `“${target.label}” was deleted.`, 'success');
+            }
+            await this.refreshCatalog();
+        } catch (error) {
+            this.toast('Delete failed', this.errorMessage(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
+    get isNewCardLwc() {
+        return this.newCardType === COMPONENT_TYPE_LWC;
+    }
+
+    get newCardTypeOptions() {
+        return [
+            { label: 'Lightning component', value: COMPONENT_TYPE_LWC },
+            { label: 'Screen flow', value: COMPONENT_TYPE_FLOW }
+        ];
+    }
+
+    get predicateTypeOptions() {
+        return [
+            { label: 'Permission set', value: 'PERMISSION_SET' },
+            { label: 'Field read access', value: 'FLS_READ' }
+        ];
+    }
+
+    get deleteMessage() {
+        if (!this.deleteTarget) {
+            return '';
+        }
+        if (this.deleteTarget.kind === 'card') {
+            return `“${this.deleteTarget.label}” will be deleted together with its visibility rules. This cannot be undone.`;
+        }
+        if (this.deleteTarget.kind === 'tab') {
+            return `The tab “${this.deleteTarget.label}” will be deleted. A tab that still has cards is rejected.`;
+        }
+        return `The rule “${this.deleteTarget.label}” and its predicates will be deleted. This cannot be undone.`;
     }
 
     toast(title, message, variant) {
@@ -400,6 +800,7 @@ export default class V360AdminConsole extends LightningElement {
 
     cardPresentation(card) {
         const state = card.killSwitch ? 'killed' : card.active ? 'live' : 'draft';
+        const { total, enforced } = this.ruleEnforcement(card);
         return {
             iconNameOrDefault: card.iconName || 'standard:default',
             binding: `${card.componentType}: ${card.componentName}`,
@@ -410,13 +811,63 @@ export default class V360AdminConsole extends LightningElement {
                 draft: 'slds-badge'
             }[state],
             isDraft: state === 'draft',
+            isLive: state === 'live',
             isKilled: state === 'killed',
-            ruleSummary:
-                card.ruleCount > 0
-                    ? `${card.ruleCount} visibility rule${card.ruleCount === 1 ? '' : 's'}`
-                    : 'No rules — visible to everyone who can see the page',
-            hasNoRules: card.ruleCount === 0
+            ruleSummary: this.ruleSummary(total, enforced, state === 'live'),
+            hasNoEnforcedRules: enforced === 0,
+            exposureNote: this.exposureNote(total, state === 'live')
         };
+    }
+
+    /**
+     * How many of a card's rules actually restrict someone. The visibility
+     * evaluator only lets an *active* rule block a card, so a parked rule
+     * protects nobody: a card whose every rule is parked is as open as one
+     * with no rules at all. The stored total and the enforced count are two
+     * different facts, and every warning in this console is computed from the
+     * second one.
+     *
+     * A catalog that does not report the enforced count is not assumed to be
+     * fully protected -- the count is derived from the rules themselves.
+     */
+    ruleEnforcement(card) {
+        const rules = card.rules ?? [];
+        return {
+            total: card.ruleCount ?? rules.length,
+            enforced: card.activeRuleCount ?? rules.filter((rule) => rule.active).length
+        };
+    }
+
+    /**
+     * The card row's one-line answer to "who sees this?". Only a live card can
+     * actually be exposed: the evaluator gates on state before it reads a
+     * single rule, so claiming a draft or a killed card is visible to everyone
+     * would contradict the banner its own detail panel renders.
+     */
+    ruleSummary(total, enforced, isLive) {
+        if (enforced > 0) {
+            return enforced === total
+                ? `${enforced} visibility rule${enforced === 1 ? '' : 's'}`
+                : `${enforced} of ${total} visibility rules active`;
+        }
+        const parked = total === 0 ? 'No rules' : `${total} rule${total === 1 ? '' : 's'}, none active`;
+        return isLive ? `${parked} — visible to everyone who can see the page` : parked;
+    }
+
+    /**
+     * Why a card restricts nobody. Two axes: whether it has no rules at all or
+     * only parked ones -- the second is the case an admin cannot infer from a
+     * rule count -- and whether that openness is happening now or only once
+     * the card goes live.
+     */
+    exposureNote(total, isLive) {
+        const cause =
+            total === 0
+                ? 'No rules yet.'
+                : `This card stores ${total} rule${total === 1 ? '' : 's'}, but none of them are active. The evaluator skips an inactive rule, so they restrict nobody.`;
+        return isLive
+            ? `${cause} This card is visible to everyone who can see the page.`
+            : `${cause} Once this card is live it will be open to everyone who can see the page.`;
     }
 
     get detail() {
@@ -433,10 +884,13 @@ export default class V360AdminConsole extends LightningElement {
                 return {
                     ...rule,
                     formulaFieldId: `formula-${rule.ruleId}`,
+                    predicateTypeFieldId: `pred-type-${rule.ruleId}`,
+                    predicateTargetFieldId: `pred-target-${rule.ruleId}`,
                     activeLabel: rule.active ? 'Active' : 'Off',
                     activeClass: rule.active ? 'slds-badge slds-theme_success' : 'slds-badge',
                     predicatePills: (rule.predicates ?? []).map((predicate, index) => ({
                         key: `${rule.ruleId}-${index}`,
+                        predicateId: predicate.predicateId,
                         label: `${predicate.predicateType} · ${predicate.targetApiName}`
                     })),
                     feedbackMessage: feedback?.message,
@@ -481,12 +935,21 @@ export default class V360AdminConsole extends LightningElement {
                 detail: `${card.componentType}: ${card.componentName} is configured.`
             }
         ];
-        if (card.ruleCount > 0) {
+        const { total, enforced } = this.ruleEnforcement(card);
+        if (enforced > 0) {
             checks.push({
                 key: 'rules',
                 ok: true,
-                text: `${card.ruleCount} visibility rule${card.ruleCount === 1 ? '' : 's'} configured`,
-                detail: 'Only users passing the rules will see this card.'
+                text: `${enforced} active visibility rule${enforced === 1 ? '' : 's'} configured`,
+                detail: 'Only users passing every active rule will see this card.'
+            });
+        } else if (total > 0) {
+            checks.push({
+                key: 'rules',
+                ok: false,
+                text: `${total} rule${total === 1 ? '' : 's'}, none active`,
+                detail:
+                    'The evaluator skips an inactive rule, so these restrict nobody. Everyone who can see the page will see this card.'
             });
         } else {
             checks.push({
