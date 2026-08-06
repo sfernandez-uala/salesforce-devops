@@ -78,13 +78,24 @@
             </template>
 
             <template lwc:elseif={isEmpty}>
+                <!-- The catalog branch below renders only once a tab exists, so this
+                     state carries its own New tab control: without it a fresh org, or
+                     one whose last tab was just deleted, has no way to create one. -->
                 <c-v360-empty-state
                     data-id="empty-state"
                     title="No configuration yet"
                     illustration-name="noresults:unknown"
                     alternative-text="No results illustration"
-                    description="No Vista 360 tabs are configured in this org."
-                ></c-v360-empty-state>
+                    description="No Vista 360 tabs are configured in this org. A tab is a named surface anchored to one object; create the first one, then add cards to it."
+                >
+                    <lightning-button
+                        slot="cta"
+                        variant="brand"
+                        label="New tab"
+                        data-id="empty-new-tab"
+                        onclick={handleNewTab}
+                    ></lightning-button>
+                </c-v360-empty-state>
             </template>
 
             <template lwc:elseif={isCatalogVisible}>

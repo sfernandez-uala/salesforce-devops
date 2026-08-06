@@ -730,6 +730,42 @@ describe('c-v360-admin-console', () => {
         expect(element.shadowRoot.querySelector('[data-id="empty-state"]')).not.toBeNull();
     });
 
+    it('lets an org with no configuration create its first tab', async () => {
+        // Regression guard: the only New tab control used to live inside the
+        // catalog branch, which renders solely when at least one tab exists.
+        // A fresh org -- or one whose last tab was just deleted -- had no path
+        // to a first tab at all.
+        getCatalog.mockResolvedValue({ hasManagePermission: true, tabs: [] });
+        saveTab.mockResolvedValue(undefined);
+
+        const element = createConsole();
+        await flushPromises();
+
+        const create = element.shadowRoot.querySelector('[data-id="empty-new-tab"]');
+        expect(create).not.toBeNull();
+
+        create.click();
+        await flushPromises();
+        expect(element.shadowRoot.querySelector('[data-id="tab-modal"]')).not.toBeNull();
+
+        element.shadowRoot.querySelector('[data-id="nt-devname"]').value = 'AccountOverview';
+        element.shadowRoot.querySelector('[data-id="nt-anchor"]').value = 'Account';
+        element.shadowRoot.querySelector('[data-id="nt-sequence"]').value = '1';
+        element.shadowRoot.querySelector('[data-id="nt-active"]').checked = true;
+        element.shadowRoot.querySelector('[data-id="nt-save"]').click();
+        await flushPromises();
+
+        expect(saveTab).toHaveBeenCalledWith({
+            input: {
+                tabId: null,
+                developerName: 'AccountOverview',
+                sObjectApiName: 'Account',
+                sequence: 1,
+                active: true
+            }
+        });
+    });
+
     it('shows the recoverable-error state and retries the request', async () => {
         getCatalog.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce(adminCatalog());
 
