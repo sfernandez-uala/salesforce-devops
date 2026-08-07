@@ -22,6 +22,18 @@ export default class V360EmptyState extends LightningElement {
     @api description;
     @api retryLabel;
 
+    /**
+     * Draws the state on its own SLDS box. Off by default: most empty states
+     * already sit inside a surface that owns the border, and boxing those
+     * would double it. Turn it on where the state is the only thing in its
+     * region and would otherwise read as floating.
+     */
+    @api boxed = false;
+
+    get containerClass() {
+        return this.boxed ? 'slds-box slds-box_small slds-theme_default' : '';
+    }
+
     handleRetryClick() {
         this.dispatchEvent(new CustomEvent('retry'));
     }

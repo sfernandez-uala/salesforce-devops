@@ -38,7 +38,10 @@ describe('c-v360-empty-state', () => {
             description: 'No cards are configured for this tab.'
         });
 
-        const description = element.shadowRoot.querySelector('p[slot="description"]');
+        // The slot attribute sits on the region wrapper, not on the content:
+        // assigning it to a <slot> instead re-projects one slot into another
+        // and consumer content never reaches the platform component.
+        const description = element.shadowRoot.querySelector('[slot="description"] p');
         expect(description).not.toBeNull();
         expect(description.textContent).toBe('No cards are configured for this tab.');
     });
@@ -64,7 +67,7 @@ describe('c-v360-empty-state', () => {
         const handler = jest.fn();
         element.addEventListener('retry', handler);
 
-        const retryButton = element.shadowRoot.querySelector('lightning-button[slot="cta"]');
+        const retryButton = element.shadowRoot.querySelector('[slot="cta"] lightning-button');
         expect(retryButton).not.toBeNull();
         expect(retryButton.label).toBe('Retry');
 
