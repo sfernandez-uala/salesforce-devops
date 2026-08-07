@@ -1,0 +1,18 @@
+/*
+ * Vista 360 builder: document-level overrides.
+ *
+ * The Lightning page template wraps a tab's content in
+ * .slds-template__default and pads it with --slds-c-template-sizing-gap.
+ * That wrapper lives outside every component's shadow tree, so no scoped
+ * stylesheet can reach it -- a document-level sheet loaded as a static
+ * resource is the only way in.
+ *
+ * The rule is gated on a marker class that c/v360AdminBuilder puts on the
+ * wrapper while it is mounted and removes when it unmounts. loadStyle
+ * injects into the document and Lightning Experience does not reload it
+ * between pages, so without the gate this would strip the gutter from every
+ * other page for the rest of the session.
+ */
+.slds-brand-band.slds-brand-band_cover.slds-brand-band_medium.slds-template_default.v360-builder-full-bleed {
+    padding: 0;
+}

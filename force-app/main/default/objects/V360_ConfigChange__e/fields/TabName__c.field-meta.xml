@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TabName__c</fullName>
+    <description>V360_Tab__c.DeveloperName__c — the tab whose cards changed, so a shell rendering a different tab can ignore the event instead of re-querying.</description>
+    <label>Tab Name</label>
+    <length>40</length>
+    <required>true</required>
+    <type>Text</type>
+</CustomField>

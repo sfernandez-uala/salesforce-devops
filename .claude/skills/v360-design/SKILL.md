@@ -71,6 +71,7 @@ implementations if the platform component is ever unavailable in a given org (se
 | `alternativeText` | String | Accessible text for the illustration; required whenever the illustration conveys meaning beyond decoration. |
 | `description` | String | Simple text description. For richer content, omit this and slot markup into the default slot instead. |
 | `retryLabel` | String | When set, renders a call-to-action button with this label; clicking it dispatches a `retry` event. Omit when there is nothing useful to retry. |
+| `boxed` | Boolean | Draws the state on its own `slds-box`. Off by default, because most empty states already sit inside a surface that owns the border and boxing those doubles it. Turn it on where the state is the only thing in its region and would otherwise read as floating. |
 
 Consumers also have a named `cta` slot for additional buttons (the platform
 component supports up to two call-to-action buttons total).

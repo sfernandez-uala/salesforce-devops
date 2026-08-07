@@ -1,0 +1,237 @@
+/**
+ * The builder's own chrome. Structure and semantics are SLDS -- the
+ * builder-header blueprint on top, tablist roles on the rail, base
+ * components everywhere else. What is here is the handful of rules SLDS has
+ * no blueprint for: a full-height three-pane workspace where each pane owns
+ * its scroll, and the square icon tile a vertical rail is made of.
+ * Every colour comes from the shared Vista 360 tokens.
+ */
+@import 'c/v360Styles';
+
+:host {
+    display: block;
+}
+
+.v360-builder {
+    display: flex;
+    flex-direction: column;
+    /* The builder fills the Lightning tab so the panes below can bound their
+       own scroll. Without a height on the shell the row grows with its
+       tallest pane and the whole page scrolls instead -- which is what makes
+       a long rules list carry the card list off screen. */
+    height: calc(100vh - 3.5rem);
+    min-height: 34rem;
+    background: var(--v360-color-surface-hover);
+}
+
+/* The builder-header blueprint pins its container to the viewport, which is
+   right for a standalone builder app that owns the whole window and wrong
+   inside a Lightning tab -- there it lands on top of Salesforce's own
+   navigation. Everything else about the header comes from SLDS untouched;
+   this releases the pin so the header sits at the top of the component. */
+.slds-builder-header_container {
+    position: static;
+}
+
+.v360-builder-body {
+    display: grid;
+    grid-template-columns: 4.25rem 19rem minmax(0, 1fr);
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* ---- Rail: sections of the open card ---- */
+
+/* Width matches the platform's own --agentbuilder-left-rail-tab-item-button-width
+   so this rail and Agentforce Builder's read as the same control. */
+.v360-builder-rail {
+    display: flex;
+    flex-direction: column;
+    background: var(--v360-color-surface);
+    border-right: 1px solid var(--v360-color-border);
+}
+
+/* SLDS's vertical-navigation action is a horizontal text row; the square
+   icon tile these rails are built from has no blueprint. */
+.v360-builder-rail-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    height: 4.25rem;
+    padding: 0.25rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    /* The glyph follows the tile's own colour, the way the blueprint's
+       slds-current-color does -- so the selected tile flips icon and label
+       to inverse together, with no per-state variant threaded through the
+       template. */
+    --slds-c-icon-color-foreground-default: currentColor;
+    --slds-c-icon-color-foreground: currentColor;
+}
+
+/* Hover is the brand tint, not a neutral grey: on a rail whose selected
+   state is a solid brand fill, a grey hover reads as a different family of
+   control. Palette-based for the same reason the fill is -- an org theme
+   must not decide how legible the hover is. */
+.v360-builder-rail-item:hover {
+    background: var(--v360-color-brand-tint-fixed);
+}
+
+.v360-builder-rail-item:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: -2px;
+}
+
+/* The selected tile is a solid brand fill edge to edge -- the same three
+   declarations Agentforce Builder's own rail item carries, reading the same
+   brand hook through the shared token. At 4.25rem a tint plus an edge marker
+   reads as a hover state rather than a selection. */
+.v360-builder-rail-item_active,
+.v360-builder-rail-item_active:hover {
+    background-color: var(--v360-color-brand-fixed);
+    color: var(--v360-color-text-inverse);
+    font-weight: normal;
+}
+
+.v360-builder-rail-label {
+    font-size: 0.6875rem;
+    line-height: 1.1;
+    text-align: center;
+}
+
+/* The count rides the tile's corner; a 4.25rem square has no room for a row. */
+.v360-builder-rail-badge {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    margin: 0;
+}
+
+/* ---- Card list ---- */
+
+.v360-builder-list {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--v360-color-surface);
+    border-right: 1px solid var(--v360-color-border);
+}
+
+.v360-builder-list-head {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--v360-color-border);
+}
+
+.v360-builder-list-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.75rem;
+}
+
+/* A row carries three lines of text plus a reorder control, so it needs
+   room inside and air between: at the previous spacing the borders of
+   adjacent rows nearly touched and the list read as one block. */
+.v360-builder-cardrow {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--v360-color-border);
+    border-radius: var(--v360-radius);
+    cursor: pointer;
+}
+
+.v360-builder-cardrow:last-child {
+    margin-bottom: 0;
+}
+
+.v360-builder-cardrow:hover {
+    background: var(--v360-color-surface-hover);
+}
+
+.v360-builder-cardrow:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: 2px;
+}
+
+/* SLDS boxes have hover and focus treatments but no selected state. The
+   leading edge is drawn with an inset shadow rather than a thick
+   border-left: a 3px transparent border on every unselected row left a
+   white notch down the left side of the whole list. */
+.v360-builder-cardrow_selected {
+    border-color: var(--v360-color-brand-fixed);
+    background: var(--v360-color-brand-tint-fixed);
+    box-shadow: inset 3px 0 0 var(--v360-color-brand-fixed);
+}
+
+/* The body is the only shrinkable cell, so long labels and bindings
+   ellipsize instead of widening the row past the pane. */
+.v360-builder-cardrow-body {
+    min-width: 0;
+}
+
+.v360-builder-cardrow-move {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Canvas ---- */
+
+.v360-builder-canvas {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--v360-color-surface);
+}
+
+.v360-builder-canvas-head {
+    flex: 0 0 auto;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--v360-color-border);
+}
+
+.v360-builder-canvas-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Forms stop widening past a comfortable reading measure; formulas get the
+   rest of the canvas, which is the whole point of the layout. */
+.v360-builder-measure {
+    max-width: 46rem;
+}
+
+/* The icon trigger is a plain SLDS button rather than lightning-button:
+   lightning-button's label lives in its own shadow root, so no outer class
+   can truncate it, and icon references run long enough to overflow. Same
+   slds-button classes, so it stays visually identical to the base
+   component. */
+.v360-builder-icon-trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.v360-builder-icon-value {
+    min-width: 0;
+}
+
+/* Formulas are code and read as code. */
+.v360-builder-formula {
+    --slds-c-textarea-font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+}

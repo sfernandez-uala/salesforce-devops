@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DeveloperNameIsImmutable</fullName>
+    <active>true</active>
+    <description>A FlexiPage copies this name into the shell tabApiName property, and config is upserted between orgs on it. Renaming breaks the page silently, and duplicates the tab on the next import. ISCHANGED is false on insert, so this fires only on update.</description>
+    <errorConditionFormula>ISCHANGED(DeveloperName__c)</errorConditionFormula>
+    <errorDisplayField>DeveloperName__c</errorDisplayField>
+    <errorMessage>A tab&apos;s developer name cannot change: record pages reference it by name, and configuration is upserted between orgs on it. Create a new tab and repoint the page instead.</errorMessage>
+</ValidationRule>

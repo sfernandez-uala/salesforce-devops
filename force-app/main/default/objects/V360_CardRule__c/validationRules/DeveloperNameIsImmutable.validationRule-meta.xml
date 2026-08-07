@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>DeveloperNameIsImmutable</fullName>
+    <active>true</active>
+    <description>Config is upserted between orgs on this external id. Renaming makes the next import insert a duplicate rule, and a duplicate visibility rule silently narrows who can see the card. ISCHANGED is false on insert, so this fires only on update.</description>
+    <errorConditionFormula>ISCHANGED(DeveloperName__c)</errorConditionFormula>
+    <errorDisplayField>DeveloperName__c</errorDisplayField>
+    <errorMessage>A rule&apos;s developer name cannot change: configuration is upserted between orgs on it, so renaming would duplicate this rule on the next deployment. Delete and recreate it instead.</errorMessage>
+</ValidationRule>

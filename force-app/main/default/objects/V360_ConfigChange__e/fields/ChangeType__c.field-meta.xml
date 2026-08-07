@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ChangeType__c</fullName>
+    <description>What changed, so one event serves every kind of notification a shell may need to react to instead of a new platform event per use case. Platform Event fields cannot be Picklists, so the accepted values are enforced in V360ConfigChange.</description>
+    <label>Change Type</label>
+    <length>40</length>
+    <required>true</required>
+    <type>Text</type>
+</CustomField>
