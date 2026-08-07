@@ -1,11 +1,16 @@
 @IsTest
 private class V360ConfigChangeTest {
 
-    private static V360_Card__c cardOn(V360_Tab__c tab, String developerName, String componentName, Decimal order) {
+    /**
+     * Order is fixed rather than a parameter: nothing these tests assert
+     * depends on card order, and passing it pushed the helper to the
+     * parameter-count threshold.
+     */
+    private static V360_Card__c cardOn(V360_Tab__c tab, String developerName, String componentName) {
         return V360TestDataFactory.insertCard(
             tab.Id,
             developerName,
-            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = componentName, Order__c = order)
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = componentName, Order__c = 1)
         );
     }
 
@@ -16,8 +21,8 @@ private class V360ConfigChangeTest {
     @IsTest
     static void publishForCardsAnnouncesTheTabOnceNotEachCard() {
         V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_Event_Tab', 'Account');
-        V360_Card__c first = cardOn(tab, 'V360Test_Event_CardA', 'v360AccountSnapshot', 1);
-        V360_Card__c second = cardOn(tab, 'V360Test_Event_CardB', 'v360LifecycleDemo', 2);
+        V360_Card__c first = cardOn(tab, 'V360Test_Event_CardA', 'v360AccountSnapshot');
+        V360_Card__c second = cardOn(tab, 'V360Test_Event_CardB', 'v360LifecycleDemo');
 
         Test.startTest();
         List<Database.SaveResult> results = V360ConfigChange.publishForCards(
@@ -34,8 +39,8 @@ private class V360ConfigChangeTest {
     static void publishForCardsAnnouncesEveryDistinctTab() {
         V360_Tab__c accountTab = V360TestDataFactory.insertTab('V360Test_Event_AccountTab', 'Account');
         V360_Tab__c caseTab = V360TestDataFactory.insertTab('V360Test_Event_CaseTab', 'Case');
-        V360_Card__c onAccount = cardOn(accountTab, 'V360Test_Event_OnAccount', 'v360AccountSnapshot', 1);
-        V360_Card__c onCase = cardOn(caseTab, 'V360Test_Event_OnCase', 'v360LifecycleDemo', 1);
+        V360_Card__c onAccount = cardOn(accountTab, 'V360Test_Event_OnAccount', 'v360AccountSnapshot');
+        V360_Card__c onCase = cardOn(caseTab, 'V360Test_Event_OnCase', 'v360LifecycleDemo');
 
         Test.startTest();
         List<Database.SaveResult> results = V360ConfigChange.publishForCards(
