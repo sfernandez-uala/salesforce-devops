@@ -3,6 +3,10 @@ import v360CustomerState from 'c/v360CustomerState';
 import v360ShellState from 'c/v360ShellState';
 import { has as isRegisteredCard, load as loadCardConstructor } from 'c/v360CardRegistry';
 import { getPinnedKeys, togglePin } from 'c/v360CardPreferences';
+import { subscribe, unsubscribe } from 'lightning/empApi';
+
+/** Server-side signal that an admin changed a tab's cards. */
+const CONFIG_CHANGE_CHANNEL = '/event/V360_ConfigChange__e';
 
 const DEFAULT_TAB_API_NAME = 'AccountOverview';
 const DEFAULT_BUTTON_LABEL = 'Consultar';
@@ -78,6 +82,7 @@ export default class V360Shell extends LightningElement {
     pinnedKeys = [];
     railOverflowInline = false;
     railOverflowBlock = false;
+    configSubscription;
 
     connectedCallback() {
         this.pinnedKeys = getPinnedKeys(this.tabApiName);
@@ -88,9 +93,38 @@ export default class V360Shell extends LightningElement {
         this.syncFromCustomerState();
         this.syncFromShellState();
         this.customerState.value.load(this.tabApiName);
+        this.subscribeToConfigChanges();
+    }
+
+    /**
+     * An admin activating a card is a change this user's session has no other
+     * way of hearing about: it happens in a different session, often under a
+     * different user, so neither a state-manager subscription nor the Lightning
+     * Message Service reaches across to it. The server-side event does.
+     *
+     * Only changes to the tab this shell renders trigger a re-read; a shell on
+     * another anchor object ignores the event rather than re-querying.
+     */
+    async subscribeToConfigChanges() {
+        try {
+            this.configSubscription = await subscribe(CONFIG_CHANGE_CHANNEL, -1, (message) => {
+                const changedTab = message?.data?.payload?.TabName__c;
+                if (changedTab === this.tabApiName) {
+                    this.customerState.value.refresh(this.tabApiName);
+                }
+            });
+        } catch (error) {
+            // No live updates is a degradation, not a failure: the catalog
+            // still loads and still refreshes on the next page visit.
+            this.configSubscription = undefined;
+        }
     }
 
     disconnectedCallback() {
+        if (this.configSubscription) {
+            unsubscribe(this.configSubscription);
+            this.configSubscription = undefined;
+        }
         if (this.unsubscribeCustomerState) {
             this.unsubscribeCustomerState();
         }

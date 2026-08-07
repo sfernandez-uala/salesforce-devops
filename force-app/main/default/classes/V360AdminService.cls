@@ -80,7 +80,22 @@ public with sharing class V360AdminService {
     public static List<Database.UpsertResult> saveCards(List<V360_Card__c> cards) {
         requireManagePermission();
         validateCardBindings(cards);
-        return upsertEnforced(cards);
+        List<Database.UpsertResult> results = upsertEnforced(cards);
+        // Every card write lands here -- activation, the kill switch, a
+        // reorder, a relabel -- so this is the one place that has to tell
+        // open shells their catalog moved.
+        V360ConfigChange.publishForCards(savedIds(results), V360ConfigChange.ChangeType.CARDS_CHANGED);
+        return results;
+    }
+
+    private static Set<Id> savedIds(List<Database.UpsertResult> results) {
+        Set<Id> ids = new Set<Id>();
+        for (Database.UpsertResult result : results) {
+            if (result.isSuccess()) {
+                ids.add(result.getId());
+            }
+        }
+        return ids;
     }
 
     /**
@@ -120,6 +135,9 @@ public with sharing class V360AdminService {
      */
     public static void deleteCards(Set<Id> cardIds) {
         requireManagePermission();
+        // Resolved before the delete: afterwards the cards are gone and their
+        // tab can no longer be reached from them.
+        Set<String> affectedTabs = V360ConfigChange.tabNamesForCards(cardIds);
         List<V360_CardRule__c> rules = [
             SELECT Id FROM V360_CardRule__c WHERE Card__c IN :cardIds WITH USER_MODE
         ];
@@ -127,6 +145,7 @@ public with sharing class V360AdminService {
             Database.delete(rules, true, AccessLevel.USER_MODE);
         }
         Database.delete(new List<Id>(cardIds), true, AccessLevel.USER_MODE);
+        V360ConfigChange.publishForTabNames(affectedTabs, V360ConfigChange.ChangeType.CARDS_CHANGED);
     }
 
     /**

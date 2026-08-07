@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Published server-side whenever an admin changes the card configuration of a tab. Open Vista 360 shells subscribe to it and re-read their catalog, so a card that is activated, deactivated, killed or deleted reaches users already on a record page without a refresh. Config-scale volume: it fires on admin writes, not on evaluation.</description>
+    <eventType>HighVolume</eventType>
+    <label>V360 Config Change</label>
+    <pluralLabel>V360 Config Changes</pluralLabel>
+    <publishBehavior>PublishAfterCommit</publishBehavior>
+</CustomObject>
