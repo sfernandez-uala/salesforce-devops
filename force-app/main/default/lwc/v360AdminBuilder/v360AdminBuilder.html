@@ -1,0 +1,833 @@
+<template>
+    <template lwc:if={isLoading}>
+        <div class="slds-is-relative slds-p-around_xx-large" data-id="loading">
+            <lightning-spinner alternative-text="Loading configuration" size="small"></lightning-spinner>
+        </div>
+    </template>
+
+    <template lwc:elseif={isError}>
+        <c-v360-empty-state
+            data-id="error-state"
+            title="Something went wrong"
+            illustration-name="error:recoverable"
+            alternative-text="Error illustration"
+            description="Unable to load the Vista 360 configuration right now."
+            retry-label="Retry"
+            onretry={handleRetry}
+        ></c-v360-empty-state>
+    </template>
+
+    <template lwc:elseif={isDenied}>
+        <c-v360-empty-state
+            data-id="denied-state"
+            title="Access needed"
+            illustration-name="access:request"
+            alternative-text="No access illustration"
+            description="Managing Vista 360 cards requires the V360 Admin permission set."
+        ></c-v360-empty-state>
+    </template>
+
+    <template lwc:elseif={isEmptyOrg}>
+        <c-v360-empty-state
+            data-id="empty-org"
+            title="No configuration yet"
+            illustration-name="noresults:unknown"
+            alternative-text="No results illustration"
+            description="No Vista 360 tabs are configured in this org. A tab is a named surface anchored to one object; create the first one, then add cards to it."
+        >
+            <lightning-button
+                slot="cta"
+                variant="brand"
+                label="New tab"
+                data-id="empty-new-tab"
+                onclick={handleNewTab}
+            ></lightning-button>
+        </c-v360-empty-state>
+    </template>
+
+    <template lwc:elseif={isReady}>
+        <div class="v360-builder">
+            <!-- The document header: what is open, and the control that changes it.
+                 SLDS's own builder-header blueprint, the same chrome App Builder and
+                 Agentforce Builder wear. -->
+            <div class="slds-builder-header_container">
+                <header class="slds-builder-header">
+                    <div class="slds-builder-header__item">
+                        <div class="slds-builder-header__item-label slds-media slds-media_center">
+                            <div class="slds-media__figure">
+                                <lightning-icon
+                                    icon-name="utility:builder"
+                                    size="x-small"
+                                    variant="inverse"
+                                ></lightning-icon>
+                            </div>
+                            <div class="slds-media__body">Vista 360</div>
+                        </div>
+                    </div>
+
+                    <nav class="slds-builder-header__item slds-builder-header__nav">
+                        <ul class="slds-builder-header__nav-list">
+                            <li class={switcherClass} onfocusout={handleSwitcherFocusOut}>
+                                <button
+                                    class="slds-button slds-builder-header__item-action slds-media slds-media_center"
+                                    aria-haspopup="true"
+                                    aria-expanded={switcherOpen}
+                                    title="Switch tab"
+                                    data-id="tab-switcher"
+                                    onclick={handleToggleSwitcher}
+                                >
+                                    <span class="slds-media__figure">
+                                        <lightning-icon
+                                            icon-name="utility:page"
+                                            size="x-small"
+                                            variant="inverse"
+                                        ></lightning-icon>
+                                    </span>
+                                    <span class="slds-media__body slds-grid slds-grid_vertical-align-center">
+                                        <span class="slds-truncate" title={documentName}>{documentName}</span>
+                                        <lightning-icon
+                                            icon-name="utility:chevrondown"
+                                            size="xx-small"
+                                            variant="inverse"
+                                            class="slds-m-left_small"
+                                        ></lightning-icon>
+                                    </span>
+                                </button>
+                                <div class="slds-dropdown slds-dropdown_left slds-dropdown_actions">
+                                    <ul class="slds-dropdown__list" role="menu" aria-label="Tabs">
+                                        <template for:each={tabGroups} for:item="group">
+                                            <li
+                                                key={group.sObjectApiName}
+                                                class="slds-dropdown__header slds-truncate"
+                                                role="separator"
+                                            >
+                                                <span title={group.sObjectApiName}>{group.sObjectApiName}</span>
+                                            </li>
+                                            <template for:each={group.tabs} for:item="groupTab">
+                                                <li
+                                                    key={groupTab.tabId}
+                                                    class="slds-dropdown__item"
+                                                    role="presentation"
+                                                >
+                                                    <a
+                                                        role="menuitem"
+                                                        tabindex="-1"
+                                                        data-id="tab-option"
+                                                        data-tab-id={groupTab.tabId}
+                                                        onclick={handleTabPick}
+                                                    >
+                                                        <span class="slds-truncate" title={groupTab.developerName}>
+                                                            {groupTab.developerName}
+                                                        </span>
+                                                    </a>
+                                                </li>
+                                            </template>
+                                        </template>
+                                        <li class="slds-dropdown__item" role="presentation">
+                                            <a role="menuitem" tabindex="-1" data-id="edit-tab" onclick={handleEditTab}>
+                                                <span class="slds-truncate" title="Edit this tab">Edit this tab…</span>
+                                            </a>
+                                        </li>
+                                        <li class="slds-dropdown__item" role="presentation">
+                                            <a role="menuitem" tabindex="-1" data-id="new-tab" onclick={handleNewTab}>
+                                                <span class="slds-truncate" title="New tab">New tab…</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </nav>
+
+                    <div class="slds-builder-header__item slds-has-flexi-truncate">
+                        <h1 class="slds-builder-header__item-label">
+                            <span class="slds-truncate" title={documentMeta} data-id="document-meta">
+                                {documentMeta}
+                            </span>
+                        </h1>
+                    </div>
+
+                    <div class="slds-builder-header__item slds-builder-header__utilities">
+                        <div class="slds-builder-header__utilities-item">
+                            <a
+                                class="slds-builder-header__item-action slds-media slds-media_center"
+                                data-id="refresh"
+                                onclick={handleRefresh}
+                            >
+                                <span class="slds-media__figure">
+                                    <lightning-icon
+                                        icon-name="utility:refresh"
+                                        size="x-small"
+                                        variant="inverse"
+                                    ></lightning-icon>
+                                </span>
+                                <span class="slds-media__body">Refresh</span>
+                            </a>
+                        </div>
+                    </div>
+                </header>
+            </div>
+
+            <div class="slds-is-relative v360-builder-body">
+                <template lwc:if={refreshing}>
+                    <lightning-spinner alternative-text="Saving" size="small" data-id="busy"></lightning-spinner>
+                </template>
+
+                <!-- The rail: which question about the open card the canvas answers.
+                     Tabs, not navigation, so it carries tablist semantics. It leads
+                     the row so focus order matches what the eye reads first. -->
+                <div
+                    class="v360-builder-rail"
+                    role="tablist"
+                    aria-orientation="vertical"
+                    aria-label="Card sections"
+                >
+                    <template for:each={rail} for:item="section">
+                        <button
+                            key={section.key}
+                            type="button"
+                            role="tab"
+                            class={section.itemClass}
+                            aria-selected={section.isSelected}
+                            tabindex={section.tabIndex}
+                            title={section.title}
+                            data-id="rail-item"
+                            data-section={section.key}
+                            onclick={handleSectionSelect}
+                        >
+                            <lightning-icon icon-name={section.iconName} size="small"></lightning-icon>
+                            <span class="v360-builder-rail-label">{section.label}</span>
+                            <template lwc:if={section.hasBadge}>
+                                <span class={section.badgeClass} data-id="rail-badge">{section.badgeLabel}</span>
+                            </template>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Cards: which card the canvas is about. -->
+                <div class="v360-builder-list">
+                    <div class="v360-builder-list-head">
+                        <span class="slds-text-title_caps slds-grow">Cards</span>
+                        <span class="slds-text-body_small slds-text-color_weak slds-m-right_x-small">
+                            {cardListCount}
+                        </span>
+                        <lightning-button-icon
+                            icon-name="utility:add"
+                            variant="brand"
+                            size="small"
+                            alternative-text="New card"
+                            title="New card"
+                            data-id="new-card"
+                            disabled={busy}
+                            onclick={handleNewCard}
+                        ></lightning-button-icon>
+                    </div>
+                    <div class="v360-builder-list-scroll">
+                        <template lwc:if={hasNoCards}>
+                            <c-v360-empty-state
+                                data-id="no-cards"
+                                size="small"
+                                title="No cards yet"
+                                illustration-name="noresults:unknown"
+                                alternative-text="No results illustration"
+                                description="This tab renders nothing until it has a card."
+                            ></c-v360-empty-state>
+                        </template>
+                        <template for:each={cardList} for:item="row">
+                            <div
+                                key={row.cardId}
+                                class={row.rowClass}
+                                role="button"
+                                tabindex="0"
+                                aria-pressed={row.isSelected}
+                                data-id="card-row"
+                                data-card-id={row.cardId}
+                                onclick={handleCardSelect}
+                                onkeydown={handleCardKeydown}
+                            >
+                                <lightning-icon
+                                    icon-name={row.iconNameOrDefault}
+                                    size="small"
+                                    class="v360-builder-cardrow-icon"
+                                ></lightning-icon>
+                                <div class="v360-builder-cardrow-body">
+                                    <div class="slds-grid slds-grid_vertical-align-center">
+                                        <span class="slds-text-heading_small slds-truncate slds-m-right_x-small">
+                                            {row.label}
+                                        </span>
+                                        <span class={row.stateClass}>{row.stateLabel}</span>
+                                    </div>
+                                    <p class="slds-text-body_small slds-text-color_weak slds-truncate">
+                                        {row.binding}
+                                    </p>
+                                    <p class="slds-text-body_small slds-truncate" title={row.ruleSummary}>
+                                        {row.ruleSummary}
+                                    </p>
+                                </div>
+                                <div class="v360-builder-cardrow-move">
+                                    <lightning-button-icon
+                                        icon-name="utility:arrowup"
+                                        variant="border-filled"
+                                        size="small"
+                                        alternative-text="Move up"
+                                        title="Move up"
+                                        data-id="move-up"
+                                        data-card-id={row.cardId}
+                                        disabled={row.upDisabled}
+                                        onclick={handleMoveUp}
+                                        class="slds-m-bottom_xx-small"
+                                    ></lightning-button-icon>
+                                    <lightning-button-icon
+                                        icon-name="utility:arrowdown"
+                                        variant="border-filled"
+                                        size="small"
+                                        alternative-text="Move down"
+                                        title="Move down"
+                                        data-id="move-down"
+                                        data-card-id={row.cardId}
+                                        disabled={row.downDisabled}
+                                        onclick={handleMoveDown}
+                                    ></lightning-button-icon>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- The canvas: one section at a time, with room for a formula. -->
+                <div class="v360-builder-canvas">
+                    <template lwc:if={detail}>
+                        <div class="v360-builder-canvas-head">
+                            <p
+                                class="slds-text-body_small slds-text-color_weak slds-truncate"
+                                title={breadcrumb}
+                                data-id="breadcrumb"
+                            >
+                                {breadcrumb}
+                            </p>
+                            <div class="slds-grid slds-grid_vertical-align-center slds-m-top_xx-small">
+                                <lightning-icon
+                                    icon-name={detail.iconNameOrDefault}
+                                    size="small"
+                                    class="slds-m-right_x-small"
+                                ></lightning-icon>
+                                <h2 class="slds-text-heading_medium slds-truncate slds-grow" data-id="canvas-title">
+                                    {detail.label}
+                                </h2>
+                                <span class={detail.stateClass}>{detail.stateLabel}</span>
+                            </div>
+                        </div>
+
+                        <div class="v360-builder-canvas-scroll">
+                            <template lwc:if={detail.isOpenToEveryone}>
+                                <div
+                                    class="slds-scoped-notification slds-media slds-media_center slds-theme_warning slds-m-bottom_small"
+                                    role="status"
+                                    data-id="exposure-banner"
+                                >
+                                    <div class="slds-media__figure">
+                                        <lightning-icon
+                                            icon-name="utility:warning"
+                                            size="x-small"
+                                            variant="warning"
+                                        ></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <p>{exposureNote}</p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template lwc:if={isTileSection}>
+                                <div class="slds-box slds-box_small slds-theme_default v360-builder-measure">
+                                    <p class="slds-text-title_caps slds-m-bottom_x-small">Presentation</p>
+                                    <div class="slds-grid slds-gutters_x-small slds-wrap">
+                                        <div class="slds-col slds-size_1-of-2">
+                                            <lightning-input
+                                                label="Label"
+                                                required
+                                                value={detail.label}
+                                                data-id="tile-label"
+                                            ></lightning-input>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-2">
+                                            <lightning-input
+                                                label="Tile button label"
+                                                value={detail.buttonLabelOrDefault}
+                                                data-id="tile-button-label"
+                                            ></lightning-input>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1">
+                                            <!-- A plain SLDS button, not lightning-button: only a
+                                                 value in this component's own light DOM can be
+                                                 truncated, and icon references get long. -->
+                                            <div class="slds-form-element">
+                                                <span class="slds-form-element__label">Icon</span>
+                                                <div class="slds-form-element__control">
+                                                    <button
+                                                        type="button"
+                                                        class="slds-button slds-button_neutral v360-builder-icon-trigger"
+                                                        title={tileIconLabel}
+                                                        data-id="tile-icon"
+                                                        data-target="tile"
+                                                        onclick={handleOpenIconPicker}
+                                                    >
+                                                        <lightning-icon
+                                                            icon-name={tileIconPreview}
+                                                            size="x-small"
+                                                            class="slds-m-right_x-small slds-shrink-none"
+                                                        ></lightning-icon>
+                                                        <span class="slds-truncate v360-builder-icon-value">
+                                                            {tileIconLabel}
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1">
+                                            <lightning-textarea
+                                                label="Description"
+                                                value={detail.description}
+                                                max-length="1000"
+                                                data-id="tile-description"
+                                            ></lightning-textarea>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1">
+                                            <lightning-combobox
+                                                label="Component"
+                                                value={detail.bindingValue}
+                                                options={componentOptions}
+                                                data-id="tile-component"
+                                            ></lightning-combobox>
+                                        </div>
+                                        <div class="slds-col slds-size_1-of-1">
+                                            <lightning-input
+                                                label="Developer name"
+                                                value={detail.developerName}
+                                                disabled
+                                                data-id="tile-devname"
+                                                field-level-help="Locked after creation: configuration is upserted between orgs on this name, so renaming would create a duplicate card on the next deployment instead of updating this one."
+                                            ></lightning-input>
+                                        </div>
+                                    </div>
+                                    <div class="slds-m-top_small slds-text-align_right">
+                                        <lightning-button
+                                            variant="brand"
+                                            label="Save card"
+                                            data-id="save-tile"
+                                            disabled={busy}
+                                            onclick={handleSaveTile}
+                                        ></lightning-button>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template lwc:elseif={isRulesSection}>
+                                <template lwc:if={hasNoRules}>
+                                    <c-v360-empty-state
+                                        data-id="no-rules"
+                                        title="No visibility rules"
+                                        illustration-name="noresults:unknown"
+                                        alternative-text="No results illustration"
+                                        description={exposureNote}
+                                        boxed
+                                    >
+                                        <lightning-button
+                                            slot="cta"
+                                            variant="brand"
+                                            label="Add rule"
+                                            data-id="add-rule"
+                                            disabled={busy}
+                                            onclick={handleNewRule}
+                                        ></lightning-button>
+                                    </c-v360-empty-state>
+                                </template>
+
+                                <template lwc:else>
+                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
+                                    <p class="slds-text-body_small slds-text-color_weak slds-grow">
+                                        Every active rule must pass for the card to render.
+                                    </p>
+                                    <lightning-button
+                                        variant="brand"
+                                        label="Add rule"
+                                        data-id="add-rule"
+                                        disabled={busy}
+                                        onclick={handleNewRule}
+                                    ></lightning-button>
+                                </div>
+                                <template lwc:if={detail.hasNoEnforcedRules}>
+                                    <div
+                                        class="slds-scoped-notification slds-media slds-media_center slds-theme_warning slds-m-bottom_small"
+                                        role="status"
+                                        data-id="exposure-note"
+                                    >
+                                        <div class="slds-media__figure">
+                                            <lightning-icon
+                                                icon-name="utility:warning"
+                                                size="x-small"
+                                                variant="warning"
+                                            ></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p>{exposureNote}</p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template for:each={rules} for:item="rule">
+                                    <div
+                                        key={rule.ruleId}
+                                        class="slds-box slds-box_small slds-theme_default slds-m-bottom_small"
+                                        data-id="rule"
+                                    >
+                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+                                            <span class="slds-text-heading_small slds-grow slds-truncate">
+                                                {rule.developerName}
+                                            </span>
+                                            <span class={rule.stateClass}>{rule.stateLabel}</span>
+                                            <lightning-button-icon
+                                                icon-name="utility:delete"
+                                                variant="bare"
+                                                size="small"
+                                                alternative-text="Delete rule"
+                                                title="Delete rule"
+                                                class="slds-m-left_x-small"
+                                                data-id="delete-rule"
+                                                data-rule-id={rule.ruleId}
+                                                disabled={busy}
+                                                onclick={handleDeleteRule}
+                                            ></lightning-button-icon>
+                                        </div>
+                                        <lightning-textarea
+                                            label="Visibility formula"
+                                            value={rule.formula}
+                                            class="v360-builder-formula"
+                                            data-id={rule.formulaFieldId}
+                                        ></lightning-textarea>
+                                        <template lwc:if={rule.feedbackMessage}>
+                                            <p class={rule.feedbackClass}>{rule.feedbackMessage}</p>
+                                        </template>
+                                        <div class="slds-m-top_x-small">
+                                            <lightning-button
+                                                label="Check syntax"
+                                                data-id="validate-formula"
+                                                data-rule-id={rule.ruleId}
+                                                disabled={busy}
+                                                onclick={handleValidateFormula}
+                                                class="slds-m-right_x-small"
+                                            ></lightning-button>
+                                            <lightning-button
+                                                variant="brand"
+                                                label="Save rule"
+                                                data-id="save-formula"
+                                                data-rule-id={rule.ruleId}
+                                                disabled={busy}
+                                                onclick={handleSaveFormula}
+                                            ></lightning-button>
+                                        </div>
+
+                                        <!-- Structured access the formula cannot express, enforced on
+                                             top of it. The row aligns to the start so a field's
+                                             validation error grows downward without shoving the
+                                             button, and the button gets a hidden label spacer so its
+                                             control lines up with the fields'. -->
+                                        <div class="slds-m-top_medium">
+                                            <p class="slds-text-title_caps slds-m-bottom_x-small">
+                                                Required access
+                                            </p>
+                                            <div class="slds-grid slds-gutters_xx-small slds-grid_vertical-align-start">
+                                                <div class="slds-col slds-size_5-of-12">
+                                                    <lightning-combobox
+                                                        label="Type"
+                                                        value="PERMISSION_SET"
+                                                        options={predicateTypeOptions}
+                                                        data-id={rule.typeFieldId}
+                                                    ></lightning-combobox>
+                                                </div>
+                                                <div class="slds-col slds-size_5-of-12">
+                                                    <lightning-input
+                                                        label="API name"
+                                                        placeholder="V360_Agent"
+                                                        data-id={rule.targetFieldId}
+                                                    ></lightning-input>
+                                                </div>
+                                                <div class="slds-col slds-size_2-of-12">
+                                                    <div class="slds-form-element">
+                                                        <span
+                                                            class="slds-form-element__label slds-hidden"
+                                                            aria-hidden="true"
+                                                        >Add</span>
+                                                        <div class="slds-form-element__control">
+                                                            <lightning-button
+                                                                label="Add"
+                                                                data-id="add-predicate"
+                                                                data-rule-id={rule.ruleId}
+                                                                disabled={busy}
+                                                                onclick={handleAddPredicate}
+                                                            ></lightning-button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <template lwc:if={rule.predicateLabels.length}>
+                                                <div class="slds-grid slds-wrap slds-m-top_x-small">
+                                                    <template for:each={rule.predicateLabels} for:item="predicate">
+                                                        <lightning-pill
+                                                            key={predicate.key}
+                                                            label={predicate.label}
+                                                            class="slds-m-right_xx-small slds-m-bottom_xx-small"
+                                                            data-id="predicate-pill"
+                                                            data-predicate-id={predicate.predicateId}
+                                                            onremove={handleRemovePredicate}
+                                                        ></lightning-pill>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <template lwc:else>
+                                                <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                                    None. The formula alone decides who sees this card.
+                                                </p>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                </template>
+                            </template>
+
+                            <template lwc:elseif={isReleaseSection}>
+                                <div class="v360-builder-measure">
+                                    <template for:each={releaseChecks} for:item="check">
+                                        <div key={check.key} class={check.boxClass} data-id="release-check">
+                                            <div class="slds-media slds-media_center">
+                                                <div class="slds-media__figure">
+                                                    <lightning-icon
+                                                        icon-name={check.iconName}
+                                                        variant={check.iconVariant}
+                                                        size="x-small"
+                                                    ></lightning-icon>
+                                                </div>
+                                                <div class="slds-media__body">
+                                                    <strong>{check.text}</strong>
+                                                    <p class="slds-text-body_small slds-text-color_weak">
+                                                        {check.detail}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- One row: what this card's state can become on the
+                                         leading edge, and the irreversible action on the
+                                         trailing edge, away from the rest. -->
+                                    <div
+                                        class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_small"
+                                    >
+                                        <div>
+                                        <template lwc:if={detail.isDraft}>
+                                            <lightning-button
+                                                variant="brand"
+                                                label="Activate card"
+                                                data-id="activate"
+                                                disabled={busy}
+                                                onclick={handleActivate}
+                                            ></lightning-button>
+                                        </template>
+                                        <template lwc:if={detail.isLive}>
+                                            <lightning-button
+                                                label="Deactivate"
+                                                data-id="deactivate"
+                                                disabled={busy}
+                                                onclick={handleDeactivate}
+                                                class="slds-m-right_x-small"
+                                            ></lightning-button>
+                                            <lightning-button
+                                                variant="destructive-text"
+                                                label="Kill switch"
+                                                data-id="kill"
+                                                disabled={busy}
+                                                onclick={handleEngageKill}
+                                            ></lightning-button>
+                                        </template>
+                                        <template lwc:if={detail.isKilled}>
+                                            <lightning-button
+                                                variant="brand"
+                                                label="Release kill switch"
+                                                data-id="release-kill"
+                                                disabled={busy}
+                                                onclick={handleReleaseKill}
+                                            ></lightning-button>
+                                        </template>
+                                        </div>
+                                        <lightning-button
+                                            variant="destructive-text"
+                                            label="Delete card"
+                                            data-id="delete-card"
+                                            disabled={busy}
+                                            onclick={handleRequestDeleteCard}
+                                        ></lightning-button>
+                                    </div>
+
+                                    <div
+                                        class="slds-scoped-notification slds-media slds-media_center slds-theme_warning slds-m-top_small"
+                                        role="status"
+                                        data-id="delete-note"
+                                    >
+                                        <div class="slds-media__figure">
+                                            <lightning-icon
+                                                icon-name="utility:warning"
+                                                size="x-small"
+                                                variant="warning"
+                                            ></lightning-icon>
+                                        </div>
+                                        <div class="slds-media__body">
+                                            <p>
+                                                Deleting a card takes its visibility rules with it, and
+                                                cannot be undone.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <template lwc:else>
+                        <c-v360-empty-state
+                            data-id="no-card"
+                            title="No card open"
+                            illustration-name="noresults:unknown"
+                            alternative-text="No results illustration"
+                            description="Pick a card from the list to edit its tile, its rules, and its release state."
+                        ></c-v360-empty-state>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Creation and confirmation surfaces. They sit outside every state
+         branch so the empty-org state can reach New tab too. -->
+    <template lwc:if={newCardOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="nc-title" class="slds-modal slds-fade-in-open" data-id="new-card-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="nc-title" class="slds-modal__title">New card</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input label="Developer name" required data-id="nc-devname" field-level-help="Stable unique name; the catalog references it."></lightning-input>
+                    <lightning-input label="Label" required data-id="nc-label"></lightning-input>
+                    <lightning-textarea label="Description" max-length="1000" data-id="nc-description"></lightning-textarea>
+                    <div class="slds-form-element slds-m-top_x-small">
+                        <span class="slds-form-element__label">Icon</span>
+                        <div class="slds-form-element__control">
+                            <button
+                                type="button"
+                                class="slds-button slds-button_neutral v360-builder-icon-trigger"
+                                title={newCardIconLabel}
+                                data-id="nc-icon"
+                                data-target="newCard"
+                                onclick={handleOpenIconPicker}
+                            >
+                                <lightning-icon
+                                    icon-name={newCardIconPreview}
+                                    size="x-small"
+                                    class="slds-m-right_x-small slds-shrink-none"
+                                ></lightning-icon>
+                                <span class="slds-truncate v360-builder-icon-value">{newCardIconLabel}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <lightning-input label="Tile button label" placeholder="Consultar" data-id="nc-button-label"></lightning-input>
+                    <lightning-combobox label="Renders" value={newCardType} options={newCardTypeOptions} data-id="nc-type" onchange={handleNewCardTypeChange}></lightning-combobox>
+                    <template lwc:if={isNewCardFlow}>
+                        <lightning-combobox label="Component" required options={componentOptions} data-id="nc-component" field-level-help="Only registry names, so a saved binding always resolves."></lightning-combobox>
+                    </template>
+                    <template lwc:else>
+                        <lightning-input label="Flow API name" required data-id="nc-flow" field-level-help="Validated as an active screen flow on save."></lightning-input>
+                    </template>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Cancel" data-id="nc-cancel" onclick={handleCloseModals}></lightning-button>
+                    <lightning-button variant="brand" label="Create draft" class="slds-m-left_x-small" data-id="nc-save" disabled={busy} onclick={handleCreateCard}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <template lwc:if={newRuleOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="nr-title" class="slds-modal slds-fade-in-open" data-id="new-rule-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="nr-title" class="slds-modal__title">Add visibility rule</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input label="Developer name" required data-id="nr-devname"></lightning-input>
+                    <lightning-textarea label="Visibility formula" class="v360-builder-formula" data-id="nr-formula" field-level-help="Leave it blank to add the rule now and write the formula next."></lightning-textarea>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Cancel" data-id="nr-cancel" onclick={handleCloseModals}></lightning-button>
+                    <lightning-button variant="brand" label="Create rule" class="slds-m-left_x-small" data-id="nr-save" disabled={busy} onclick={handleCreateRule}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <template lwc:if={tabModalOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="nt-title" class="slds-modal slds-fade-in-open" data-id="tab-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="nt-title" class="slds-modal__title">{tabModalTitle}</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input label="Developer name" required value={tabForm.developerName} disabled={isEditingTab} data-id="nt-devname" field-level-help="Locked after creation. Record pages reference it by name through the shell's tabApiName, and configuration is upserted between orgs on it, so renaming would break the page and duplicate the tab."></lightning-input>
+                    <lightning-input label="Anchor object" required placeholder="Account" value={tabForm.sObjectApiName} data-id="nt-anchor" field-level-help="API name of the object whose record pages host this tab; validated on save."></lightning-input>
+                    <template lwc:if={isEditingTab}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
+                            Placement is not configured here: the shell takes one tab per FlexiPage
+                            component, so where it appears is decided in Lightning App Builder.
+                        </p>
+                    </template>
+                </div>
+                <div class="slds-modal__footer slds-grid">
+                    <template lwc:if={isEditingTab}>
+                        <lightning-button variant="destructive-text" label="Delete tab" data-id="nt-delete" disabled={busy} onclick={handleRequestDeleteTab}></lightning-button>
+                    </template>
+                    <div class="slds-col_bump-left">
+                        <lightning-button label="Cancel" data-id="nt-cancel" onclick={handleCloseModals}></lightning-button>
+                        <lightning-button variant="brand" label="Save tab" class="slds-m-left_x-small" data-id="nt-save" disabled={busy} onclick={handleSaveTab}></lightning-button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <template lwc:if={iconPickerOpen}>
+        <c-v360-icon-picker
+            selected-icon={selectedIconForPicker}
+            onselect={handleIconSelect}
+            onclose={handleCloseIconPicker}
+        ></c-v360-icon-picker>
+    </template>
+
+    <template lwc:if={deleteTarget}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="del-title" class="slds-modal slds-fade-in-open" data-id="delete-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="del-title" class="slds-modal__title">Confirm deletion</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p>{deleteMessage}</p>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button label="Cancel" data-id="del-cancel" onclick={handleCloseModals}></lightning-button>
+                    <lightning-button variant="destructive" label="Delete" class="slds-m-left_x-small" data-id="del-confirm" disabled={busy} onclick={handleConfirmDelete}></lightning-button>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+</template>
