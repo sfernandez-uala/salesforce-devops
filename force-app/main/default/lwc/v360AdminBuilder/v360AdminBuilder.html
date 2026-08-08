@@ -6,7 +6,7 @@
     </template>
 
     <template lwc:elseif={isError}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="error-state"
             title="Something went wrong"
             illustration-name="error:recoverable"
@@ -14,21 +14,21 @@
             description="Unable to load the Vista 360 configuration right now."
             retry-label="Retry"
             onretry={handleRetry}
-        ></c-v360-empty-state>
+        ></c-empty-state>
     </template>
 
     <template lwc:elseif={isDenied}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="denied-state"
             title="Access needed"
             illustration-name="access:request"
             alternative-text="No access illustration"
             description="Managing Vista 360 cards requires the V360 Admin permission set."
-        ></c-v360-empty-state>
+        ></c-empty-state>
     </template>
 
     <template lwc:elseif={isEmptyOrg}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="empty-org"
             title="No configuration yet"
             illustration-name="noresults:unknown"
@@ -42,7 +42,7 @@
                 data-id="empty-new-tab"
                 onclick={handleNewTab}
             ></lightning-button>
-        </c-v360-empty-state>
+        </c-empty-state>
     </template>
 
     <template lwc:elseif={isReady}>
@@ -224,14 +224,14 @@
                     </div>
                     <div class="v360-builder-list-scroll">
                         <template lwc:if={hasNoCards}>
-                            <c-v360-empty-state
+                            <c-empty-state
                                 data-id="no-cards"
                                 size="small"
                                 title="No cards yet"
                                 illustration-name="noresults:unknown"
                                 alternative-text="No results illustration"
                                 description="This tab renders nothing until it has a card."
-                            ></c-v360-empty-state>
+                            ></c-empty-state>
                         </template>
                         <template for:each={cardList} for:item="row">
                             <div
@@ -424,7 +424,7 @@
 
                             <template lwc:elseif={isRulesSection}>
                                 <template lwc:if={hasNoRules}>
-                                    <c-v360-empty-state
+                                    <c-empty-state
                                         data-id="no-rules"
                                         title="No visibility rules"
                                         illustration-name="noresults:unknown"
@@ -440,10 +440,11 @@
                                             disabled={busy}
                                             onclick={handleNewRule}
                                         ></lightning-button>
-                                    </c-v360-empty-state>
+                                    </c-empty-state>
                                 </template>
 
                                 <template lwc:else>
+                                <div class="v360-builder-measure">
                                 <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
                                     <p class="slds-text-body_small slds-text-color_weak slds-grow">
                                         Every active rule must pass for the card to render.
@@ -498,33 +499,17 @@
                                                 onclick={handleDeleteRule}
                                             ></lightning-button-icon>
                                         </div>
-                                        <lightning-textarea
-                                            label="Visibility formula"
-                                            value={rule.formula}
-                                            class="v360-builder-formula"
-                                            data-id={rule.formulaFieldId}
-                                        ></lightning-textarea>
-                                        <template lwc:if={rule.feedbackMessage}>
-                                            <p class={rule.feedbackClass}>{rule.feedbackMessage}</p>
-                                        </template>
-                                        <div class="slds-m-top_x-small">
-                                            <lightning-button
-                                                label="Check syntax"
-                                                data-id="validate-formula"
-                                                data-rule-id={rule.ruleId}
-                                                disabled={busy}
-                                                onclick={handleValidateFormula}
-                                                class="slds-m-right_x-small"
-                                            ></lightning-button>
-                                            <lightning-button
-                                                variant="brand"
-                                                label="Save rule"
-                                                data-id="save-formula"
-                                                data-rule-id={rule.ruleId}
-                                                disabled={busy}
-                                                onclick={handleSaveFormula}
-                                            ></lightning-button>
-                                        </div>
+                                        <c-v360-formula-editor
+                                            formula={rule.formula}
+                                            anchor-s-object={anchorSObject}
+                                            feedback-message={rule.feedbackMessage}
+                                            feedback-valid={rule.feedbackValid}
+                                            busy={busy}
+                                            data-id="formula-editor"
+                                            data-rule-id={rule.ruleId}
+                                            onvalidate={handleValidateFormula}
+                                            onsave={handleSaveFormula}
+                                        ></c-v360-formula-editor>
 
                                         <!-- Structured access the formula cannot express, enforced on
                                              top of it. The row aligns to the start so a field's
@@ -545,11 +530,16 @@
                                                     ></lightning-combobox>
                                                 </div>
                                                 <div class="slds-col slds-size_5-of-12">
-                                                    <lightning-input
-                                                        label="API name"
-                                                        placeholder="V360_Agent"
+                                                    <c-search-picker
+                                                        label={predicateTargetLabel}
+                                                        placeholder={predicateTargetPlaceholder}
+                                                        options={predicateTargetOptions}
+                                                        value={rule.predicateTarget}
+                                                        disabled={busy}
                                                         data-id={rule.targetFieldId}
-                                                    ></lightning-input>
+                                                        data-rule-id={rule.ruleId}
+                                                        onselect={handlePredicateTargetSelect}
+                                                    ></c-search-picker>
                                                 </div>
                                                 <div class="slds-col slds-size_2-of-12">
                                                     <div class="slds-form-element">
@@ -592,6 +582,7 @@
                                         </div>
                                     </div>
                                 </template>
+                                </div>
                                 </template>
                             </template>
 
@@ -693,13 +684,13 @@
                     </template>
 
                     <template lwc:else>
-                        <c-v360-empty-state
+                        <c-empty-state
                             data-id="no-card"
                             title="No card open"
                             illustration-name="noresults:unknown"
                             alternative-text="No results illustration"
                             description="Pick a card from the list to edit its tile, its rules, and its release state."
-                        ></c-v360-empty-state>
+                        ></c-empty-state>
                     </template>
                 </div>
             </div>

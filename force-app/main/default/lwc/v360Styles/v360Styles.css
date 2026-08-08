@@ -33,6 +33,11 @@
     /* Shape and elevation tokens: one soft radius and two elevation steps
        (resting and raised) keep every Vista 360 surface on the same visual
        system. */
+    /* Formulas and API names read as code. SLDS exposes no monospace family
+       hook, so the stack is declared once here instead of being repeated in
+       every component that shows a formula. */
+    --v360-font-family-mono: ui-monospace, Menlo, Consolas, monospace;
+
     --v360-radius: 0.5rem;
     --v360-shadow-card: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
     --v360-shadow-raised: 0 4px 12px 0 rgba(0, 0, 0, 0.12);

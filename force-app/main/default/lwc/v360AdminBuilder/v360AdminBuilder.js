@@ -470,6 +470,11 @@ export default class V360AdminBuilder extends LightningElement {
         };
     }
 
+    /** The object every formula on this tab is built and validated against. */
+    get anchorSObject() {
+        return this.tab?.sObjectApiName;
+    }
+
     get breadcrumb() {
         const tab = this.tab;
         const card = this.card;
@@ -541,6 +546,7 @@ export default class V360AdminBuilder extends LightningElement {
                 stateClass: rule.active ? 'slds-badge slds-theme_success' : 'slds-badge',
                 typeFieldId: `pred-type-${rule.ruleId}`,
                 targetFieldId: `pred-target-${rule.ruleId}`,
+                feedbackValid: feedback?.isValid === true,
                 predicateLabels: (rule.predicates ?? []).map((predicate, index) => ({
                     key: `${rule.ruleId}-${index}`,
                     predicateId: predicate.predicateId,
@@ -590,24 +596,65 @@ export default class V360AdminBuilder extends LightningElement {
         ];
     }
 
+    /**
+     * The two predicate types take different targets from different places: a
+     * permission set is a record the server lists, a field read is a field of
+     * the tab's anchor object the UI API already describes. Both are chosen,
+     * never typed -- an API name from memory is exactly what the rule editor
+     * exists to stop.
+     */
+    get predicateTargetOptions() {
+        if (this.predicateType === PREDICATE_FLS_READ) {
+            return Object.values(this.anchorFields ?? {}).map((field) => ({
+                key: field.apiName,
+                label: field.label,
+                value: `${this.anchorSObject}.${field.apiName}`,
+                detail: `${field.apiName} · ${field.dataType}`
+            }));
+        }
+        return (this.permissionSets ?? []).map((option) => ({
+            key: option.apiName,
+            label: option.label,
+            value: option.apiName,
+            detail: option.apiName
+        }));
+    }
+
+    get predicateTargetLabel() {
+        return this.predicateType === PREDICATE_FLS_READ ? 'Field' : 'Permission set';
+    }
+
+    get predicateTargetPlaceholder() {
+        return this.predicateType === PREDICATE_FLS_READ ? 'Search fields' : 'Search permission sets';
+    }
+
+    handlePredicateTypeChange(event) {
+        this.predicateType = event.detail.value;
+        // The chosen target belongs to the type it was chosen under.
+        this.predicateTarget = undefined;
+    }
+
+    handlePredicateTargetSelect(event) {
+        this.predicateTarget = event.detail.value;
+    }
+
     async handleAddPredicate(event) {
         if (this.busy) {
             return;
         }
         const ruleId = event.currentTarget.dataset.ruleId;
-        const target = this.template.querySelector(`[data-id="pred-target-${ruleId}"]`);
-        if (!String(target.value ?? '').trim()) {
-            target.reportValidity();
-            this.toast('Missing information', 'A predicate needs an API name.', 'error');
+        if (!this.predicateTarget) {
+            this.toast('Missing information', `Pick a ${this.predicateTargetLabel.toLowerCase()} first.`, 'error');
             return;
         }
         this.busy = true;
         try {
             await addRulePredicate({
                 ruleId,
-                predicateType: this.template.querySelector(`[data-id="pred-type-${ruleId}"]`).value,
-                targetApiName: target.value
+                predicateType: this.predicateType,
+                targetApiName: this.predicateTarget
             });
+            this.predicateTarget = undefined;
             await this.refresh();
         } catch (error) {
             this.toast('Add failed', this.message(error), 'error');
@@ -924,12 +971,17 @@ export default class V360AdminBuilder extends LightningElement {
         }
     }
 
+    /**
+     * The editor owns the text and hands it over on the event, so the formula
+     * is never read back out of the DOM. A draft therefore survives anything
+     * that re-renders this pane, which reading from the DOM did not.
+     */
     async handleValidateFormula(event) {
         if (this.busy) {
             return;
         }
         const ruleId = event.currentTarget.dataset.ruleId;
-        const formulaText = this.template.querySelector(`[data-id="formula-${ruleId}"]`).value;
+        const formulaText = event.detail.value;
         this.busy = true;
         try {
             const result = await validateRuleFormula({ cardId: this.selectedCardId, formulaText });
@@ -949,7 +1001,7 @@ export default class V360AdminBuilder extends LightningElement {
             return;
         }
         const ruleId = event.currentTarget.dataset.ruleId;
-        const formulaText = this.template.querySelector(`[data-id="formula-${ruleId}"]`).value;
+        const formulaText = event.detail.value;
         this.busy = true;
         try {
             await saveRuleFormula({ ruleId, cardId: this.selectedCardId, formulaText });
