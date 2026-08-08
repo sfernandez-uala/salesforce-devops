@@ -189,10 +189,11 @@ public with sharing class V360AdminService {
         try {
             new V360FormulaGateway().build(formulaText, sObjectType);
         } catch (Exception buildException) {
-            throw new V360AdminServiceException(
-                'Formula failed to validate: ' + buildException.getMessage(),
-                buildException
-            );
+            // The gateway's message already says the formula failed to build
+            // and why. Prefixing it again produced "Formula failed to
+            // validate: Formula failed to build: Syntax error", which buries
+            // the only part an admin can act on.
+            throw new V360AdminServiceException(buildException.getMessage(), buildException);
         }
     }
 

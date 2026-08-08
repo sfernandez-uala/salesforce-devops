@@ -406,6 +406,128 @@ public with sharing class V360AdminController {
      *
      * @param orderedCardIds every card of the tab, in the desired order
      */
+    /**
+     * The identity vocabulary a visibility formula may reference, so the rule
+     * editor can offer real values instead of asking an admin to type an API
+     * name from memory and find out at validation time.
+     *
+     * Only what V360FormulaGateway actually enables is served. Its four
+     * globals are Custom Permission, Profile, User and User Role — and
+     * $Permission is a Custom Permission, not a Permission Set. Permission
+     * Set membership is not expressible in a formula at all; that is what the
+     * PERMISSION_SET predicate exists for. Offering permission sets here
+     * would offer something the engine rejects.
+     *
+     * User and User Role fields are deliberately absent: the UI API's
+     * getObjectInfo already describes them client-side, so routing them
+     * through Apex would add a round trip and a second source of truth.
+     *
+     * @return the queryable identity values, each already formatted as the
+     *         merge field a formula would carry
+     */
+    @AuraEnabled(cacheable=true)
+    public static FormulaVocabulary getFormulaVocabulary() {
+        try {
+            FormulaVocabulary vocabulary = new FormulaVocabulary();
+            vocabulary.customPermissions = new List<VocabularyEntry>();
+            vocabulary.profiles = new List<VocabularyEntry>();
+            // Same gate getCatalog uses: the server is the authority on the
+            // manage permission, and an unpermitted caller gets empty lists
+            // rather than an error, because the console already renders its
+            // access state from getCatalog.
+            if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
+                return vocabulary;
+            }
+            for (CustomPermission permission : [
+                SELECT DeveloperName, MasterLabel
+                FROM CustomPermission
+                WITH USER_MODE
+                ORDER BY MasterLabel
+                LIMIT 2000
+            ]) {
+                vocabulary.customPermissions.add(
+                    entry(permission.MasterLabel, '$Permission.' + permission.DeveloperName, permission.DeveloperName)
+                );
+            }
+            for (Profile userProfile : [SELECT Name FROM Profile WITH USER_MODE ORDER BY Name LIMIT 2000]) {
+                // Quoted because a profile name carries spaces; unquoted it
+                // would not build.
+                vocabulary.profiles.add(
+                    entry(userProfile.Name, '$Profile.Name = "' + userProfile.Name + '"', userProfile.Name)
+                );
+            }
+            return vocabulary;
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to read the formula vocabulary.');
+        }
+    }
+
+    /**
+     * The permission sets a PERMISSION_SET predicate can require. Deliberately
+     * not part of getFormulaVocabulary: a formula cannot read permission set
+     * membership at all, and folding these in there would blur the one
+     * distinction that decides which mechanism an admin should reach for.
+     *
+     * Profile-owned permission sets are excluded — they are the platform's own
+     * per-profile containers, not something anyone assigns.
+     *
+     * @return every assignable permission set, by API name
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<VocabularyEntry> getPermissionSetOptions() {
+        try {
+            List<VocabularyEntry> options = new List<VocabularyEntry>();
+            if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
+                return options;
+            }
+            for (PermissionSet permissionSet : [
+                SELECT Name, Label
+                FROM PermissionSet
+                WHERE IsOwnedByProfile = false
+                WITH USER_MODE
+                ORDER BY Label
+                LIMIT 2000
+            ]) {
+                options.add(entry(permissionSet.Label, permissionSet.Name, permissionSet.Name));
+            }
+            return options;
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to read the permission sets.');
+        }
+    }
+
+    private static VocabularyEntry entry(String label, String insertText, String apiName) {
+        VocabularyEntry vocabularyEntry = new VocabularyEntry();
+        vocabularyEntry.label = label;
+        vocabularyEntry.insertText = insertText;
+        vocabularyEntry.apiName = apiName;
+        return vocabularyEntry;
+    }
+
+    /** One insertable identity value, ready to drop at the cursor. */
+    // Transport properties named after what they carry; per-property ApexDoc
+    // would only restate each name.
+    @SuppressWarnings('PMD.ApexDoc')
+    public class VocabularyEntry {
+        @AuraEnabled
+        public String label;
+        @AuraEnabled
+        public String insertText;
+        @AuraEnabled
+        public String apiName;
+    }
+
+    /** Everything the rule editor can offer that only the server knows. */
+    // Transport properties named after what they carry; per-property ApexDoc
+    // would only restate each name.
+    @SuppressWarnings('PMD.ApexDoc')
+    public class FormulaVocabulary {
+        @AuraEnabled
+        public List<VocabularyEntry> customPermissions;
+        @AuraEnabled
+        public List<VocabularyEntry> profiles;
+    }
+
     @AuraEnabled
     public static void updateCardOrder(List<Id> orderedCardIds) {
         try {

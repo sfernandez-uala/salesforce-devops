@@ -71,6 +71,51 @@ private class V360AdminControllerTest {
      * if it had none. A single total cannot express that difference, so the
      * catalog reports both counts and the console warns on the effective one.
      */
+    /**
+     * The editor offers only what V360FormulaGateway enables. Permission sets
+     * are absent on purpose: $Permission is a Custom Permission, and permission
+     * set membership is the PERMISSION_SET predicate's job, not a formula's.
+     */
+    @IsTest
+    static void formulaVocabularyServesInsertableIdentityValues() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.FormulaVocabulary vocabulary = V360AdminController.getFormulaVocabulary();
+            Test.stopTest();
+
+            Assert.isNotNull(vocabulary.customPermissions, 'Custom permissions must always be a list');
+            Assert.isNotNull(vocabulary.profiles, 'Profiles must always be a list');
+            Assert.isFalse(vocabulary.profiles.isEmpty(), 'Every org has at least one profile');
+
+            V360AdminController.VocabularyEntry profileEntry = vocabulary.profiles[0];
+            Assert.isNotNull(profileEntry.label, 'A profile entry needs a label to pick from');
+            // A profile name carries spaces, so the inserted text has to quote
+            // it or the formula will not build.
+            Assert.isTrue(
+                profileEntry.insertText.startsWith('$Profile.Name = "'),
+                'A profile must be inserted as a quoted comparison, got: ' + profileEntry.insertText
+            );
+        }
+    }
+
+    @IsTest
+    static void formulaVocabularyIsEmptyWithoutTheManagePermission() {
+        User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
+
+        System.runAs(plainUser) {
+            Test.startTest();
+            V360AdminController.FormulaVocabulary vocabulary = V360AdminController.getFormulaVocabulary();
+            Test.stopTest();
+
+            // Empty rather than an error: the console already renders its own
+            // access state from getCatalog.
+            Assert.isTrue(vocabulary.customPermissions.isEmpty(), 'No vocabulary without the manage permission');
+            Assert.isTrue(vocabulary.profiles.isEmpty(), 'No vocabulary without the manage permission');
+        }
+    }
+
     @IsTest
     static void getCatalogCountsActiveRulesSeparatelyFromTheTotal() {
         User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
@@ -235,10 +280,22 @@ private class V360AdminControllerTest {
 
             Assert.isTrue(good.isValid, 'A well-formed formula must validate: ' + good.message);
             Assert.isFalse(bad.isValid, 'A malformed formula must be rejected');
+            // What matters is that the engine's own sentence survives to the
+            // admin, not that a layer of our own prefixes wraps it. The
+            // previous assertion pinned the prefix, which is how the message
+            // ended up reading "Formula failed to validate: Formula failed to
+            // build: Syntax error".
             Assert.isTrue(
-                bad.message.startsWith('Formula failed to validate'),
-                'The rejection carries the engine message: ' + bad.message
+                bad.message.contains('Syntax error'),
+                'The rejection must carry what the engine actually objected to: ' + bad.message
             );
+            Assert.isFalse(
+                bad.message.contains('failed to validate: Formula failed to build'),
+                'The rejection must not stack one prefix on another: ' + bad.message
+            );
+            // The platform writes its build errors for the Setup UI, anchor tag
+            // and all. None of that markup may reach a client.
+            Assert.isFalse(bad.message.contains('<'), 'The rejection must carry no markup: ' + bad.message);
         }
     }
 
