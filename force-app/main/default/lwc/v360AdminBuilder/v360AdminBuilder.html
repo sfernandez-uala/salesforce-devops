@@ -524,9 +524,10 @@
                                                 <div class="slds-col slds-size_5-of-12">
                                                     <lightning-combobox
                                                         label="Type"
-                                                        value="PERMISSION_SET"
+                                                        value={predicateType}
                                                         options={predicateTypeOptions}
                                                         data-id={rule.typeFieldId}
+                                                        onchange={handlePredicateTypeChange}
                                                     ></lightning-combobox>
                                                 </div>
                                                 <div class="slds-col slds-size_5-of-12">

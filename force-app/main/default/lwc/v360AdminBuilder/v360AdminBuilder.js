@@ -1,4 +1,6 @@
 import { LightningElement, wire } from 'lwc';
+import { getObjectInfo } from 'lightning/uiObjectInfoApi';
+import getPermissionSetOptions from '@salesforce/apex/V360AdminController.getPermissionSetOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadStyle } from 'lightning/platformResourceLoader';
 import { EnclosingTabId, IsConsoleNavigation, setTabLabel } from 'lightning/platformWorkspaceApi';
@@ -32,6 +34,9 @@ const BINDING_SEPARATOR = ':';
 /** Gates the static resource's rule; see renderedCallback. */
 const FULL_BLEED_CLASS = 'v360-builder-full-bleed';
 const TEMPLATE_WRAPPER = '.slds-template_default';
+
+const PREDICATE_PERMISSION_SET = 'PERMISSION_SET';
+const PREDICATE_FLS_READ = 'FLS_READ';
 
 const SECTION_TILE = 'tile';
 const SECTION_RULES = 'rules';
@@ -75,6 +80,26 @@ export default class V360AdminBuilder extends LightningElement {
     tileIconDraft;
     deleteTarget = null;
     formulaFeedback = {};
+    predicateType = PREDICATE_PERMISSION_SET;
+    predicateTarget;
+
+    /**
+     * The predicate pickers read their own vocabulary: permission sets from
+     * the server, fields from whatever object the open tab is anchored on.
+     */
+    @wire(getPermissionSetOptions)
+    permissionSetOptions;
+
+    @wire(getObjectInfo, { objectApiName: '$anchorSObject' })
+    anchorInfo;
+
+    get permissionSets() {
+        return this.permissionSetOptions?.data ?? [];
+    }
+
+    get anchorFields() {
+        return this.anchorInfo?.data?.fields ?? {};
+    }
 
     stylesRequested = false;
     fullBleedWrapper;
