@@ -10,7 +10,7 @@
 
     <template lwc:elseif={isError}>
         <lightning-card title="Vista 360" icon-name="standard:account">
-            <c-v360-empty-state
+            <c-empty-state
                 data-id="error-state"
                 title="Something went wrong"
                 illustration-name="error:recoverable"
@@ -18,19 +18,19 @@
                 description="Unable to load Vista 360 cards for this record right now."
                 retry-label="Retry"
                 onretry={handleRetry}
-            ></c-v360-empty-state>
+            ></c-empty-state>
         </lightning-card>
     </template>
 
     <template lwc:elseif={isEmpty}>
         <lightning-card title="Vista 360" icon-name="standard:account">
-            <c-v360-empty-state
+            <c-empty-state
                 data-id="empty-state"
                 title="No cards to show"
                 illustration-name="noresults:unknown"
                 alternative-text="No results illustration"
                 description="No cards are configured for this tab."
-            ></c-v360-empty-state>
+            ></c-empty-state>
         </lightning-card>
     </template>
 
@@ -185,13 +185,13 @@
                     </div>
                 </template>
                 <template lwc:elseif={selectedCard.isUnknownBinding}>
-                    <c-v360-empty-state
+                    <c-empty-state
                         data-id="unknown-binding"
                         title="Card unavailable"
                         illustration-name="error:unrecoverable"
                         alternative-text="Unrecoverable error illustration"
                         description="This card's component is not available."
-                    ></c-v360-empty-state>
+                    ></c-empty-state>
                 </template>
                 </div>
             </div>

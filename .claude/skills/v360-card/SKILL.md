@@ -30,11 +30,11 @@ A card implements stages 2-5; stage 1 (LOADING) belongs to the shell:
   come from the global tokens (`--v360-color-skeleton`, `--v360-color-surface`).
 - **PRESENTATION** — the data view. SLDS read-only form elements for fields,
   `lightning-formatted-*` for typed values.
-- **ERROR** — the request failed: `c/v360EmptyState` with
+- **ERROR** — the request failed: `c/emptyState` with
   `illustration-name="error:recoverable"` and a retry wired to the card's own
   refresh path (or `error:unrecoverable` when retrying cannot help).
 - **OTHERS** (optional) — for example, data loaded but every field was
-  FLS-stripped: `c/v360EmptyState` with `illustration-name="access:request"`.
+  FLS-stripped: `c/emptyState` with `illustration-name="access:request"`.
   Only implement the states the card genuinely needs.
 
 Stage selection is a simple derivation, never stored state:
@@ -106,6 +106,6 @@ without actions simply omit both members.
   or `c/v360CardRegistry` inside a card.
 - No visibility logic inside a card — not even "hide if field X is empty
   because the user probably lacks access"; render the OTHERS state instead.
-- No bare text for empty/error states — always `c/v360EmptyState`.
+- No bare text for empty/error states — always `c/emptyState`.
 - No hardcoded colors, no new prefix conventions, no process references in
   comments.

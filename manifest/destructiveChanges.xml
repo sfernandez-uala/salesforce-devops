@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        Renamed, not removed: a rename in source leaves the old bundle behind in
+        every org that already had it, and nothing in a deploy notices. The
+        wrapper is domain-free — it knows nothing about Vista 360 — so it is now
+        c/emptyState, named for what it does rather than for the feature that
+        happened to need it first.
+    -->
+    <types>
+        <members>v360EmptyState</members>
+        <name>LightningComponentBundle</name>
+    </types>
     <version>67.0</version>
 </Package>

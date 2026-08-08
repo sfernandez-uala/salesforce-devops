@@ -95,7 +95,7 @@
             </template>
 
             <template lwc:elseif={isError}>
-                <c-v360-empty-state
+                <c-empty-state
                     data-id="error-state"
                     title="Something went wrong"
                     illustration-name="error:recoverable"
@@ -103,24 +103,24 @@
                     description="Unable to load the Vista 360 configuration right now."
                     retry-label="Retry"
                     onretry={handleRetry}
-                ></c-v360-empty-state>
+                ></c-empty-state>
             </template>
 
             <template lwc:elseif={isDenied}>
-                <c-v360-empty-state
+                <c-empty-state
                     data-id="denied-state"
                     title="Access needed"
                     illustration-name="access:request"
                     alternative-text="No access illustration"
                     description="Managing Vista 360 cards requires the V360 Admin permission set."
-                ></c-v360-empty-state>
+                ></c-empty-state>
             </template>
 
             <template lwc:elseif={isEmpty}>
                 <!-- The catalog branch below renders only once a tab exists, so this
                      state carries its own New tab control: without it a fresh org, or
                      one whose last tab was just deleted, has no way to create one. -->
-                <c-v360-empty-state
+                <c-empty-state
                     data-id="empty-state"
                     title="No configuration yet"
                     illustration-name="noresults:unknown"
@@ -134,7 +134,7 @@
                         data-id="empty-new-tab"
                         onclick={handleNewTab}
                     ></lightning-button>
-                </c-v360-empty-state>
+                </c-empty-state>
             </template>
 
             <template lwc:elseif={isCatalogVisible}>
@@ -178,13 +178,13 @@
                             </div>
 
                             <template lwc:if={workspace.hasNoCards}>
-                                <c-v360-empty-state
+                                <c-empty-state
                                     data-id="workspace-empty"
                                     title="No cards in this tab"
                                     illustration-name="noresults:unknown"
                                     alternative-text="No results illustration"
                                     description="Create the first card for this tab. New cards start as drafts, invisible to end users until you activate them."
-                                ></c-v360-empty-state>
+                                ></c-empty-state>
                             </template>
                             <template for:each={workspace.cards} for:item="card">
                                 <div
