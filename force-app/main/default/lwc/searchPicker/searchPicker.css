@@ -1,0 +1,47 @@
+/**
+ * The combobox blueprint expects an input as its trigger; this one is a button,
+ * because the value is chosen from a list and never typed. Everything else --
+ * sizing, spacing, the dropdown itself -- comes from SLDS.
+ *
+ * No design tokens of any feature are imported here. This component knows
+ * nothing about what it is picking, so it reads SLDS's own global and
+ * component hooks directly and stays usable anywhere in the org.
+ */
+
+/* Left-aligns and truncates like the input the blueprint would have put here. */
+.search-picker-trigger {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* A placeholder is not a value, and must not read as one. */
+.search-picker-trigger_empty {
+    color: var(--slds-g-color-neutral-base-30, #706e6b);
+}
+
+/* An option stacks its label over optional detail, where the blueprint's
+   dropdown item expects a single line. Its colours are the dropdown's own
+   component hooks, so a theme reaches this list too. */
+.search-picker-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: var(--slds-c-dropdown-item-color, inherit);
+}
+
+.search-picker-option:hover,
+.search-picker-option:focus {
+    background: var(--slds-c-dropdown-item-color-background-hover, var(--slds-g-color-neutral-base-95, #f3f3f3));
+}
+
+.search-picker-option:focus-visible {
+    outline: 2px solid var(--slds-g-color-brand-base-50, #0176d3);
+    outline-offset: -2px;
+}

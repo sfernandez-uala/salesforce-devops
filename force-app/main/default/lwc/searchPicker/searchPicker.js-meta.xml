@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>false</isExposed>
+    <masterLabel>Search Picker</masterLabel>
+    <description>A searchable single-value picker for long lists that are not backed by records.</description>
+</LightningComponentBundle>
