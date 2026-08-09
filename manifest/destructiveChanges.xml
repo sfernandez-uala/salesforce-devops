@@ -35,7 +35,7 @@
         an emergency is what its kill switch is for.
 
         Keeping it would have added a seventh thing to check when asking why a
-        card is not showing -- the hardest question this system answers -- in
+        card is not showing, the hardest question this system answers, in
         exchange for nothing. Should a coarse lever ever be wanted, it belongs
         on the tab as KillSwitch__c, matching the card's vocabulary rather than
         reviving an Active that means neither draft nor emergency.
