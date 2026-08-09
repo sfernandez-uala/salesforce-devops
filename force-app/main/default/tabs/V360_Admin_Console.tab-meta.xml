@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Opens the Vista 360 admin builder (c/v360AdminBuilder). The API name still says Console because it was created for c/v360AdminConsole, which the builder replaced; a tab cannot be renamed, only deleted and recreated, and doing that would re-grant its visibility in every permission set and break every existing link for the sake of a string nobody sees. The label is what users read, and it is accurate.</description>
     <label>Vista 360 Admin</label>
     <lwcComponent>v360AdminBuilder</lwcComponent>
     <motif>Custom70: Handsaw</motif>
