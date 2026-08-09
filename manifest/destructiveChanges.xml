@@ -27,5 +27,22 @@
         <members>V360_Admin_Builder</members>
         <name>CustomTab</name>
     </types>
+    <!--
+        A tab has no on and off. Nothing read it: the catalog selector matches
+        on developer name alone, and the console hard-coded it to true on every
+        save, so parking a tab from Setup un-parked itself the next time an
+        admin touched it. Staging is what a card's own Active flag is for, and
+        an emergency is what its kill switch is for.
+
+        Keeping it would have added a seventh thing to check when asking why a
+        card is not showing -- the hardest question this system answers -- in
+        exchange for nothing. Should a coarse lever ever be wanted, it belongs
+        on the tab as KillSwitch__c, matching the card's vocabulary rather than
+        reviving an Active that means neither draft nor emergency.
+    -->
+    <types>
+        <members>V360_Tab__c.Active__c</members>
+        <name>CustomField</name>
+    </types>
     <version>67.0</version>
 </Package>

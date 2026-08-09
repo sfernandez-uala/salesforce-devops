@@ -18,7 +18,6 @@ public class V360TestDataFactory {
         // Checkbox defaults on this org's V360 objects have proven unreliable when set at insert
         // time (observed empirically: Active__c silently stays false on insert despite an explicit
         // true value, but a follow-up update reliably persists it) — set booleans in a second DML.
-        tab.Active__c = true;
         update tab;
         return tab;
     }

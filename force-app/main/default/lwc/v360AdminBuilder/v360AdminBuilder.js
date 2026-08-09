@@ -1146,11 +1146,10 @@ export default class V360AdminBuilder extends LightningElement {
                     tabId: this.editingTabId,
                     developerName: this.template.querySelector('[data-id="nt-devname"]').value,
                     sObjectApiName: this.template.querySelector('[data-id="nt-anchor"]').value,
-                    // Sequence and active are carried by the DTO but nothing on
-                    // the read path consumes them: the shell takes one tab per
-                    // FlexiPage component, so App Builder decides placement.
-                    sequence: (this.data?.tabs.length ?? 0) + 1,
-                    active: true
+                    // Sequence is carried by the DTO but nothing on the read
+                    // path consumes it: the shell takes one tab per FlexiPage
+                    // component, so App Builder decides placement.
+                    sequence: (this.data?.tabs.length ?? 0) + 1
                 }
             });
             this.tabModalOpen = false;

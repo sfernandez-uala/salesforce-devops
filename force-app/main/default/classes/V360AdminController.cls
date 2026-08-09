@@ -42,7 +42,6 @@ public with sharing class V360AdminController {
                     DeveloperName__c,
                     AnchorSObject__c,
                     Sequence__c,
-                    Active__c,
                     (
                         SELECT
                             Id,
@@ -118,8 +117,7 @@ public with sharing class V360AdminController {
                         Id = input.tabId,
                         DeveloperName__c = input.developerName,
                         AnchorSObject__c = input.sObjectApiName,
-                        Sequence__c = input.sequence,
-                        Active__c = input.active
+                        Sequence__c = input.sequence
                     )
                 }
             );
@@ -500,7 +498,6 @@ public with sharing class V360AdminController {
         adminTab.developerName = tab.DeveloperName__c;
         adminTab.sObjectApiName = tab.AnchorSObject__c;
         adminTab.sequence = tab.Sequence__c;
-        adminTab.active = tab.Active__c;
         adminTab.cards = new List<AdminCard>();
         for (V360_Card__c card : tab.V360_Cards__r) {
             adminTab.cards.add(toAdminCard(card, rulesByCardId));
@@ -596,8 +593,6 @@ public with sharing class V360AdminController {
         public String sObjectApiName { get; set; }
         @AuraEnabled
         public Decimal sequence { get; set; }
-        @AuraEnabled
-        public Boolean active { get; set; }
     }
 
     /** Everything createCard needs: the tab, the identity, and the properties. */
@@ -643,8 +638,6 @@ public with sharing class V360AdminController {
         public String sObjectApiName;
         @AuraEnabled
         public Decimal sequence;
-        @AuraEnabled
-        public Boolean active;
         @AuraEnabled
         public List<AdminCard> cards;
     }

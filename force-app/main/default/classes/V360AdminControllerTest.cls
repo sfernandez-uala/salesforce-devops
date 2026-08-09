@@ -660,24 +660,21 @@ private class V360AdminControllerTest {
             createInput.developerName = 'V360Test_TabAbm';
             createInput.sObjectApiName = 'Case';
             createInput.sequence = 5;
-            createInput.active = true;
             V360AdminController.saveTab(createInput);
 
-            V360_Tab__c created = [SELECT Id, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'];
+            V360_Tab__c created = [SELECT Id FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'];
             V360AdminController.TabInput updateInput = new V360AdminController.TabInput();
             updateInput.tabId = created.Id;
             updateInput.developerName = 'V360Test_TabAbm';
             updateInput.sObjectApiName = 'Case';
             updateInput.sequence = 6;
-            updateInput.active = false;
             V360AdminController.saveTab(updateInput);
             Test.stopTest();
 
             V360_Tab__c updated = [
-                SELECT Sequence__c, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'
+                SELECT Sequence__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'
             ];
             Assert.areEqual(6, updated.Sequence__c, 'The sequence must round-trip on update');
-            Assert.isFalse(updated.Active__c, 'The active flag must round-trip on update');
         }
     }
 
@@ -693,7 +690,6 @@ private class V360AdminControllerTest {
                 input.developerName = 'V360Test_BadAnchor';
                 input.sObjectApiName = 'No_Such_Object__c';
                 input.sequence = 1;
-                input.active = true;
                 V360AdminController.saveTab(input);
             } catch (AuraHandledException expected) {
                 threw = true;

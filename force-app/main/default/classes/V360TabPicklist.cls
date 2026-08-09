@@ -56,14 +56,14 @@ public with sharing class V360TabPicklist extends VisualEditor.DynamicPickList {
         // which object each tab belongs to.
         if (String.isBlank(entityName)) {
             return [
-                SELECT DeveloperName__c, AnchorSObject__c, Active__c
+                SELECT DeveloperName__c, AnchorSObject__c
                 FROM V360_Tab__c
                 ORDER BY Sequence__c NULLS LAST, DeveloperName__c
                 LIMIT 1000
             ];
         }
         return [
-            SELECT DeveloperName__c, AnchorSObject__c, Active__c
+            SELECT DeveloperName__c, AnchorSObject__c
             FROM V360_Tab__c
             WHERE AnchorSObject__c = :entityName
             ORDER BY Sequence__c NULLS LAST, DeveloperName__c
@@ -72,17 +72,16 @@ public with sharing class V360TabPicklist extends VisualEditor.DynamicPickList {
     }
 
     /**
-     * A parked tab is still offered, and says so.
+     * Every tab reads the same, because every tab behaves the same: a tab has
+     * no on and off. What is or is not shown is decided per card and per rule,
+     * which is where an admin already looks.
      *
-     * Hiding it would be the more obvious choice and the wrong one: the
-     * evaluator does not read a tab's Active flag at all -- V360CardCatalogSelector
-     * matches on developer name alone -- so a parked tab renders its cards
-     * exactly like any other. Leaving it out would tell an admin it cannot be
-     * used while the org goes on using it.
+     * The anchor object is only worth naming when the list was not already
+     * filtered by one.
      */
     private String label(V360_Tab__c tab) {
-        String suffix = tab.Active__c == true ? '' : ' (parked)';
-        String scope = String.isBlank(context?.entityName) ? ' · ' + tab.AnchorSObject__c : '';
-        return tab.DeveloperName__c + scope + suffix;
+        return String.isBlank(context?.entityName)
+            ? tab.DeveloperName__c + ' · ' + tab.AnchorSObject__c
+            : tab.DeveloperName__c;
     }
 }

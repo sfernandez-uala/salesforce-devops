@@ -21,15 +21,6 @@ private class V360TabPicklistTest {
         return values;
     }
 
-    private static String labelFor(VisualEditor.DynamicPickListRows rows, String value) {
-        for (VisualEditor.DataRow row : rows.getDataRows()) {
-            if (value.equals(String.valueOf(row.getValue()))) {
-                return row.getLabel();
-            }
-        }
-        return null;
-    }
-
     /**
      * The point of the picker: what it stores is what the shell reads and the
      * evaluator queries on, so the value has to be the developer name and
@@ -77,31 +68,6 @@ private class V360TabPicklistTest {
 
         Assert.isTrue(valuesOf(rows).contains(''), 'Clearing the tab must be reachable from the list');
         Assert.areEqual('', String.valueOf(emptyChoice.getValue()), 'The default choice selects no tab');
-    }
-
-    /**
-     * A parked tab is offered and labelled, because the evaluator ignores the
-     * Active flag entirely -- it renders like any other. Hiding it would say
-     * it cannot be used while the org went on using it.
-     */
-    @IsTest
-    static void offersAParkedTabAndSaysThatItIsParked() {
-        V360_Tab__c parked = V360TestDataFactory.insertTab('V360Test_Picklist_Parked', 'Account');
-        parked.Active__c = false;
-        update parked;
-
-        Test.startTest();
-        VisualEditor.DynamicPickListRows rows = new V360TabPicklist(contextFor('Account')).getValues();
-        Test.stopTest();
-
-        Assert.isTrue(
-            valuesOf(rows).contains('V360Test_Picklist_Parked'),
-            'A parked tab still renders, so it must still be offered'
-        );
-        Assert.isTrue(
-            labelFor(rows, 'V360Test_Picklist_Parked').contains('parked'),
-            'A parked tab must say so rather than look like any other'
-        );
     }
 
     /** No entity means no record page; offer everything rather than nothing. */
