@@ -197,8 +197,23 @@ public with sharing class V360AdminService {
         }
     }
 
+    /**
+     * Whether the running user may manage Vista 360 visibility at all.
+     *
+     * Public so that the read-only surfaces gate on the same answer instead of
+     * each repeating the custom permission's API name. Three copies of that
+     * string already existed and one of them was wrong, which cost a silently
+     * empty vocabulary rather than an error -- the exact failure this project
+     * builds pickers to spare admins.
+     *
+     * @return true when the running user holds V360_ManageVisibilityRules
+     */
+    public static Boolean hasManagePermission() {
+        return FeatureManagement.checkPermission(MANAGE_PERMISSION);
+    }
+
     private static void requireManagePermission() {
-        if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
+        if (!hasManagePermission()) {
             throw new V360AdminServiceException('You do not have permission to manage Vista 360 visibility rules.');
         }
     }

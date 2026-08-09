@@ -72,8 +72,12 @@
         </div>
 
         <div class="slds-grid slds-grid_vertical-align-start slds-m-top_xx-small">
+            <!-- How this rule combines with the others is the card's business
+                 and is stated once, beside the control that sets it. Saying it
+                 again here made this editor claim every rule must pass, which
+                 stopped being true the moment a card could say otherwise. -->
             <p class="slds-text-body_small slds-text-color_weak slds-grow">
-                Evaluated against <strong>{anchorLabel}</strong>. All active rules must pass.
+                Evaluated against <strong>{anchorLabel}</strong>.
                 Permission sets are not readable from a formula — use the required access below.
             </p>
             <p class={countClass} data-id="char-count">{characterCount}</p>

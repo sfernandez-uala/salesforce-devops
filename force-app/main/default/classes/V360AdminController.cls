@@ -15,8 +15,6 @@
 @SuppressWarnings('PMD.CyclomaticComplexity')
 public with sharing class V360AdminController {
 
-    private static final String MANAGE_PERMISSION = 'V360_ManageVisibilityRules';
-
     /**
      * Loads the whole configuration graph for the console. The permission
      * verdict always comes back; the data comes back only when the running
@@ -32,7 +30,7 @@ public with sharing class V360AdminController {
     public static AdminCatalog getCatalog() {
         try {
             AdminCatalog catalog = new AdminCatalog();
-            catalog.hasManagePermission = FeatureManagement.checkPermission(MANAGE_PERMISSION);
+            catalog.hasManagePermission = V360AdminService.hasManagePermission();
             catalog.tabs = new List<AdminTab>();
             if (!catalog.hasManagePermission) {
                 return catalog;
@@ -57,7 +55,8 @@ public with sharing class V360AdminController {
                             ButtonLabel__c,
                             Order__c,
                             Active__c,
-                            KillSwitch__c
+                            KillSwitch__c,
+                            RuleMatchLogic__c
                         FROM V360_Cards__r
                         ORDER BY Order__c NULLS LAST, DeveloperName__c
                     )
@@ -304,6 +303,34 @@ public with sharing class V360AdminController {
         setKillSwitch(cardId, false);
     }
 
+    /**
+     * Chooses how a card's rules combine.
+     *
+     * ALL makes each rule a requirement; ANY makes each one a way to qualify.
+     * The value is validated here rather than trusted from the client, because
+     * anything the evaluator does not recognise as ANY it reads as ALL, and a
+     * typo that silently lands on the restrictive side would look like the
+     * screen simply ignoring the admin.
+     *
+     * @param cardId the card whose rules are being re-read
+     * @param matchLogic ALL or ANY
+     */
+    @AuraEnabled
+    public static void setRuleMatchLogic(Id cardId, String matchLogic) {
+        if (matchLogic != 'ALL' && matchLogic != 'ANY') {
+            throw new AuraHandledException('Rules combine with ALL or ANY, not "' + matchLogic + '".');
+        }
+        try {
+            V360AdminService.saveCards(
+                new List<V360_Card__c>{ new V360_Card__c(Id = cardId, RuleMatchLogic__c = matchLogic) }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to change how this card combines its rules.');
+        }
+    }
+
     private static void setKillSwitch(Id cardId, Boolean engaged) {
         try {
             V360AdminService.saveCards(
@@ -406,128 +433,6 @@ public with sharing class V360AdminController {
      *
      * @param orderedCardIds every card of the tab, in the desired order
      */
-    /**
-     * The identity vocabulary a visibility formula may reference, so the rule
-     * editor can offer real values instead of asking an admin to type an API
-     * name from memory and find out at validation time.
-     *
-     * Only what V360FormulaGateway actually enables is served. Its four
-     * globals are Custom Permission, Profile, User and User Role — and
-     * $Permission is a Custom Permission, not a Permission Set. Permission
-     * Set membership is not expressible in a formula at all; that is what the
-     * PERMISSION_SET predicate exists for. Offering permission sets here
-     * would offer something the engine rejects.
-     *
-     * User and User Role fields are deliberately absent: the UI API's
-     * getObjectInfo already describes them client-side, so routing them
-     * through Apex would add a round trip and a second source of truth.
-     *
-     * @return the queryable identity values, each already formatted as the
-     *         merge field a formula would carry
-     */
-    @AuraEnabled(cacheable=true)
-    public static FormulaVocabulary getFormulaVocabulary() {
-        try {
-            FormulaVocabulary vocabulary = new FormulaVocabulary();
-            vocabulary.customPermissions = new List<VocabularyEntry>();
-            vocabulary.profiles = new List<VocabularyEntry>();
-            // Same gate getCatalog uses: the server is the authority on the
-            // manage permission, and an unpermitted caller gets empty lists
-            // rather than an error, because the console already renders its
-            // access state from getCatalog.
-            if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
-                return vocabulary;
-            }
-            for (CustomPermission permission : [
-                SELECT DeveloperName, MasterLabel
-                FROM CustomPermission
-                WITH USER_MODE
-                ORDER BY MasterLabel
-                LIMIT 2000
-            ]) {
-                vocabulary.customPermissions.add(
-                    entry(permission.MasterLabel, '$Permission.' + permission.DeveloperName, permission.DeveloperName)
-                );
-            }
-            for (Profile userProfile : [SELECT Name FROM Profile WITH USER_MODE ORDER BY Name LIMIT 2000]) {
-                // Quoted because a profile name carries spaces; unquoted it
-                // would not build.
-                vocabulary.profiles.add(
-                    entry(userProfile.Name, '$Profile.Name = "' + userProfile.Name + '"', userProfile.Name)
-                );
-            }
-            return vocabulary;
-        } catch (Exception unexpected) {
-            throw new AuraHandledException('Unable to read the formula vocabulary.');
-        }
-    }
-
-    /**
-     * The permission sets a PERMISSION_SET predicate can require. Deliberately
-     * not part of getFormulaVocabulary: a formula cannot read permission set
-     * membership at all, and folding these in there would blur the one
-     * distinction that decides which mechanism an admin should reach for.
-     *
-     * Profile-owned permission sets are excluded — they are the platform's own
-     * per-profile containers, not something anyone assigns.
-     *
-     * @return every assignable permission set, by API name
-     */
-    @AuraEnabled(cacheable=true)
-    public static List<VocabularyEntry> getPermissionSetOptions() {
-        try {
-            List<VocabularyEntry> options = new List<VocabularyEntry>();
-            if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
-                return options;
-            }
-            for (PermissionSet permissionSet : [
-                SELECT Name, Label
-                FROM PermissionSet
-                WHERE IsOwnedByProfile = false
-                WITH USER_MODE
-                ORDER BY Label
-                LIMIT 2000
-            ]) {
-                options.add(entry(permissionSet.Label, permissionSet.Name, permissionSet.Name));
-            }
-            return options;
-        } catch (Exception unexpected) {
-            throw new AuraHandledException('Unable to read the permission sets.');
-        }
-    }
-
-    private static VocabularyEntry entry(String label, String insertText, String apiName) {
-        VocabularyEntry vocabularyEntry = new VocabularyEntry();
-        vocabularyEntry.label = label;
-        vocabularyEntry.insertText = insertText;
-        vocabularyEntry.apiName = apiName;
-        return vocabularyEntry;
-    }
-
-    /** One insertable identity value, ready to drop at the cursor. */
-    // Transport properties named after what they carry; per-property ApexDoc
-    // would only restate each name.
-    @SuppressWarnings('PMD.ApexDoc')
-    public class VocabularyEntry {
-        @AuraEnabled
-        public String label;
-        @AuraEnabled
-        public String insertText;
-        @AuraEnabled
-        public String apiName;
-    }
-
-    /** Everything the rule editor can offer that only the server knows. */
-    // Transport properties named after what they carry; per-property ApexDoc
-    // would only restate each name.
-    @SuppressWarnings('PMD.ApexDoc')
-    public class FormulaVocabulary {
-        @AuraEnabled
-        public List<VocabularyEntry> customPermissions;
-        @AuraEnabled
-        public List<VocabularyEntry> profiles;
-    }
-
     @AuraEnabled
     public static void updateCardOrder(List<Id> orderedCardIds) {
         try {
@@ -616,6 +521,10 @@ public with sharing class V360AdminController {
         adminCard.order = card.Order__c;
         adminCard.active = card.Active__c;
         adminCard.killSwitch = card.KillSwitch__c;
+        // The console must never render a blank here: a card saved before the
+        // field existed carries null, and the evaluator reads that as ALL, so
+        // the screen has to say ALL rather than leave the admin guessing.
+        adminCard.ruleMatchLogic = card.RuleMatchLogic__c ?? 'ALL';
         List<AdminRule> rules = rulesByCardId.get(card.Id);
         adminCard.rules = rules == null ? new List<AdminRule>() : rules;
         adminCard.ruleCount = adminCard.rules.size();
@@ -624,10 +533,14 @@ public with sharing class V360AdminController {
     }
 
     /**
-     * The rules that actually restrict someone. V360VisibilityEvaluator only
-     * lets an active rule block a card, so a parked rule protects nobody --
-     * a card whose every rule is parked is as open as one with no rules at
-     * all. The console warns on this count, never on the stored total.
+     * The rules that actually restrict someone.
+     *
+     * Two ways a stored rule fails to: it is parked, or it asks for nothing.
+     * A parked rule is skipped by V360VisibilityEvaluator outright, and a rule
+     * with neither a formula nor a required access adds no requirement under
+     * ALL and is refused as a way in under ANY. Either way it protects nobody,
+     * so counting it would let the console call a card guarded when it is
+     * open -- and this count is what every exposure warning turns on.
      *
      * @param rules every rule of one card, active or not
      * @return how many of them the evaluator will actually enforce
@@ -635,11 +548,15 @@ public with sharing class V360AdminController {
     private static Integer countActiveRules(List<AdminRule> rules) {
         Integer enforced = 0;
         for (AdminRule rule : rules) {
-            if (rule.active == true) {
+            if (rule.active == true && asksForSomething(rule)) {
                 enforced++;
             }
         }
         return enforced;
+    }
+
+    private static Boolean asksForSomething(AdminRule rule) {
+        return String.isNotBlank(rule.formula) || !rule.predicates.isEmpty();
     }
 
     /** Everything saveCardProperties may change on a card, plus its id. */
@@ -756,6 +673,9 @@ public with sharing class V360AdminController {
         public Boolean active;
         @AuraEnabled
         public Boolean killSwitch;
+        /** ALL or ANY — how this card's rules combine. Never null to the client. */
+        @AuraEnabled
+        public String ruleMatchLogic;
         @AuraEnabled
         public Integer ruleCount;
         @AuraEnabled

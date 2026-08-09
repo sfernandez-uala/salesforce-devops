@@ -1,6 +1,6 @@
 import { LightningElement, api, wire } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
-import getFormulaVocabulary from '@salesforce/apex/V360AdminController.getFormulaVocabulary';
+import getFormulaVocabulary from '@salesforce/apex/V360RuleVocabulary.getFormulaVocabulary';
 
 const MAX_FORMULA_LENGTH = 3900;
 
@@ -57,11 +57,6 @@ const FUNCTIONS = [
     { label: 'MIN', signature: 'MIN(number, number, ...)', description: 'The smallest argument.' }
 ];
 
-const MENU_FIELD = 'field';
-const MENU_IDENTITY = 'identity';
-const MENU_FUNCTION = 'function';
-const MENU_OPERATOR = 'operator';
-
 /**
  * The editor for one visibility formula: a plain text area, with every value
  * it can reference offered from real metadata instead of typed from memory.
@@ -90,8 +85,6 @@ export default class V360FormulaEditor extends LightningElement {
     @api busy = false;
 
     draft = '';
-    openMenu;
-    menuQuery = '';
     vocabulary = { customPermissions: [], profiles: [] };
     pendingCaret;
 
@@ -138,10 +131,15 @@ export default class V360FormulaEditor extends LightningElement {
         return this.draft.length > MAX_FORMULA_LENGTH;
     }
 
+    /**
+     * The count never wraps: it shares a flex row with helper copy that grew
+     * long enough to squeeze "28 / 3900" onto two lines. The classes belong
+     * here rather than beside class={countClass} in the template, because a
+     * static class next to a bound one is discarded.
+     */
     get countClass() {
-        return this.isOverLength
-            ? 'slds-text-body_small slds-text-color_error'
-            : 'slds-text-body_small slds-text-color_weak';
+        const base = 'slds-text-body_small slds-shrink-none slds-m-left_x-small';
+        return this.isOverLength ? `${base} slds-text-color_error` : `${base} slds-text-color_weak`;
     }
 
     get feedbackClass() {
@@ -161,7 +159,6 @@ export default class V360FormulaEditor extends LightningElement {
         const end = area?.selectionEnd ?? this.draft.length;
         this.draft = `${this.draft.slice(0, start)}${text}${this.draft.slice(end)}`;
         this.pendingCaret = start + text.length;
-        this.closeMenu();
         this.dispatchEvent(new CustomEvent('formulachange', { detail: { value: this.draft } }));
     }
 
@@ -190,78 +187,12 @@ export default class V360FormulaEditor extends LightningElement {
         }
     }
 
-    // ---- the insert menus -------------------------------------------------
-
-    handleToggleMenu(event) {
-        const menu = event.currentTarget.dataset.menu;
-        this.openMenu = this.openMenu === menu ? undefined : menu;
-        this.menuQuery = '';
+    /** Every helper reports the same way: one chosen value, dropped at the caret. */
+    handleInsertSelection(event) {
+        this.insertAtCursor(event.detail.value);
     }
 
-    handleMenuQuery(event) {
-        this.menuQuery = event.target.value;
-    }
-
-    handleInsert(event) {
-        this.insertAtCursor(event.currentTarget.dataset.insert);
-    }
-
-    handleMenuBlur(event) {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-            this.closeMenu();
-        }
-    }
-
-    closeMenu() {
-        this.openMenu = undefined;
-        this.menuQuery = '';
-    }
-
-    get isFieldMenu() {
-        return this.openMenu === MENU_FIELD;
-    }
-
-    get isIdentityMenu() {
-        return this.openMenu === MENU_IDENTITY;
-    }
-
-    get isFunctionMenu() {
-        return this.openMenu === MENU_FUNCTION;
-    }
-
-    get isOperatorMenu() {
-        return this.openMenu === MENU_OPERATOR;
-    }
-
-    get fieldMenuClass() {
-        return this.menuClass(MENU_FIELD);
-    }
-
-    get identityMenuClass() {
-        return this.menuClass(MENU_IDENTITY);
-    }
-
-    get functionMenuClass() {
-        return this.menuClass(MENU_FUNCTION);
-    }
-
-    get operatorMenuClass() {
-        return this.menuClass(MENU_OPERATOR);
-    }
-
-    /**
-     * The spacing utilities belong here rather than on the element in the
-     * template: this getter is what builds the class list, so a class written
-     * beside class={fieldMenuClass} would simply be replaced.
-     */
-    menuClass(menu) {
-        const base =
-            'slds-dropdown-trigger slds-dropdown-trigger_click v360-formula-menu' +
-            ' slds-m-right_x-small slds-m-bottom_xx-small';
-        return this.openMenu === menu ? `${base} slds-is-open` : base;
-    }
-
-    // ---- what each menu offers -------------------------------------------
+    // ---- what each helper offers -----------------------------------------
 
     /**
      * Fields of the anchor object. The formula reads the record, so the API
@@ -270,7 +201,7 @@ export default class V360FormulaEditor extends LightningElement {
      */
     get fieldOptions() {
         const fields = this.anchorInfo?.data?.fields ?? {};
-        return this.filter(
+        return (
             this.formulaSafe(Object.values(fields)).map((field) => ({
                 key: field.apiName,
                 label: field.label,
@@ -328,11 +259,11 @@ export default class V360FormulaEditor extends LightningElement {
             detail: entry.insertText,
             insertText: entry.insertText
         }));
-        return this.filter([...permissions, ...profiles, ...userFields]);
+        return ([...permissions, ...profiles, ...userFields]);
     }
 
     get functionOptions() {
-        return this.filter(
+        return (
             FUNCTIONS.map((fn) => ({
                 key: fn.label,
                 label: fn.signature,
@@ -345,7 +276,7 @@ export default class V360FormulaEditor extends LightningElement {
     }
 
     get operatorOptions() {
-        return this.filter(
+        return (
             OPERATORS.map((operator) => ({
                 key: operator.label,
                 label: operator.label,
@@ -355,18 +286,6 @@ export default class V360FormulaEditor extends LightningElement {
         );
     }
 
-    /** Matches label and detail, so searching an API name or a label both work. */
-    filter(options) {
-        const query = this.menuQuery.trim().toLowerCase();
-        if (!query) {
-            return options;
-        }
-        return options.filter(
-            (option) =>
-                option.label.toLowerCase().includes(query) ||
-                (option.detail ?? '').toLowerCase().includes(query)
-        );
-    }
 
     get anchorLabel() {
         return this.anchorInfo?.data?.label ?? this.anchorSObject;

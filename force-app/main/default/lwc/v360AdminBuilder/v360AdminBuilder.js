@@ -1,6 +1,6 @@
 import { LightningElement, wire } from 'lwc';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
-import getPermissionSetOptions from '@salesforce/apex/V360AdminController.getPermissionSetOptions';
+import getPermissionSetOptions from '@salesforce/apex/V360RuleVocabulary.getPermissionSetOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadStyle } from 'lightning/platformResourceLoader';
 import { EnclosingTabId, IsConsoleNavigation, setTabLabel } from 'lightning/platformWorkspaceApi';
@@ -13,6 +13,7 @@ import activateCard from '@salesforce/apex/V360AdminController.activateCard';
 import deactivateCard from '@salesforce/apex/V360AdminController.deactivateCard';
 import engageKillSwitch from '@salesforce/apex/V360AdminController.engageKillSwitch';
 import releaseKillSwitch from '@salesforce/apex/V360AdminController.releaseKillSwitch';
+import setRuleMatchLogic from '@salesforce/apex/V360AdminController.setRuleMatchLogic';
 import validateRuleFormula from '@salesforce/apex/V360AdminController.validateRuleFormula';
 import saveRuleFormula from '@salesforce/apex/V360AdminController.saveRuleFormula';
 import addRulePredicate from '@salesforce/apex/V360AdminController.addRulePredicate';
@@ -34,6 +35,13 @@ const BINDING_SEPARATOR = ':';
 /** Gates the static resource's rule; see renderedCallback. */
 const FULL_BLEED_CLASS = 'v360-builder-full-bleed';
 const TEMPLATE_WRAPPER = '.slds-template_default';
+
+/**
+ * How a card's rules combine. The same two words the server stores and the
+ * evaluator branches on, so the screen and the decision cannot drift.
+ */
+const MATCH_ALL = 'ALL';
+const MATCH_ANY = 'ANY';
 
 const PREDICATE_PERMISSION_SET = 'PERMISSION_SET';
 const PREDICATE_FLS_READ = 'FLS_READ';
@@ -79,9 +87,15 @@ export default class V360AdminBuilder extends LightningElement {
     iconPickerTarget = null;
     tileIconDraft;
     deleteTarget = null;
+    helpOpen = false;
     formulaFeedback = {};
-    predicateType = PREDICATE_PERMISSION_SET;
-    predicateTarget;
+
+    /**
+     * The half-built predicate for each rule, keyed by rule id. Every open rule
+     * renders its own type-and-target row, so a single shared draft would make
+     * every one of those rows echo the last choice made in any of them.
+     */
+    predicateDrafts = {};
 
     /**
      * The predicate pickers read their own vocabulary: permission sets from
@@ -140,6 +154,8 @@ export default class V360AdminBuilder extends LightningElement {
                 this.fullBleedWrapper = wrapper;
             }
         }
+        this.measureTopOffset();
+        this.observeViewport();
         this.syncTabLabel();
     }
 
@@ -166,7 +182,41 @@ export default class V360AdminBuilder extends LightningElement {
         });
     }
 
+    /**
+     * Publishes how far down the page the builder starts, so the stylesheet can
+     * subtract exactly that from the viewport instead of a constant that has to
+     * guess at app navigation, a console tab bar, or a debug banner.
+     *
+     * Re-measured on resize because those can appear and disappear without the
+     * component re-rendering.
+     */
+    measureTopOffset() {
+        const host = this.template.host;
+        const top = Math.max(0, Math.round(host.getBoundingClientRect().top));
+        if (top !== this.topOffset) {
+            this.topOffset = top;
+            host.style.setProperty('--v360-builder-top', `${top}px`);
+        }
+    }
+
+    /**
+     * Watches the host's own box rather than the window: the banners and tab
+     * bars above the builder come and go without the window ever resizing, and
+     * each one moves where the component starts.
+     */
+    observeViewport() {
+        if (this.viewportObserver) {
+            return;
+        }
+        this.viewportObserver = new ResizeObserver(() => this.measureTopOffset());
+        this.viewportObserver.observe(document.body);
+    }
+
     disconnectedCallback() {
+        if (this.viewportObserver) {
+            this.viewportObserver.disconnect();
+            this.viewportObserver = undefined;
+        }
         if (this.fullBleedWrapper) {
             this.fullBleedWrapper.classList.remove(FULL_BLEED_CLASS);
             this.fullBleedWrapper = undefined;
@@ -562,15 +612,25 @@ export default class V360AdminBuilder extends LightningElement {
         if (!card) {
             return [];
         }
-        return (card.rules ?? []).map((rule) => {
+        return (card.rules ?? []).map((rule, index) => {
             const feedback = this.formulaFeedback[rule.ruleId];
+            const draft = this.draftFor(rule.ruleId);
             return {
                 ...rule,
+                // Between rules, never above the first: a joiner with nothing
+                // on one side of it reads as a missing rule.
+                showJoiner: index > 0,
                 formulaFieldId: `formula-${rule.ruleId}`,
-                stateLabel: rule.active ? 'Active' : 'Off · skipped',
-                stateClass: rule.active ? 'slds-badge slds-theme_success' : 'slds-badge',
+                ...this.ruleState(rule),
                 typeFieldId: `pred-type-${rule.ruleId}`,
                 targetFieldId: `pred-target-${rule.ruleId}`,
+                // The draft rides on the row rather than being read off the
+                // component, so each rule's pickers show that rule's choice.
+                predicateType: draft.predicateType,
+                predicateTarget: draft.predicateTarget,
+                predicateTargetLabel: this.targetLabelFor(draft.predicateType),
+                predicateTargetPlaceholder: this.targetPlaceholderFor(draft.predicateType),
+                predicateTargetOptions: this.targetOptionsFor(draft.predicateType),
                 feedbackValid: feedback?.isValid === true,
                 predicateLabels: (rule.predicates ?? []).map((predicate, index) => ({
                     key: `${rule.ruleId}-${index}`,
@@ -586,9 +646,28 @@ export default class V360AdminBuilder extends LightningElement {
     }
 
     /**
-     * No rules at all is an empty state; rules that exist but are all parked
-     * is not -- there the list still has to render, with the warning over it.
+     * The banner announces an exposure the open section would not otherwise
+     * mention. Two sections already mention it themselves, and repeating it
+     * above them reads as two problems rather than one:
+     *
+     *   Release — its readiness list always carries this exact sentence, as
+     *             the row that reports how many rules are enforced.
+     *   Rules   — with no rules to list, the empty state is that sentence.
+     *
+     * Tile says nothing about exposure, so there the banner is the only
+     * warning and has to show.
      */
+    get showExposureBanner() {
+        const card = this.card;
+        if (!card || !this.presentation(card).isOpenToEveryone) {
+            return false;
+        }
+        if (this.isReleaseSection) {
+            return false;
+        }
+        return !(this.isRulesSection && this.hasNoRules);
+    }
+
     get hasNoRules() {
         return this.rules.length === 0;
     }
@@ -614,6 +693,90 @@ export default class V360AdminBuilder extends LightningElement {
      * permission set, or being able to read a field. Both are enforced on
      * top of the formula, never instead of it.
      */
+    /**
+     * What a rule's badge says, in three states rather than two.
+     *
+     * A rule with no formula and no required access is switched on and doing
+     * nothing, and calling that "Active" is the wrong belief this whole
+     * setting exists to prevent: under ALL it adds no requirement, and under
+     * ANY the evaluator refuses it as a way in, precisely so that a half-
+     * written rule cannot hand the card to everyone. Either way the admin is
+     * owed the truth on the badge rather than a green tick.
+     */
+    ruleState(rule) {
+        if (!rule.active) {
+            return { stateLabel: 'Off · skipped', stateClass: 'slds-badge' };
+        }
+        const asks = Boolean(rule.formula?.trim()) || (rule.predicates ?? []).length > 0;
+        return asks
+            ? { stateLabel: 'Active', stateClass: 'slds-badge slds-theme_success' }
+            : { stateLabel: 'Empty · no effect', stateClass: 'slds-badge slds-theme_warning' };
+    }
+
+    // ---- how a card's rules combine -------------------------------------
+
+    /** ALL unless the card says otherwise -- see V360VisibilityEvaluator. */
+    get matchLogic() {
+        return this.card?.ruleMatchLogic === MATCH_ANY ? MATCH_ANY : MATCH_ALL;
+    }
+
+    get isMatchAny() {
+        return this.matchLogic === MATCH_ANY;
+    }
+
+    /**
+     * Worded as what the admin gets, not as boolean algebra: "ALL / ANY" alone
+     * leaves the reader to work out all of what.
+     */
+    get matchLogicOptions() {
+        return [
+            { label: 'Meet every rule', value: MATCH_ALL },
+            { label: 'Meet any one rule', value: MATCH_ANY }
+        ];
+    }
+
+    /**
+     * The consequence spelled out under the choice, because this is the one
+     * setting on the card where a wrong belief decides who sees data.
+     */
+    get matchLogicNote() {
+        return this.isMatchAny
+            ? 'Each rule is a separate way in. A user passing any single active rule sees the card — so a new rule widens who sees it.'
+            : 'Every active rule is a requirement. A user must pass all of them — so a new rule narrows who sees it.';
+    }
+
+    /** Drawn between rule blocks, in the vocabulary of the chosen mode. */
+    get ruleJoinerLabel() {
+        return this.isMatchAny ? 'OR' : 'AND';
+    }
+
+    get accessHeading() {
+        return this.isMatchAny ? 'This path also requires' : 'Required access';
+    }
+
+    async handleMatchLogicChange(event) {
+        const matchLogic = event.detail.value;
+        if (this.busy || matchLogic === this.matchLogic) {
+            return;
+        }
+        this.busy = true;
+        try {
+            await setRuleMatchLogic({ cardId: this.card.cardId, matchLogic });
+            await this.refresh();
+            this.toast(
+                'Rules updated',
+                matchLogic === MATCH_ANY
+                    ? 'Passing any single active rule now shows this card.'
+                    : 'Every active rule is now required to show this card.',
+                'success'
+            );
+        } catch (error) {
+            this.toast('Change failed', this.message(error), 'error');
+        } finally {
+            this.busy = false;
+        }
+    }
+
     get predicateTypeOptions() {
         return [
             { label: 'Permission set', value: 'PERMISSION_SET' },
@@ -628,8 +791,8 @@ export default class V360AdminBuilder extends LightningElement {
      * never typed -- an API name from memory is exactly what the rule editor
      * exists to stop.
      */
-    get predicateTargetOptions() {
-        if (this.predicateType === PREDICATE_FLS_READ) {
+    targetOptionsFor(predicateType) {
+        if (predicateType === PREDICATE_FLS_READ) {
             return Object.values(this.anchorFields ?? {}).map((field) => ({
                 key: field.apiName,
                 label: field.label,
@@ -645,22 +808,41 @@ export default class V360AdminBuilder extends LightningElement {
         }));
     }
 
-    get predicateTargetLabel() {
-        return this.predicateType === PREDICATE_FLS_READ ? 'Field' : 'Permission set';
+    targetLabelFor(predicateType) {
+        return predicateType === PREDICATE_FLS_READ ? 'Field' : 'Permission set';
     }
 
-    get predicateTargetPlaceholder() {
-        return this.predicateType === PREDICATE_FLS_READ ? 'Search fields' : 'Search permission sets';
+    targetPlaceholderFor(predicateType) {
+        return predicateType === PREDICATE_FLS_READ ? 'Search fields' : 'Search permission sets';
+    }
+
+    /** An untouched rule starts on the type an admin reaches for most. */
+    draftFor(ruleId) {
+        return this.predicateDrafts[ruleId] ?? { predicateType: PREDICATE_PERMISSION_SET };
+    }
+
+    /**
+     * Reassigned rather than mutated in place: the drafts map is read through
+     * the rules getter, and a getter only re-runs when the field it reads is
+     * assigned.
+     */
+    setDraft(ruleId, changes) {
+        this.predicateDrafts = {
+            ...this.predicateDrafts,
+            [ruleId]: { ...this.draftFor(ruleId), ...changes }
+        };
     }
 
     handlePredicateTypeChange(event) {
-        this.predicateType = event.detail.value;
-        // The chosen target belongs to the type it was chosen under.
-        this.predicateTarget = undefined;
+        this.setDraft(event.currentTarget.dataset.ruleId, {
+            predicateType: event.detail.value,
+            // The chosen target belongs to the type it was chosen under.
+            predicateTarget: undefined
+        });
     }
 
     handlePredicateTargetSelect(event) {
-        this.predicateTarget = event.detail.value;
+        this.setDraft(event.currentTarget.dataset.ruleId, { predicateTarget: event.detail.value });
     }
 
     async handleAddPredicate(event) {
@@ -668,18 +850,20 @@ export default class V360AdminBuilder extends LightningElement {
             return;
         }
         const ruleId = event.currentTarget.dataset.ruleId;
-        if (!this.predicateTarget) {
-            this.toast('Missing information', `Pick a ${this.predicateTargetLabel.toLowerCase()} first.`, 'error');
+        const draft = this.draftFor(ruleId);
+        if (!draft.predicateTarget) {
+            const target = this.targetLabelFor(draft.predicateType).toLowerCase();
+            this.toast('Missing information', `Pick a ${target} first.`, 'error');
             return;
         }
         this.busy = true;
         try {
             await addRulePredicate({
                 ruleId,
-                predicateType: this.predicateType,
-                targetApiName: this.predicateTarget
+                predicateType: draft.predicateType,
+                targetApiName: draft.predicateTarget
             });
-            this.predicateTarget = undefined;
+            this.setDraft(ruleId, { predicateTarget: undefined });
             await this.refresh();
         } catch (error) {
             this.toast('Add failed', this.message(error), 'error');
@@ -810,10 +994,15 @@ export default class V360AdminBuilder extends LightningElement {
             : { developerName: '', sObjectApiName: '' };
     }
 
+    handleOpenHelp() {
+        this.helpOpen = true;
+    }
+
     handleCloseModals() {
         this.newCardOpen = false;
         this.newRuleOpen = false;
         this.tabModalOpen = false;
+        this.helpOpen = false;
         this.deleteTarget = null;
     }
 
@@ -1063,7 +1252,7 @@ export default class V360AdminBuilder extends LightningElement {
                       key: 'rules',
                       ok: true,
                       text: `${enforced} active visibility rule${enforced === 1 ? '' : 's'}`,
-                      detail: 'Only users passing every active rule will see this card.'
+                      detail: 'A user who passes any one of them will see this card.'
                   }
                 : {
                       key: 'rules',
