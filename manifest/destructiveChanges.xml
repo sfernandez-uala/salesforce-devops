@@ -7,8 +7,20 @@
         c/emptyState, named for what it does rather than for the feature that
         happened to need it first.
     -->
+    <!--
+        Superseded, and with nothing left pointing at it: the V360_Admin_Console
+        tab renders c/v360AdminBuilder now, and that tab is the only one the
+        V360_Admin permission set grants. The console had already stopped being
+        reachable; leaving the bundle in the org only invited edits to a screen
+        no one could open.
+
+        Not listed here: the V360_Admin_Builder tab, removed in the same commit.
+        It never reached dev, and asking an org to delete what it never had
+        fails the whole deployment.
+    -->
     <types>
         <members>v360EmptyState</members>
+        <members>v360AdminConsole</members>
         <name>LightningComponentBundle</name>
     </types>
     <version>67.0</version>
