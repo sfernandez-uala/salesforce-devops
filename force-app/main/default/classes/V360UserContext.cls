@@ -17,11 +17,29 @@ public without sharing class V360UserContext implements IUserContext {
         if (String.isBlank(apiName)) {
             return false;
         }
+        // A Permission Set's Name is unique only within its namespace, so Name
+        // alone does not identify one: cloning a packaged set produces a local
+        // set carrying the same Name with no prefix, and matching on Name
+        // alone would let a rule aimed at one of them pass for whoever holds
+        // the other -- a card shown to someone it was denied to.
+        //
+        // References are stored namespace-qualified (ns__Name) for that
+        // reason, and both halves are matched here. A namespace prefix is
+        // alphanumeric, so whatever precedes the first '__' is the namespace
+        // and the remainder is the Name.
+        String namespacePrefix = null;
+        String developerName = apiName;
+        Integer separator = apiName.indexOf('__');
+        if (separator > 0) {
+            namespacePrefix = apiName.substring(0, separator);
+            developerName = apiName.substring(separator + 2);
+        }
         List<PermissionSetAssignment> assignments = [
             SELECT Id
             FROM PermissionSetAssignment
             WHERE AssigneeId = :UserInfo.getUserId()
-            AND PermissionSet.Name = :apiName
+            AND PermissionSet.Name = :developerName
+            AND PermissionSet.NamespacePrefix = :namespacePrefix
             LIMIT 1
         ];
         return !assignments.isEmpty();

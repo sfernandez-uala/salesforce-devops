@@ -33,6 +33,32 @@ private class V360UserContextTest {
         }
     }
 
+    /**
+     * The namespace half of a qualified reference is matched, not ignored: a
+     * local permission set must not answer for a packaged one that happens to
+     * share its Name.
+     *
+     * This is as close as an Apex test can get to the real ambiguity. A
+     * namespaced PermissionSet cannot be created by a test, so the pair that
+     * actually collides in an org -- a cloned standard set and the packaged
+     * original -- is not constructible here; what is asserted is the half of
+     * the rule that makes the collision resolvable.
+     */
+    @IsTest
+    static void hasPermissionSetReturnsFalseWhenNamespaceDoesNotMatch() {
+        // Given
+        User grantedUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360UserContext userContext = new V360UserContext();
+
+        // When / Then
+        System.runAs(grantedUser) {
+            Test.startTest();
+            Boolean result = userContext.hasPermissionSet('someNamespace__V360_Admin');
+            Test.stopTest();
+            Assert.isFalse(result, 'A local permission set must not satisfy a namespaced reference');
+        }
+    }
+
     @IsTest
     static void hasPermissionSetReturnsFalseWhenApiNameIsBlank() {
         // Given
