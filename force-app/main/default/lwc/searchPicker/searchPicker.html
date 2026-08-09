@@ -31,7 +31,7 @@
                 </button>
 
                 <template lwc:if={open}>
-                    <div class="slds-dropdown slds-dropdown_left slds-dropdown_fluid">
+                    <div class={dropdownClass}>
                         <div class="slds-p-around_x-small slds-border_bottom">
                             <lightning-input
                                 type="search"
@@ -45,20 +45,21 @@
                         </div>
                         <ul class="slds-dropdown__list slds-dropdown_length-10" role="listbox">
                             <template for:each={filteredOptions} for:item="option">
-                                <li key={option.key} class="slds-dropdown__item" role="presentation">
+                                <li key={option.key} class="slds-listbox__item" role="presentation">
                                     <button
                                         type="button"
-                                        class="search-picker-option slds-p-vertical_x-small slds-p-horizontal_small"
+                                        class="search-picker-option"
                                         role="option"
                                         data-value={option.value}
                                         data-id="picker-option"
+                                        onmousedown={handleOptionMouseDown}
                                         onclick={handleSelect}
                                     >
                                         <span class="slds-truncate">{option.label}</span>
                                         <template lwc:if={option.detail}>
-                                            <span class="slds-text-body_small slds-text-color_weak slds-truncate">
-                                                {option.detail}
-                                            </span>
+                                            <span
+                                                class="slds-text-body_small slds-text-color_weak slds-truncate"
+                                            >{option.detail}</span>
                                         </template>
                                     </button>
                                 </li>

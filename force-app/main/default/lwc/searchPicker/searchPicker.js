@@ -49,6 +49,16 @@ export default class SearchPicker extends LightningElement {
         return this.variant === 'button';
     }
 
+    /**
+     * The field variant is a form control and needs its label above it, both
+     * to name the value and to line up with the controls beside it. The button
+     * variant carries its label on the trigger, so a second one above would be
+     * the same word twice.
+     */
+    get showLabel() {
+        return !this.isButtonVariant && this.label;
+    }
+
     get displayLabel() {
         return this.isButtonVariant ? this.triggerLabel : this.value || this.placeholder;
     }
@@ -60,6 +70,21 @@ export default class SearchPicker extends LightningElement {
         }
         const base = 'slds-input slds-combobox__input search-picker-trigger';
         return this.value ? base : `${base} search-picker-trigger_empty`;
+    }
+
+    /**
+     * The list is never narrower than SLDS's medium dropdown, because what it
+     * holds are API names: at the trigger's own width a toolbar button gave a
+     * list where every entry truncated to the same prefix, which is no list at
+     * all. The field variant additionally grows to its form control, where
+     * matching the input it belongs to is the point.
+     *
+     * Every class is assembled here. A static class sitting beside a bound one
+     * in the template is discarded, and this component has paid for that twice.
+     */
+    get dropdownClass() {
+        const base = 'slds-dropdown slds-dropdown_left slds-dropdown_medium';
+        return this.isButtonVariant ? base : `${base} slds-dropdown_fluid`;
     }
 
     get comboboxClass() {
@@ -104,9 +129,27 @@ export default class SearchPicker extends LightningElement {
         this.dispatchEvent(new CustomEvent('select', { detail: { value } }));
     }
 
-    /** Closes when focus leaves the whole control, not on every inner blur. */
+    /**
+     * Pressing the mouse on an option would move focus to it and fire focusout
+     * first, unmounting the option before its click could land -- and on the
+     * platforms where a button takes no focus on mousedown, focus would leave
+     * for nothing at all, with the same result. Keeping the default from
+     * running leaves focus in the search box, so the click always arrives.
+     */
+    handleOptionMouseDown(event) {
+        event.preventDefault();
+    }
+
+    /**
+     * Closes when focus leaves the whole control, not on every inner blur.
+     *
+     * Asked of the shadow root, never the host: Node.contains walks the node
+     * tree, where this component's own elements are children of the shadow
+     * root and NOT of the host. host.contains() is therefore false for every
+     * element in here, which closed the list on any internal focus move.
+     */
     handleFocusOut(event) {
-        if (!this.template.host.contains(event.relatedTarget)) {
+        if (!this.template.contains(event.relatedTarget)) {
             this.open = false;
         }
     }

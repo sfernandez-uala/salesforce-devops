@@ -21,19 +21,34 @@
     color: var(--slds-g-color-neutral-base-30, #706e6b);
 }
 
-/* An option stacks its label over optional detail, where the blueprint's
-   dropdown item expects a single line. Its colours are the dropdown's own
-   component hooks, so a theme reaches this list too. */
+/* The option is SLDS's own two-line listbox entity option -- its padding,
+   type scale and the dark-label-over-grey-meta treatment all come from
+   slds-listbox__option_entity. What is left here is only what a <button> has
+   to unlearn to stop looking like a button.
+
+   A button, and not the blueprint's anchor, because choosing a value from a
+   list is not navigation: the anchor is what dressed these rows in the
+   browser's own link blue and underline. */
+/* Two stacked lines: the value in brand blue, its API name in grey underneath.
+   SLDS's listbox option is built for a single line, or for a media object with
+   a figure beside it, and chasing those classes produced a row that ran both
+   lines together. The shape is stated plainly here instead -- but every value
+   still comes from an SLDS hook, so an org theme reaches this list.
+
+   slds-text-color_weak on the second span overrides the inherited blue, which
+   is what puts the grey under the value. */
 .search-picker-option {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    gap: 0.125rem;
     width: 100%;
+    padding: 0.5rem 0.75rem;
     border: 0;
     background: transparent;
+    font: inherit;
     text-align: left;
     cursor: pointer;
-    color: var(--slds-c-dropdown-item-color, inherit);
+    color: var(--slds-g-color-brand-base-50, #0176d3);
 }
 
 .search-picker-option:hover,
