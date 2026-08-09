@@ -3,7 +3,7 @@ import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import getPermissionSetOptions from '@salesforce/apex/V360RuleVocabulary.getPermissionSetOptions';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadStyle } from 'lightning/platformResourceLoader';
-import { EnclosingTabId, IsConsoleNavigation, setTabLabel } from 'lightning/platformWorkspaceApi';
+import { EnclosingTabId, IsConsoleNavigation, setTabLabel, setTabIcon } from 'lightning/platformWorkspaceApi';
 import BUILDER_OVERRIDES from '@salesforce/resourceUrl/v360BuilderOverrides';
 import { names as registeredCardNames } from 'c/v360CardRegistry';
 import getCatalog from '@salesforce/apex/V360AdminController.getCatalog';
@@ -35,6 +35,13 @@ const BINDING_SEPARATOR = ':';
 /** Gates the static resource's rule; see renderedCallback. */
 const FULL_BLEED_CLASS = 'v360-builder-full-bleed';
 const TEMPLATE_WRAPPER = '.slds-template_default';
+
+/**
+ * The workspace tab's icon, kept in step with the motif on the custom tab
+ * itself -- "Custom70: Handsaw" in V360_Admin_Console.tab-meta.xml. Two icons
+ * for one destination is how a console ends up looking like two apps.
+ */
+const BUILDER_TAB_ICON = 'custom:custom70';
 
 /**
  * How a card's rules combine. The same two words the server stores and the
@@ -118,6 +125,7 @@ export default class V360AdminBuilder extends LightningElement {
     stylesRequested = false;
     fullBleedWrapper;
     appliedTabLabel;
+    appliedTabIcon = false;
 
     @wire(IsConsoleNavigation) isConsoleNavigation;
     @wire(EnclosingTabId) enclosingTabId;
@@ -157,6 +165,7 @@ export default class V360AdminBuilder extends LightningElement {
         this.measureTopOffset();
         this.observeViewport();
         this.syncTabLabel();
+        this.syncTabIcon();
     }
 
     /**
@@ -179,6 +188,26 @@ export default class V360AdminBuilder extends LightningElement {
             // A tab that will not take a label is cosmetic; let it keep the
             // platform's default rather than surface an error over it.
             this.appliedTabLabel = undefined;
+        });
+    }
+
+    /**
+     * Gives the workspace tab the same icon the Vista 360 tab carries in app
+     * navigation, so the two read as one thing and a narrow console tab is
+     * still recognisable once its label truncates.
+     *
+     * Applied once rather than on every render: the icon names the app, not
+     * whichever tab is open, so unlike the label there is nothing for it to
+     * follow. Failure is left alone for the same reason as the label -- a tab
+     * that will not take an icon keeps the platform's default.
+     */
+    syncTabIcon() {
+        if (!this.isConsoleNavigation || !this.enclosingTabId || this.appliedTabIcon) {
+            return;
+        }
+        this.appliedTabIcon = true;
+        setTabIcon(this.enclosingTabId, BUILDER_TAB_ICON, { iconAlt: 'Vista 360 builder' }).catch(() => {
+            this.appliedTabIcon = false;
         });
     }
 
