@@ -1,6 +1,21 @@
 <template>
     <div class="v360-shell">
-    <template lwc:if={isLoading}>
+    <!-- No tab is a configuration gap, not an empty result, and it is said in
+         those words: "no cards" would send an admin looking at the card list
+         of a tab this placement was never pointed at. -->
+    <template lwc:if={hasNoTab}>
+        <lightning-card title="Vista 360" icon-name="standard:account">
+            <c-empty-state
+                data-id="no-tab-state"
+                title="No tab selected"
+                illustration-name="noresults:unknown"
+                alternative-text="No results illustration"
+                description="Edit this page and set the Tab API Name of this component to one of the tabs configured in the Vista 360 admin console."
+            ></c-empty-state>
+        </lightning-card>
+    </template>
+
+    <template lwc:elseif={isLoading}>
         <lightning-card title="Vista 360" icon-name="standard:account" data-id="loading-state">
             <div class="slds-p-around_medium">
                 <lightning-spinner alternative-text="Loading cards" size="small"></lightning-spinner>

@@ -29,9 +29,11 @@ function decision(cardName, label) {
     };
 }
 
-function createShell(recordId) {
+/** The tab is set explicitly: the shell has no default one to fall back to. */
+function createShell(recordId, tabApiName = 'AccountOverview') {
     const element = createElement('c-v360-shell', { is: V360Shell });
     element.recordId = recordId;
+    element.tabApiName = tabApiName;
     document.body.appendChild(element);
     return element;
 }

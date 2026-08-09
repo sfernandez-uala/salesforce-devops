@@ -17,9 +17,15 @@ jest.mock('c/v360CardRegistry', () => ({
 
 const flushPromises = () => new Promise((res) => setTimeout(res, 0));
 
-function createShell(recordId) {
+/**
+ * A configured placement. The tab is set explicitly because the component has
+ * no default one -- these tests used to inherit a fallback tab name, which is
+ * exactly the thing that made an unconfigured component look configured.
+ */
+function createShell(recordId, tabApiName = 'AccountOverview') {
     const element = createElement('c-v360-shell', { is: V360Shell });
     element.recordId = recordId;
+    element.tabApiName = tabApiName;
     document.body.appendChild(element);
     return element;
 }
@@ -30,6 +36,41 @@ describe('c-v360-shell', () => {
             document.body.removeChild(document.body.firstChild);
         }
         jest.clearAllMocks();
+    });
+
+    /**
+     * A placement with no tab is a configuration gap, and the component says
+     * so rather than guessing. It used to fall back to a tab name, which meant
+     * a component dropped on a page rendered somebody else's cards and looked
+     * configured while nobody had chosen anything.
+     */
+    it('says no tab is selected, and asks the server for nothing, when tabApiName is absent', () => {
+        const element = createElement('c-v360-shell', { is: V360Shell });
+        element.recordId = '001000000000400AAA';
+        document.body.appendChild(element);
+
+        expect(element.shadowRoot.querySelector('[data-id="no-tab-state"]')).not.toBeNull();
+        expect(getVisibleCards).not.toHaveBeenCalled();
+    });
+
+    /** A blank string is a cleared property, not a tab named "". */
+    it('treats a blank tabApiName the same as none at all', () => {
+        const element = createElement('c-v360-shell', { is: V360Shell });
+        element.recordId = '001000000000400AAA';
+        element.tabApiName = '   ';
+        document.body.appendChild(element);
+
+        expect(element.shadowRoot.querySelector('[data-id="no-tab-state"]')).not.toBeNull();
+        expect(getVisibleCards).not.toHaveBeenCalled();
+    });
+
+    /** Nothing was ever requested, so there is nothing to wait for. */
+    it('does not sit on a spinner when there is no tab to load', () => {
+        const element = createElement('c-v360-shell', { is: V360Shell });
+        element.recordId = '001000000000400AAA';
+        document.body.appendChild(element);
+
+        expect(element.shadowRoot.querySelector('[data-id="loading-state"]')).toBeNull();
     });
 
     it('shows a loading state while the visible-card request is in flight', () => {

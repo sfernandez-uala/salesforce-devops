@@ -8,7 +8,6 @@ import { subscribe, unsubscribe } from 'lightning/empApi';
 /** Server-side signal that an admin changed a tab's cards. */
 const CONFIG_CHANGE_CHANNEL = '/event/V360_ConfigChange__e';
 
-const DEFAULT_TAB_API_NAME = 'AccountOverview';
 const DEFAULT_BUTTON_LABEL = 'Consultar';
 const COMPONENT_TYPE_LWC = 'LWC';
 const COMPONENT_TYPE_FLOW = 'Flow';
@@ -65,7 +64,14 @@ const DEFAULT_CARD_ICON = 'standard:default';
  */
 export default class V360Shell extends LightningElement {
     @api recordId;
-    @api tabApiName = DEFAULT_TAB_API_NAME;
+
+    /**
+     * Which configured tab this placement renders. Deliberately without a
+     * default: a fallback tab name means a component dropped on a page shows
+     * somebody else's cards, and looks configured while it is not. Absent, the
+     * shell says so and renders nothing.
+     */
+    @api tabApiName;
 
     customerState;
     shellState;
@@ -84,7 +90,19 @@ export default class V360Shell extends LightningElement {
     railOverflowBlock = false;
     configSubscription;
 
+    /**
+     * Without a tab there is nothing to read, so nothing is read: no state
+     * session, no subscription, no server call whose empty answer would be
+     * indistinguishable from a tab that genuinely has no cards.
+     */
+    get hasTab() {
+        return Boolean(this.tabApiName && this.tabApiName.trim());
+    }
+
     connectedCallback() {
+        if (!this.hasTab) {
+            return;
+        }
         this.pinnedKeys = getPinnedKeys(this.tabApiName);
         this.customerState = v360CustomerState(this.recordId);
         this.shellState = v360ShellState(this.recordId);
@@ -369,8 +387,18 @@ export default class V360Shell extends LightningElement {
         this.customerState.value.refresh(this.tabApiName);
     }
 
+    /** A template cannot negate, and this branch has to come before the rest. */
+    get hasNoTab() {
+        return !this.hasTab;
+    }
+
+    /**
+     * Never loading without a tab: the status atom starts at 'unconfigured'
+     * and nothing will move it, since no read was ever started -- so this
+     * would spin for as long as the page is open.
+     */
     get isLoading() {
-        return this.status === 'unconfigured' || this.status === 'loading';
+        return this.hasTab && (this.status === 'unconfigured' || this.status === 'loading');
     }
 
     get isError() {
