@@ -15,8 +15,6 @@
 @SuppressWarnings('PMD.CyclomaticComplexity')
 public with sharing class V360AdminController {
 
-    private static final String MANAGE_PERMISSION = 'V360_ManageVisibilityRules';
-
     /**
      * Loads the whole configuration graph for the console. The permission
      * verdict always comes back; the data comes back only when the running
@@ -32,7 +30,7 @@ public with sharing class V360AdminController {
     public static AdminCatalog getCatalog() {
         try {
             AdminCatalog catalog = new AdminCatalog();
-            catalog.hasManagePermission = FeatureManagement.checkPermission(MANAGE_PERMISSION);
+            catalog.hasManagePermission = V360AdminService.hasManagePermission();
             catalog.tabs = new List<AdminTab>();
             if (!catalog.hasManagePermission) {
                 return catalog;
@@ -44,7 +42,6 @@ public with sharing class V360AdminController {
                     DeveloperName__c,
                     AnchorSObject__c,
                     Sequence__c,
-                    Active__c,
                     (
                         SELECT
                             Id,
@@ -57,7 +54,8 @@ public with sharing class V360AdminController {
                             ButtonLabel__c,
                             Order__c,
                             Active__c,
-                            KillSwitch__c
+                            KillSwitch__c,
+                            RuleMatchLogic__c
                         FROM V360_Cards__r
                         ORDER BY Order__c NULLS LAST, DeveloperName__c
                     )
@@ -119,8 +117,7 @@ public with sharing class V360AdminController {
                         Id = input.tabId,
                         DeveloperName__c = input.developerName,
                         AnchorSObject__c = input.sObjectApiName,
-                        Sequence__c = input.sequence,
-                        Active__c = input.active
+                        Sequence__c = input.sequence
                     )
                 }
             );
@@ -304,6 +301,34 @@ public with sharing class V360AdminController {
         setKillSwitch(cardId, false);
     }
 
+    /**
+     * Chooses how a card's rules combine.
+     *
+     * ALL makes each rule a requirement; ANY makes each one a way to qualify.
+     * The value is validated here rather than trusted from the client, because
+     * anything the evaluator does not recognise as ANY it reads as ALL, and a
+     * typo that silently lands on the restrictive side would look like the
+     * screen simply ignoring the admin.
+     *
+     * @param cardId the card whose rules are being re-read
+     * @param matchLogic ALL or ANY
+     */
+    @AuraEnabled
+    public static void setRuleMatchLogic(Id cardId, String matchLogic) {
+        if (matchLogic != 'ALL' && matchLogic != 'ANY') {
+            throw new AuraHandledException('Rules combine with ALL or ANY, not "' + matchLogic + '".');
+        }
+        try {
+            V360AdminService.saveCards(
+                new List<V360_Card__c>{ new V360_Card__c(Id = cardId, RuleMatchLogic__c = matchLogic) }
+            );
+        } catch (V360AdminService.V360AdminServiceException adminError) {
+            throw new AuraHandledException(adminError.getMessage());
+        } catch (Exception unexpected) {
+            throw new AuraHandledException('Unable to change how this card combines its rules.');
+        }
+    }
+
     private static void setKillSwitch(Id cardId, Boolean engaged) {
         try {
             V360AdminService.saveCards(
@@ -473,7 +498,6 @@ public with sharing class V360AdminController {
         adminTab.developerName = tab.DeveloperName__c;
         adminTab.sObjectApiName = tab.AnchorSObject__c;
         adminTab.sequence = tab.Sequence__c;
-        adminTab.active = tab.Active__c;
         adminTab.cards = new List<AdminCard>();
         for (V360_Card__c card : tab.V360_Cards__r) {
             adminTab.cards.add(toAdminCard(card, rulesByCardId));
@@ -494,6 +518,10 @@ public with sharing class V360AdminController {
         adminCard.order = card.Order__c;
         adminCard.active = card.Active__c;
         adminCard.killSwitch = card.KillSwitch__c;
+        // The console must never render a blank here: a card saved before the
+        // field existed carries null, and the evaluator reads that as ALL, so
+        // the screen has to say ALL rather than leave the admin guessing.
+        adminCard.ruleMatchLogic = card.RuleMatchLogic__c ?? 'ALL';
         List<AdminRule> rules = rulesByCardId.get(card.Id);
         adminCard.rules = rules == null ? new List<AdminRule>() : rules;
         adminCard.ruleCount = adminCard.rules.size();
@@ -502,10 +530,14 @@ public with sharing class V360AdminController {
     }
 
     /**
-     * The rules that actually restrict someone. V360VisibilityEvaluator only
-     * lets an active rule block a card, so a parked rule protects nobody --
-     * a card whose every rule is parked is as open as one with no rules at
-     * all. The console warns on this count, never on the stored total.
+     * The rules that actually restrict someone.
+     *
+     * Two ways a stored rule fails to: it is parked, or it asks for nothing.
+     * A parked rule is skipped by V360VisibilityEvaluator outright, and a rule
+     * with neither a formula nor a required access adds no requirement under
+     * ALL and is refused as a way in under ANY. Either way it protects nobody,
+     * so counting it would let the console call a card guarded when it is
+     * open -- and this count is what every exposure warning turns on.
      *
      * @param rules every rule of one card, active or not
      * @return how many of them the evaluator will actually enforce
@@ -513,11 +545,15 @@ public with sharing class V360AdminController {
     private static Integer countActiveRules(List<AdminRule> rules) {
         Integer enforced = 0;
         for (AdminRule rule : rules) {
-            if (rule.active == true) {
+            if (rule.active == true && asksForSomething(rule)) {
                 enforced++;
             }
         }
         return enforced;
+    }
+
+    private static Boolean asksForSomething(AdminRule rule) {
+        return String.isNotBlank(rule.formula) || !rule.predicates.isEmpty();
     }
 
     /** Everything saveCardProperties may change on a card, plus its id. */
@@ -557,8 +593,6 @@ public with sharing class V360AdminController {
         public String sObjectApiName { get; set; }
         @AuraEnabled
         public Decimal sequence { get; set; }
-        @AuraEnabled
-        public Boolean active { get; set; }
     }
 
     /** Everything createCard needs: the tab, the identity, and the properties. */
@@ -605,8 +639,6 @@ public with sharing class V360AdminController {
         @AuraEnabled
         public Decimal sequence;
         @AuraEnabled
-        public Boolean active;
-        @AuraEnabled
         public List<AdminCard> cards;
     }
 
@@ -634,6 +666,9 @@ public with sharing class V360AdminController {
         public Boolean active;
         @AuraEnabled
         public Boolean killSwitch;
+        /** ALL or ANY — how this card's rules combine. Never null to the client. */
+        @AuraEnabled
+        public String ruleMatchLogic;
         @AuraEnabled
         public Integer ruleCount;
         @AuraEnabled

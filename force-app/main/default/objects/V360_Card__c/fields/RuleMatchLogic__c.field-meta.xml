@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RuleMatchLogic__c</fullName>
+    <description>How this card&apos;s visibility rules combine. ALL: every active rule must pass, so each rule adds a requirement. ANY: each active rule is one way to qualify, so passing a single rule is enough — the only way to express &quot;audience A or audience B&quot;, since a Permission Set cannot be read from a formula. Defaults to ALL because a misread here decides who sees data, and a rule that fails to grant is safer than one that grants by accident.</description>
+    <label>Rule Match Logic</label>
+    <required>true</required>
+    <trackHistory>true</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>ALL</fullName>
+                <default>true</default>
+                <label>ALL</label>
+            </value>
+            <value>
+                <fullName>ANY</fullName>
+                <default>false</default>
+                <label>ANY</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

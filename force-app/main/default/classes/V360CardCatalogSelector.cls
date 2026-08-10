@@ -23,7 +23,7 @@ public without sharing class V360CardCatalogSelector implements ICardCatalogSour
         List<V360_Card__c> cardRecords = [
             SELECT Id, DeveloperName__c, ComponentType__c, ComponentName__c, AnchorSObject__c,
                    Order__c, Label__c, Description__c, ButtonLabel__c, IconName__c,
-                   KillSwitch__c, Active__c, Tab__r.AnchorSObject__c
+                   KillSwitch__c, Active__c, RuleMatchLogic__c, Tab__r.AnchorSObject__c
             FROM V360_Card__c
             WHERE Tab__r.DeveloperName__c = :tabApiName
         ];
@@ -51,6 +51,11 @@ public without sharing class V360CardCatalogSelector implements ICardCatalogSour
         dto.iconName = cardRecord.IconName__c;
         dto.killSwitch = cardRecord.KillSwitch__c;
         dto.active = cardRecord.Active__c;
+        // A blank on an older record reads as ALL, never as ANY: the DTO's own
+        // default already says so, and it is not overwritten with a null here.
+        if (String.isNotBlank(cardRecord.RuleMatchLogic__c)) {
+            dto.ruleMatchLogic = cardRecord.RuleMatchLogic__c;
+        }
         return dto;
     }
 }

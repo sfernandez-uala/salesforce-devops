@@ -14,7 +14,7 @@ import { LightningElement, api } from 'lwc';
  * buttons into the named `cta` slot (the platform component supports up to
  * two call-to-action buttons).
  */
-export default class V360EmptyState extends LightningElement {
+export default class EmptyState extends LightningElement {
     @api title;
     @api illustrationName;
     @api size;

@@ -20,6 +20,13 @@
  */
 public with sharing class V360VisibilityEvaluator {
 
+    /**
+     * The one value that switches a card's rules from requirements to
+     * alternatives. Anything else -- ALL, blank, an unrecognised string --
+     * reads as ALL, so only a deliberate choice ever loosens a card.
+     */
+    private static final String MATCH_ANY = 'ANY';
+
     private final ICardCatalogSource catalogSource;
     private final ICardRuleSource ruleSource;
     private final IFormulaEngine formulaEngine;
@@ -118,12 +125,71 @@ public with sharing class V360VisibilityEvaluator {
         if (ruleGraph == null || ruleGraph.rules.isEmpty()) {
             return true;
         }
+        // Each active rule row is one qualifying path, and the paths are
+        // alternatives: passing any one of them shows the card. Requiring all
+        // of them instead would make every row after the first unreachable
+        // in practice and leave "collections OR risk" inexpressible, since a
+        // Permission Set cannot be read from a formula and the predicates
+        // within a single row are already required together.
+        //
+        // A row parked inactive is not a path that failed, it is a path that
+        // is not there: a card whose every row is parked is restricted by
+        // nothing, which is the same as having no rules at all.
+        return MATCH_ANY.equalsIgnoreCase(card.ruleMatchLogic)
+            ? passesAnyRule(ruleGraph, card, ctx)
+            : passesEveryRule(ruleGraph, card, ctx);
+    }
+
+    /**
+     * ALL: each active rule is a requirement, and one failing rule hides the
+     * card. This is the default, and the only reading a card gets unless an
+     * admin deliberately says otherwise, because a rule that fails to grant
+     * costs someone a click while one that grants by accident costs a leak.
+     *
+     * An unwritten rule passes here without ceremony: with nothing asked, it
+     * adds no requirement, which is exactly what it looks like.
+     */
+    private Boolean passesEveryRule(V360RuleGraph ruleGraph, V360CardCatalogDTO card, EvalContext ctx) {
         for (V360RuleGraph.RuleRow rule : ruleGraph.rules) {
             if (rule.active && !rulePasses(rule, card, ctx)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * ANY: each active rule is one way to qualify, and passing a single one is
+     * enough. It exists because a Permission Set cannot be read from a
+     * formula, so "audience A or audience B" has nowhere else to live.
+     *
+     * A rule that asks for nothing is skipped rather than granted. Under ALL
+     * an unwritten rule is harmless; treated as an alternative it would admit
+     * everyone and make the other rules moot, so pressing New rule to add a
+     * second audience would open the card until the row was finished -- the
+     * act of restricting a card would be the one that exposed it. The admin
+     * console refuses to activate such a rule, and this is the second lock,
+     * for rows that arrive by API or data load rather than through it.
+     *
+     * Skipped, not failed: a card carrying only unwritten rules then sits
+     * where a card with no rules sits, restricting no one.
+     */
+    private Boolean passesAnyRule(V360RuleGraph ruleGraph, V360CardCatalogDTO card, EvalContext ctx) {
+        Boolean hasQualifyingPath = false;
+        for (V360RuleGraph.RuleRow rule : ruleGraph.rules) {
+            if (!rule.active || !isConfigured(rule)) {
+                continue;
+            }
+            hasQualifyingPath = true;
+            if (rulePasses(rule, card, ctx)) {
+                return true;
+            }
+        }
+        return !hasQualifyingPath;
+    }
+
+    private Boolean isConfigured(V360RuleGraph.RuleRow rule) {
+        return String.isNotBlank(rule.visibilityFormula) || !rule.predicates.isEmpty();
     }
 
     private Boolean rulePasses(V360RuleGraph.RuleRow rule, V360CardCatalogDTO card, EvalContext ctx) {

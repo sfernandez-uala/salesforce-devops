@@ -1,4 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        Renamed, not removed: a rename in source leaves the old bundle behind in
+        every org that already had it, and nothing in a deploy notices. The
+        wrapper is domain-free — it knows nothing about Vista 360 — so it is now
+        c/emptyState, named for what it does rather than for the feature that
+        happened to need it first.
+    -->
+    <!--
+        Superseded, and with nothing left pointing at it: the V360_Admin_Console
+        tab renders c/v360AdminBuilder now, and that tab is the only one the
+        V360_Admin permission set grants. The console had already stopped being
+        reachable; leaving the bundle in the org only invited edits to a screen
+        no one could open.
+
+        The V360_Admin_Builder tab goes with it: a second tab onto the same
+        component, where V360_Admin_Console is the one the V360_Admin
+        permission set grants and therefore the only one anybody opens.
+    -->
+    <types>
+        <members>v360EmptyState</members>
+        <members>v360AdminConsole</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>V360_Admin_Builder</members>
+        <name>CustomTab</name>
+    </types>
+    <!--
+        A tab has no on and off. Nothing read it: the catalog selector matches
+        on developer name alone, and the console hard-coded it to true on every
+        save, so parking a tab from Setup un-parked itself the next time an
+        admin touched it. Staging is what a card's own Active flag is for, and
+        an emergency is what its kill switch is for.
+
+        Keeping it would have added a seventh thing to check when asking why a
+        card is not showing, the hardest question this system answers, in
+        exchange for nothing. Should a coarse lever ever be wanted, it belongs
+        on the tab as KillSwitch__c, matching the card's vocabulary rather than
+        reviving an Active that means neither draft nor emergency.
+    -->
+    <types>
+        <members>V360_Tab__c.Active__c</members>
+        <name>CustomField</name>
+    </types>
     <version>67.0</version>
 </Package>

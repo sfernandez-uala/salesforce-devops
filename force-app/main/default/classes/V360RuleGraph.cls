@@ -3,6 +3,10 @@
  * structured predicates. A card with no rules configured has no
  * V360RuleGraph at all (see ICardRuleSource) rather than an empty one —
  * callers should treat "no entry" as the default-visible case.
+ *
+ * The rows are alternatives, not requirements: one card, one row per audience
+ * that should reach it. c/V360VisibilityEvaluator owns that reading and the
+ * two cases it turns on — a row switched off, and a row not yet written.
  */
 public class V360RuleGraph {
     public Id cardId;

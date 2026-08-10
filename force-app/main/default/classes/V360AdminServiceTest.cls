@@ -13,8 +13,7 @@ private class V360AdminServiceTest {
         V360_Tab__c newTab = new V360_Tab__c(
             DeveloperName__c = 'V360Test_Admin_Tab',
             AnchorSObject__c = 'Account',
-            Sequence__c = 1,
-            Active__c = true
+            Sequence__c = 1
         );
 
         System.runAs(admin) {

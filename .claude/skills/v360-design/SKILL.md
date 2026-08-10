@@ -52,16 +52,16 @@ with the fields' controls:
 ## 2. Empty, error, and no-access states: always illustration-based
 
 Never render an empty, error, or no-access state as bare text (a lone `<p>` or a
-`<div>` with a message). Every such state renders through `c/v360EmptyState`.
+`<div>` with a message). Every such state renders through `c/emptyState`.
 
-`c/v360EmptyState` is a thin wrapper around the platform's `lightning-empty-state`
+`c/emptyState` is a thin wrapper around the platform's `lightning-empty-state`
 (Beta) base component. Components consume the wrapper, never
 `lightning-empty-state` directly — the wrapper isolates every V360 component from a
 future change to that Beta component's API, and gives one place to swap
 implementations if the platform component is ever unavailable in a given org (see
 "Fallback path" below).
 
-`c/v360EmptyState` public API:
+`c/emptyState` public API:
 
 | Property | Type | Purpose |
 |---|---|---|
@@ -93,8 +93,8 @@ appropriate SLDS loading affordance) for the `loading`/`unconfigured` portion of
 
 `lightning-empty-state` is a Beta base component and may not be available in every
 org. Before relying on it in a new org, verify with a scoped
-`sf project deploy validate` against the `c/v360EmptyState` bundle. If the org
-rejects it, reimplement `v360EmptyState`'s internal template using the SLDS
+`sf project deploy validate` against the `c/emptyState` bundle. If the org
+rejects it, reimplement `emptyState`'s internal template using the SLDS
 illustration blueprint instead (the `slds-illustration` class plus an inline SVG and
 `slds-text-*` classes for the heading/description), while keeping the exact same
 external API (`title`, `illustrationName`, `size`, `alternativeText`, `description`,
@@ -151,7 +151,7 @@ follows the same uniform contract: `status` is one of `unconfigured | loading |
 loaded | error`, `data` holds the payload once loaded, and `error` holds whatever
 the failed call produced. Render dispatch on `status` should cover all four values
 (loading uses a spinner; `error` and an empty `loaded` result use
-`c/v360EmptyState` per the mapping above; a non-empty `loaded` result renders the
+`c/emptyState` per the mapping above; a non-empty `loaded` result renders the
 real content).
 
 ## 5. Cards are engine-agnostic
@@ -167,10 +167,10 @@ a template throw.
 
 ## 6. Accessibility notes
 
-- Always set `alternative-text` on a `c/v360EmptyState` instance whose illustration
+- Always set `alternative-text` on a `c/emptyState` instance whose illustration
   conveys information beyond decoration (this is all of them per the mapping table
   above — none of these are purely decorative).
-- Do not assume a heading level. `c/v360EmptyState` renders its own heading
+- Do not assume a heading level. `c/emptyState` renders its own heading
   markup internally; a consumer nesting it inside its own heading structure should
   verify the resulting outline still makes sense (an `<h3>` title is wrong if it
   would skip past a page's actual `<h2>`) and provide the wrapper a plain-string
@@ -202,7 +202,7 @@ shell's responsibility; stages 2-5 belong entirely to the card itself.
    `v360AccountSnapshot.css`.
 3. **PRESENTATION** — the card's real data view once its own data has resolved.
 4. **ERROR** (card-owned) — the card's own failure state (its own service or wire
-   call failed). Uses `c/v360EmptyState` with `error:recoverable` and a
+   call failed). Uses `c/emptyState` with `error:recoverable` and a
    `retryLabel` wired to the card's own refresh path (`refreshApex` for an
    LDS-wired property, or a state manager's `refresh()`), per the mapping in
    section 2.
@@ -281,7 +281,7 @@ A two-zone `slds-grid` layout:
   actions (section 8) right-aligned; below it, the selected card's component,
   mounted full-width through the same dynamic-dispatch contract as before
   (`lwc:component`/`lwc:is` for a registered LWC, a labeled placeholder for a
-  Flow card, `c/v360EmptyState` for an unrecognized binding) — only the selected
+  Flow card, `c/emptyState` for an unrecognized binding) — only the selected
   card's component is ever mounted in focused view.
 
 Loading/error/empty states for the shell as a whole are unchanged (section 2 /

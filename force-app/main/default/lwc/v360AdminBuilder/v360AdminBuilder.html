@@ -6,7 +6,7 @@
     </template>
 
     <template lwc:elseif={isError}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="error-state"
             title="Something went wrong"
             illustration-name="error:recoverable"
@@ -14,21 +14,21 @@
             description="Unable to load the Vista 360 configuration right now."
             retry-label="Retry"
             onretry={handleRetry}
-        ></c-v360-empty-state>
+        ></c-empty-state>
     </template>
 
     <template lwc:elseif={isDenied}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="denied-state"
             title="Access needed"
             illustration-name="access:request"
             alternative-text="No access illustration"
             description="Managing Vista 360 cards requires the V360 Admin permission set."
-        ></c-v360-empty-state>
+        ></c-empty-state>
     </template>
 
     <template lwc:elseif={isEmptyOrg}>
-        <c-v360-empty-state
+        <c-empty-state
             data-id="empty-org"
             title="No configuration yet"
             illustration-name="noresults:unknown"
@@ -42,15 +42,21 @@
                 data-id="empty-new-tab"
                 onclick={handleNewTab}
             ></lightning-button>
-        </c-v360-empty-state>
+        </c-empty-state>
     </template>
 
     <template lwc:elseif={isReady}>
-        <div class="v360-builder">
+        <div class="v360-builder slds-is-relative">
             <!-- The document header: what is open, and the control that changes it.
                  SLDS's own builder-header blueprint, the same chrome App Builder and
                  Agentforce Builder wear. -->
-            <div class="slds-builder-header_container">
+            <!-- slds-builder-header_container is deliberately absent. Everything
+                 that class does is pin itself to the viewport -- position:fixed,
+                 top, left, width, z-index -- which is right for a builder app
+                 that owns the window and lands on top of Salesforce's navigation
+                 inside a Lightning tab. It carries nothing visual; the header
+                 element below holds all of that. -->
+            <div class="v360-builder-header">
                 <header class="slds-builder-header">
                     <div class="slds-builder-header__item">
                         <div class="slds-builder-header__item-label slds-media slds-media_center">
@@ -151,6 +157,22 @@
                         <div class="slds-builder-header__utilities-item">
                             <a
                                 class="slds-builder-header__item-action slds-media slds-media_center"
+                                data-id="help"
+                                onclick={handleOpenHelp}
+                            >
+                                <span class="slds-media__figure">
+                                    <lightning-icon
+                                        icon-name="utility:help"
+                                        size="x-small"
+                                        variant="inverse"
+                                    ></lightning-icon>
+                                </span>
+                                <span class="slds-media__body">Help</span>
+                            </a>
+                        </div>
+                        <div class="slds-builder-header__utilities-item">
+                            <a
+                                class="slds-builder-header__item-action slds-media slds-media_center"
                                 data-id="refresh"
                                 onclick={handleRefresh}
                             >
@@ -168,7 +190,7 @@
                 </header>
             </div>
 
-            <div class="slds-is-relative v360-builder-body">
+            <div class="v360-builder-body">
                 <template lwc:if={refreshing}>
                     <lightning-spinner alternative-text="Saving" size="small" data-id="busy"></lightning-spinner>
                 </template>
@@ -224,14 +246,14 @@
                     </div>
                     <div class="v360-builder-list-scroll">
                         <template lwc:if={hasNoCards}>
-                            <c-v360-empty-state
+                            <c-empty-state
                                 data-id="no-cards"
                                 size="small"
                                 title="No cards yet"
                                 illustration-name="noresults:unknown"
                                 alternative-text="No results illustration"
                                 description="This tab renders nothing until it has a card."
-                            ></c-v360-empty-state>
+                            ></c-empty-state>
                         </template>
                         <template for:each={cardList} for:item="row">
                             <div
@@ -319,7 +341,7 @@
                         </div>
 
                         <div class="v360-builder-canvas-scroll">
-                            <template lwc:if={detail.isOpenToEveryone}>
+                            <template lwc:if={showExposureBanner}>
                                 <div
                                     class="slds-scoped-notification slds-media slds-media_center slds-theme_warning slds-m-bottom_small"
                                     role="status"
@@ -424,13 +446,14 @@
 
                             <template lwc:elseif={isRulesSection}>
                                 <template lwc:if={hasNoRules}>
-                                    <c-v360-empty-state
+                                    <div class="v360-builder-measure">
+                                    <c-empty-state
                                         data-id="no-rules"
+                                        boxed
                                         title="No visibility rules"
                                         illustration-name="noresults:unknown"
                                         alternative-text="No results illustration"
                                         description={exposureNote}
-                                        boxed
                                     >
                                         <lightning-button
                                             slot="cta"
@@ -440,21 +463,54 @@
                                             disabled={busy}
                                             onclick={handleNewRule}
                                         ></lightning-button>
-                                    </c-v360-empty-state>
+                                    </c-empty-state>
+                                    </div>
                                 </template>
 
                                 <template lwc:else>
-                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small">
-                                    <p class="slds-text-body_small slds-text-color_weak slds-grow">
-                                        Every active rule must pass for the card to render.
-                                    </p>
-                                    <lightning-button
-                                        variant="brand"
-                                        label="Add rule"
-                                        data-id="add-rule"
-                                        disabled={busy}
-                                        onclick={handleNewRule}
-                                    ></lightning-button>
+                                <div class="v360-builder-measure">
+                                <!-- The combinator is stated before the rules, not inferred from
+                                     them: whether a second rule tightens the card or opens another
+                                     way in is the single fact an admin most needs to be sure of,
+                                     and it decides who sees data. -->
+                                <div class="slds-grid slds-grid_vertical-align-start slds-m-bottom_small">
+                                    <div class="slds-grow">
+                                        <lightning-radio-group
+                                            name="ruleMatchLogic"
+                                            label="How these rules combine"
+                                            type="button"
+                                            options={matchLogicOptions}
+                                            value={matchLogic}
+                                            disabled={busy}
+                                            data-id="match-logic"
+                                            onchange={handleMatchLogicChange}
+                                        ></lightning-radio-group>
+                                        <p
+                                            class="slds-text-body_small slds-text-color_weak slds-m-top_x-small"
+                                            data-id="match-logic-note"
+                                        >{matchLogicNote}</p>
+                                    </div>
+                                    <!-- The same hidden label spacer the Add predicate button
+                                         uses: without it the button sits level with the group's
+                                         label instead of its buttons. Held at its natural width
+                                         too, because the longer of the two combinator labels
+                                         grows the group beside it and the button was the only
+                                         thing left able to give, so it wrapped to "Add / rule". -->
+                                    <div class="slds-form-element slds-shrink-none slds-m-left_small">
+                                        <span
+                                            class="slds-form-element__label slds-hidden"
+                                            aria-hidden="true"
+                                        >Add rule</span>
+                                        <div class="slds-form-element__control">
+                                            <lightning-button
+                                                variant="brand"
+                                                label="Add rule"
+                                                data-id="add-rule"
+                                                disabled={busy}
+                                                onclick={handleNewRule}
+                                            ></lightning-button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <template lwc:if={detail.hasNoEnforcedRules}>
                                     <div
@@ -475,8 +531,22 @@
                                     </div>
                                 </template>
                                 <template for:each={rules} for:item="rule">
+                                    <div key={rule.ruleId}>
+                                    <!-- The joiner is drawn between the rules rather than stated
+                                         once above them, so the reading is there at the moment the
+                                         eye moves from one rule to the next. -->
+                                    <template lwc:if={rule.showJoiner}>
+                                        <div
+                                            class="slds-grid slds-grid_vertical-align-center slds-m-bottom_small"
+                                            data-id="rule-joiner"
+                                            aria-hidden="true"
+                                        >
+                                            <hr class="slds-grow slds-m-vertical_none" />
+                                            <span class="slds-badge slds-m-horizontal_small">{ruleJoinerLabel}</span>
+                                            <hr class="slds-grow slds-m-vertical_none" />
+                                        </div>
+                                    </template>
                                     <div
-                                        key={rule.ruleId}
                                         class="slds-box slds-box_small slds-theme_default slds-m-bottom_small"
                                         data-id="rule"
                                     >
@@ -498,33 +568,17 @@
                                                 onclick={handleDeleteRule}
                                             ></lightning-button-icon>
                                         </div>
-                                        <lightning-textarea
-                                            label="Visibility formula"
-                                            value={rule.formula}
-                                            class="v360-builder-formula"
-                                            data-id={rule.formulaFieldId}
-                                        ></lightning-textarea>
-                                        <template lwc:if={rule.feedbackMessage}>
-                                            <p class={rule.feedbackClass}>{rule.feedbackMessage}</p>
-                                        </template>
-                                        <div class="slds-m-top_x-small">
-                                            <lightning-button
-                                                label="Check syntax"
-                                                data-id="validate-formula"
-                                                data-rule-id={rule.ruleId}
-                                                disabled={busy}
-                                                onclick={handleValidateFormula}
-                                                class="slds-m-right_x-small"
-                                            ></lightning-button>
-                                            <lightning-button
-                                                variant="brand"
-                                                label="Save rule"
-                                                data-id="save-formula"
-                                                data-rule-id={rule.ruleId}
-                                                disabled={busy}
-                                                onclick={handleSaveFormula}
-                                            ></lightning-button>
-                                        </div>
+                                        <c-v360-formula-editor
+                                            formula={rule.formula}
+                                            anchor-s-object={anchorSObject}
+                                            feedback-message={rule.feedbackMessage}
+                                            feedback-valid={rule.feedbackValid}
+                                            busy={busy}
+                                            data-id="formula-editor"
+                                            data-rule-id={rule.ruleId}
+                                            onvalidate={handleValidateFormula}
+                                            onsave={handleSaveFormula}
+                                        ></c-v360-formula-editor>
 
                                         <!-- Structured access the formula cannot express, enforced on
                                              top of it. The row aligns to the start so a field's
@@ -532,24 +586,35 @@
                                              button, and the button gets a hidden label spacer so its
                                              control lines up with the fields'. -->
                                         <div class="slds-m-top_medium">
-                                            <p class="slds-text-title_caps slds-m-bottom_x-small">
-                                                Required access
-                                            </p>
+                                            <!-- "Required" is true of what a rule asks for either
+                                                 way; what changes with the mode is whether the
+                                                 rule itself is a requirement or one route in. -->
+                                            <p
+                                                class="slds-text-title_caps slds-m-bottom_x-small"
+                                                data-id="access-heading"
+                                            >{accessHeading}</p>
                                             <div class="slds-grid slds-gutters_xx-small slds-grid_vertical-align-start">
                                                 <div class="slds-col slds-size_5-of-12">
                                                     <lightning-combobox
                                                         label="Type"
-                                                        value="PERMISSION_SET"
+                                                        value={rule.predicateType}
                                                         options={predicateTypeOptions}
                                                         data-id={rule.typeFieldId}
+                                                        data-rule-id={rule.ruleId}
+                                                        onchange={handlePredicateTypeChange}
                                                     ></lightning-combobox>
                                                 </div>
                                                 <div class="slds-col slds-size_5-of-12">
-                                                    <lightning-input
-                                                        label="API name"
-                                                        placeholder="V360_Agent"
+                                                    <c-search-picker
+                                                        label={rule.predicateTargetLabel}
+                                                        placeholder={rule.predicateTargetPlaceholder}
+                                                        options={rule.predicateTargetOptions}
+                                                        value={rule.predicateTarget}
+                                                        disabled={busy}
                                                         data-id={rule.targetFieldId}
-                                                    ></lightning-input>
+                                                        data-rule-id={rule.ruleId}
+                                                        onselect={handlePredicateTargetSelect}
+                                                    ></c-search-picker>
                                                 </div>
                                                 <div class="slds-col slds-size_2-of-12">
                                                     <div class="slds-form-element">
@@ -591,7 +656,9 @@
                                             </template>
                                         </div>
                                     </div>
+                                    </div>
                                 </template>
+                                </div>
                                 </template>
                             </template>
 
@@ -693,13 +760,13 @@
                     </template>
 
                     <template lwc:else>
-                        <c-v360-empty-state
+                        <c-empty-state
                             data-id="no-card"
                             title="No card open"
                             illustration-name="noresults:unknown"
                             alternative-text="No results illustration"
                             description="Pick a card from the list to edit its tile, its rules, and its release state."
-                        ></c-v360-empty-state>
+                        ></c-empty-state>
                     </template>
                 </div>
             </div>
@@ -799,6 +866,73 @@
                         <lightning-button label="Cancel" data-id="nt-cancel" onclick={handleCloseModals}></lightning-button>
                         <lightning-button variant="brand" label="Save tab" class="slds-m-left_x-small" data-id="nt-save" disabled={busy} onclick={handleSaveTab}></lightning-button>
                     </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <template lwc:if={helpOpen}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="help-title" class="slds-modal slds-modal_medium slds-fade-in-open" data-id="help-modal">
+            <div class="slds-modal__container">
+                <div class="slds-modal__header">
+                    <h2 id="help-title" class="slds-modal__title">How Vista 360 configuration works</h2>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <ul class="slds-list_dotted">
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Tabs</strong> are surfaces anchored to one object. A record page reaches a tab
+                            by its developer name, so that name is locked once created — renaming it would leave
+                            the page pointing at nothing, and the deployment that did it would still report
+                            success.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Cards</strong> bind to a registered Lightning component or an active screen
+                            flow. The picker only offers registered components, so a saved binding always
+                            resolves.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Drafts</strong> are invisible to end users, whatever their rules say. Work a
+                            card out fully, then activate it from Release.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Visibility rules</strong> decide who sees a live card. Each rule is one
+                            <em>way to qualify</em>, so a user passing any single <em>active</em> rule sees the
+                            card. Within one rule the opposite holds: its formula and every required access it
+                            lists must all hold together. Two audiences, two rules — that is how a card reaches
+                            collections <em>or</em> risk, which no single formula can express because a Permission
+                            Set is not readable from one.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            A rule switched <strong>Off</strong> is skipped entirely — not a path that failed, but
+                            one that is not there. A card whose rules are all Off is as open as one with no rules
+                            at all, which is why this console counts active rules and not stored ones.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Formulas</strong> read fields of the anchor object plus four identity globals:
+                            <code>$Permission</code> (a Custom Permission), <code>$Profile</code>,
+                            <code>$User</code> and <code>$UserRole</code>. Compare picklists with
+                            <code>ISPICKVAL()</code>, not <code>=</code>. 3,900 characters maximum. Check the
+                            syntax before saving — the engine is the authority, not the pickers.
+                        </li>
+                        <li class="slds-m-bottom_x-small">
+                            <strong>Required access</strong> is what a formula cannot express. Permission set
+                            membership is not readable from a formula at all, so it is a predicate here, enforced
+                            on top of the formula and never instead of it. Field read access works the same way.
+                        </li>
+                        <li>
+                            <strong>Kill switch</strong> hides a card everywhere at once without evaluating a
+                            single rule. It is the incident control; deactivating is the ordinary one.
+                        </li>
+                    </ul>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button
+                        variant="brand"
+                        label="Got it"
+                        data-id="help-close"
+                        onclick={handleCloseModals}
+                    ></lightning-button>
                 </div>
             </div>
         </section>

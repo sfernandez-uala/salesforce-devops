@@ -19,6 +19,13 @@ private class V360VisibilityEvaluatorTest {
         return card;
     }
 
+    /** The same card, switched to reading its rules as alternatives. */
+    private static V360CardCatalogDTO cardMatchingAnyRule(Id cardId, String developerName) {
+        V360CardCatalogDTO card = visibleCard(cardId, developerName);
+        card.ruleMatchLogic = 'ANY';
+        return card;
+    }
+
     /**
      * A default active rule row with the given formula and no predicates.
      * Individual tests mutate the returned instance (active, predicates)
@@ -340,16 +347,25 @@ private class V360VisibilityEvaluatorTest {
         }
     }
 
+    /**
+     * The safety test for the whole feature: a card that says nothing about
+     * how its rules combine gets the restrictive reading.
+     *
+     * Everything else here can be argued about. This cannot: a card created
+     * before the setting existed, restored from a data load, or built by a
+     * caller that never heard of it must not silently become an OR. Note
+     * that the card is the plain helper -- ruleMatchLogic is never assigned.
+     */
     @IsTest
-    static void allActiveRuleRowsMustPassForACardWithMultipleRules() {
+    static void aCardThatDoesNotChooseItsMatchLogicRequiresEveryRule() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
-            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 18);
-            Id passingRuleId = V360TestStubs.fakeId(Account.SObjectType, 19);
-            Id failingRuleId = V360TestStubs.fakeId(Account.SObjectType, 20);
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 38);
+            Id passingRuleId = V360TestStubs.fakeId(Account.SObjectType, 39);
+            Id failingRuleId = V360TestStubs.fakeId(Account.SObjectType, 40);
 
             V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
             catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
-                visibleCard(cardId, 'MultiRuleCard')
+                visibleCard(cardId, 'UnsetLogicCard')
             });
 
             V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
@@ -374,8 +390,208 @@ private class V360VisibilityEvaluatorTest {
 
             Assert.isTrue(
                 visible.isEmpty(),
-                'When a card has multiple active rule rows, every one must pass — one failing rule hides the card'
+                'With no match logic chosen the rules are requirements, so one failing rule hides the card'
             );
+        }
+    }
+
+    /** An unrecognised value is not a licence to loosen: it reads as ALL too. */
+    @IsTest
+    static void anUnrecognisedMatchLogicRequiresEveryRule() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 41);
+            Id failingRuleId = V360TestStubs.fakeId(Account.SObjectType, 42);
+
+            V360CardCatalogDTO card = visibleCard(cardId, 'GarbageLogicCard');
+            card.ruleMatchLogic = 'SOMETHING_ELSE';
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{ card });
+
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
+                ruleWithFormula(failingRuleId, 'FailingRule', 'false')
+            }));
+
+            V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
+            formulaEngine.resultByFormula.put('false', false);
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.isTrue(visible.isEmpty(), 'Only the exact ANY value may loosen a card');
+        }
+    }
+
+    /**
+     * Under ANY each rule row is one way to qualify, not one more hurdle: a
+     * card shown to two audiences needs two rules, because a Permission Set
+     * cannot be read from a formula and the predicates inside a single rule
+     * are all required together.
+     */
+    @IsTest
+    static void anySinglePassingRuleRowMakesTheCardVisible() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 18);
+            Id passingRuleId = V360TestStubs.fakeId(Account.SObjectType, 19);
+            Id failingRuleId = V360TestStubs.fakeId(Account.SObjectType, 20);
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
+                cardMatchingAnyRule(cardId, 'MultiRuleCard')
+            });
+
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
+                ruleWithFormula(failingRuleId, 'FailingRule', 'false'),
+                ruleWithFormula(passingRuleId, 'PassingRule', 'true')
+            }));
+
+            V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
+            formulaEngine.resultByFormula.put('true', true);
+            formulaEngine.resultByFormula.put('false', false);
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.areEqual(
+                1,
+                visible.size(),
+                'One rule row passing is one qualifying path, and that is enough to show the card'
+            );
+        }
+    }
+
+    /**
+     * A rule that requires nothing is not a way in.
+     *
+     * This only bites once rows are alternatives. Under an "all must pass"
+     * reading an unconfigured row was harmless — it passed, and the other
+     * rows still did the work. As an alternative it would pass for everyone
+     * and hand the whole card over. That turns "New rule", clicked to add a
+     * second audience, into an exposure lasting until the row is filled in:
+     * the admin restricting a card would be opening it.
+     */
+    @IsTest
+    static void anUnconfiguredRuleRowIsNotAQualifyingPath() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 33);
+            Id realRuleId = V360TestStubs.fakeId(Account.SObjectType, 34);
+            Id emptyRuleId = V360TestStubs.fakeId(Account.SObjectType, 35);
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
+                cardMatchingAnyRule(cardId, 'HalfEditedCard')
+            });
+
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
+                ruleWithFormula(realRuleId, 'RestrictingRule', 'false'),
+                // Exactly what "New rule" leaves behind: no formula, no predicates.
+                ruleWithFormula(emptyRuleId, 'JustCreatedRule', null)
+            }));
+
+            V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
+            formulaEngine.resultByFormula.put('false', false);
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.isTrue(
+                visible.isEmpty(),
+                'A rule row that asks for nothing must not open the card to everyone while it is being written'
+            );
+        }
+    }
+
+    /**
+     * The flip side, and why the empty row is skipped rather than failed: a
+     * card carrying nothing but unconfigured rows restricts no one, which is
+     * the same position as a card with no rows at all.
+     */
+    @IsTest
+    static void cardWithOnlyUnconfiguredRuleRowsStaysVisible() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 36);
+            Id emptyRuleId = V360TestStubs.fakeId(Account.SObjectType, 37);
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
+                cardMatchingAnyRule(cardId, 'BlankRuleCard')
+            });
+
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
+                ruleWithFormula(emptyRuleId, 'JustCreatedRule', null)
+            }));
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.areEqual(1, visible.size(), 'Rules that ask for nothing leave the card as unrestricted as no rules would');
+        }
+    }
+
+    /** The other half of the same rule: every active path failing hides it. */
+    @IsTest
+    static void cardIsHiddenWhenEveryActiveRuleRowFails() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            Id cardId = V360TestStubs.fakeId(Account.SObjectType, 30);
+            Id firstRuleId = V360TestStubs.fakeId(Account.SObjectType, 31);
+            Id secondRuleId = V360TestStubs.fakeId(Account.SObjectType, 32);
+
+            V360TestStubs.StubCardCatalogSource catalogSource = new V360TestStubs.StubCardCatalogSource();
+            catalogSource.cardsByTabApiName.put(TAB_API_NAME, new List<V360CardCatalogDTO>{
+                cardMatchingAnyRule(cardId, 'NoPathCard')
+            });
+
+            V360TestStubs.StubCardRuleSource ruleSource = new V360TestStubs.StubCardRuleSource();
+            ruleSource.ruleGraphByCardId.put(cardId, new V360RuleGraph(cardId, new List<V360RuleGraph.RuleRow>{
+                ruleWithFormula(firstRuleId, 'FirstRule', 'false'),
+                ruleWithFormula(secondRuleId, 'SecondRule', 'false')
+            }));
+
+            V360TestStubs.StubFormulaEngine formulaEngine = new V360TestStubs.StubFormulaEngine();
+            formulaEngine.resultByFormula.put('false', false);
+
+            V360VisibilityEvaluator.Services services = defaultServices();
+            services.catalogSource = catalogSource;
+            services.ruleSource = ruleSource;
+            services.formulaEngine = formulaEngine;
+            V360VisibilityEvaluator evaluator = new V360VisibilityEvaluator(services);
+
+            Test.startTest();
+            List<V360CardDecision> visible = evaluator.evaluate(UserInfo.getUserId(), TAB_API_NAME, new Account(Name = 'Probe'));
+            Test.stopTest();
+
+            Assert.isTrue(visible.isEmpty(), 'With no qualifying path left, the card stays hidden');
         }
     }
 

@@ -189,15 +189,31 @@ public with sharing class V360AdminService {
         try {
             new V360FormulaGateway().build(formulaText, sObjectType);
         } catch (Exception buildException) {
-            throw new V360AdminServiceException(
-                'Formula failed to validate: ' + buildException.getMessage(),
-                buildException
-            );
+            // The gateway's message already says the formula failed to build
+            // and why. Prefixing it again produced "Formula failed to
+            // validate: Formula failed to build: Syntax error", which buries
+            // the only part an admin can act on.
+            throw new V360AdminServiceException(buildException.getMessage(), buildException);
         }
     }
 
+    /**
+     * Whether the running user may manage Vista 360 visibility at all.
+     *
+     * Public so that the read-only surfaces gate on the same answer instead of
+     * each repeating the custom permission's API name. Three copies of that
+     * string already existed and one of them was wrong, which cost a silently
+     * empty vocabulary rather than an error -- the exact failure this project
+     * builds pickers to spare admins.
+     *
+     * @return true when the running user holds V360_ManageVisibilityRules
+     */
+    public static Boolean hasManagePermission() {
+        return FeatureManagement.checkPermission(MANAGE_PERMISSION);
+    }
+
     private static void requireManagePermission() {
-        if (!FeatureManagement.checkPermission(MANAGE_PERMISSION)) {
+        if (!hasManagePermission()) {
             throw new V360AdminServiceException('You do not have permission to manage Vista 360 visibility rules.');
         }
     }

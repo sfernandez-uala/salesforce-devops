@@ -12,25 +12,47 @@
     display: block;
 }
 
+/* The builder fills the Lightning tab so the panes below can bound their own
+   scroll: without a height the row grows with its tallest pane and the page
+   scrolls instead, carrying the card list off screen.
+
+   The height is a ceiling, not a fixed value. What sits above the component --
+   app navigation, a console tab bar, the debug banner -- varies, and a
+   subtraction that guesses wrong makes the builder taller than the space it
+   has, which is what put the page back in charge of scrolling. Bounding it to
+   the small viewport unit means it never exceeds what is actually there, and
+   the sticky header covers the remainder either way. */
 .v360-builder {
     display: flex;
     flex-direction: column;
-    /* The builder fills the Lightning tab so the panes below can bound their
-       own scroll. Without a height on the shell the row grows with its
-       tallest pane and the whole page scrolls instead -- which is what makes
-       a long rules list carry the card list off screen. */
-    height: calc(100vh - 3.5rem);
+    /* Fills exactly the space left below whatever sits above the component,
+       measured rather than guessed: --v360-builder-top is written by the
+       component from its own offset. A subtracted constant was wrong twice --
+       too large and the builder fell short of the page, too small and it
+       overflowed and handed scrolling back to the page. What is above varies
+       (app navigation, a console tab bar, the debug banner) and only the
+       element itself knows how much. */
+    height: calc(100svh - var(--v360-builder-top, 0px));
     min-height: 34rem;
     background: var(--v360-color-surface-hover);
 }
 
-/* The builder-header blueprint pins its container to the viewport, which is
-   right for a standalone builder app that owns the whole window and wrong
-   inside a Lightning tab -- there it lands on top of Salesforce's own
-   navigation. Everything else about the header comes from SLDS untouched;
-   this releases the pin so the header sits at the top of the component. */
-.slds-builder-header_container {
-    position: static;
+/* The header stays put while everything under it scrolls.
+
+   sticky, not fixed: fixed leaves the flow and positions against the viewport,
+   which is how the blueprint's own container ends up over Salesforce's
+   navigation. sticky positions against this component's scroll container, so
+   the header holds its place inside the builder and nowhere else.
+
+   SLDS's position utilities cover static, relative, absolute and fixed --
+   slds-is-static and friends, which is why the shell below uses
+   slds-is-relative rather than a rule of its own. There is no sticky among
+   them, so this one is ours. */
+.v360-builder-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    flex: 0 0 auto;
 }
 
 .v360-builder-body {

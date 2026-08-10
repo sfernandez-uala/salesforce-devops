@@ -71,6 +71,51 @@ private class V360AdminControllerTest {
      * if it had none. A single total cannot express that difference, so the
      * catalog reports both counts and the console warns on the effective one.
      */
+    /**
+     * The editor offers only what V360FormulaGateway enables. Permission sets
+     * are absent on purpose: $Permission is a Custom Permission, and permission
+     * set membership is the PERMISSION_SET predicate's job, not a formula's.
+     */
+    @IsTest
+    static void formulaVocabularyServesInsertableIdentityValues() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360RuleVocabulary.FormulaVocabulary vocabulary = V360RuleVocabulary.getFormulaVocabulary();
+            Test.stopTest();
+
+            Assert.isNotNull(vocabulary.customPermissions, 'Custom permissions must always be a list');
+            Assert.isNotNull(vocabulary.profiles, 'Profiles must always be a list');
+            Assert.isFalse(vocabulary.profiles.isEmpty(), 'Every org has at least one profile');
+
+            V360RuleVocabulary.Entry profileEntry = vocabulary.profiles[0];
+            Assert.isNotNull(profileEntry.label, 'A profile entry needs a label to pick from');
+            // A profile name carries spaces, so the inserted text has to quote
+            // it or the formula will not build.
+            Assert.isTrue(
+                profileEntry.insertText.startsWith('$Profile.Name = "'),
+                'A profile must be inserted as a quoted comparison, got: ' + profileEntry.insertText
+            );
+        }
+    }
+
+    @IsTest
+    static void formulaVocabularyIsEmptyWithoutTheManagePermission() {
+        User plainUser = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, null);
+
+        System.runAs(plainUser) {
+            Test.startTest();
+            V360RuleVocabulary.FormulaVocabulary vocabulary = V360RuleVocabulary.getFormulaVocabulary();
+            Test.stopTest();
+
+            // Empty rather than an error: the console already renders its own
+            // access state from getCatalog.
+            Assert.isTrue(vocabulary.customPermissions.isEmpty(), 'No vocabulary without the manage permission');
+            Assert.isTrue(vocabulary.profiles.isEmpty(), 'No vocabulary without the manage permission');
+        }
+    }
+
     @IsTest
     static void getCatalogCountsActiveRulesSeparatelyFromTheTotal() {
         User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
@@ -85,7 +130,10 @@ private class V360AdminControllerTest {
             'V360Test_ActiveRules_ParkedOnly',
             new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360LifecycleDemo', Order__c = 2)
         );
-        V360TestDataFactory.insertCardRule(guarded.Id, 'V360Test_ActiveRules_On', null);
+        // Carries a formula on purpose: a rule that asks for nothing restricts
+        // nobody whatever its Active flag says, so a blank one here would have
+        // the fixture assert the opposite of what it is set up to prove.
+        V360TestDataFactory.insertCardRule(guarded.Id, 'V360Test_ActiveRules_On', '$User.IsActive');
         // The factory activates every rule it inserts, so park these two in a
         // second DML -- the state a data load or a sandbox refresh can produce.
         V360_CardRule__c parkedOnGuarded = V360TestDataFactory.insertCardRule(
@@ -120,6 +168,99 @@ private class V360AdminControllerTest {
                 adminTab.cards[1].activeRuleCount,
                 'A card whose every rule is parked restricts nobody and must report zero'
             );
+        }
+    }
+
+    /**
+     * A rule can be switched on and still restrict nobody: with no formula and
+     * no required access it asks for nothing, which adds no requirement under
+     * ALL and is refused as a way in under ANY.
+     *
+     * It has to be excluded from the enforced count because every exposure
+     * warning in the console turns on that number — counting it would let the
+     * screen call a wide-open card guarded, which is the one lie this surface
+     * cannot tell.
+     */
+    @IsTest
+    static void activeRuleThatAsksForNothingDoesNotCountAsEnforced() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_EmptyRule_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_EmptyRule_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+        // Exactly what "New rule" leaves behind before anything is written.
+        V360TestDataFactory.insertCardRule(card.Id, 'V360Test_EmptyRule_Blank', null);
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.AdminCatalog catalog = V360AdminController.getCatalog();
+            Test.stopTest();
+
+            V360AdminController.AdminCard adminCard = findTab(catalog, 'V360Test_EmptyRule_Tab').cards[0];
+            Assert.areEqual(1, adminCard.ruleCount, 'The rule is stored and must be reported as stored');
+            Assert.areEqual(
+                0,
+                adminCard.activeRuleCount,
+                'A rule that asks for nothing restricts nobody, however active it is'
+            );
+        }
+    }
+
+    /** Cards say how their rules combine, and say ALL until told otherwise. */
+    @IsTest
+    static void catalogReportsRuleMatchLogicAndDefaultsItToAll() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_MatchLogic_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_MatchLogic_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+
+        System.runAs(admin) {
+            Test.startTest();
+            V360AdminController.AdminCatalog beforeChange = V360AdminController.getCatalog();
+            V360AdminController.setRuleMatchLogic(card.Id, 'ANY');
+            V360AdminController.AdminCatalog afterChange = V360AdminController.getCatalog();
+            Test.stopTest();
+
+            Assert.areEqual(
+                'ALL',
+                findTab(beforeChange, 'V360Test_MatchLogic_Tab').cards[0].ruleMatchLogic,
+                'A card that has never been told how to combine its rules requires all of them'
+            );
+            Assert.areEqual(
+                'ANY',
+                findTab(afterChange, 'V360Test_MatchLogic_Tab').cards[0].ruleMatchLogic,
+                'The chosen combinator must come back from the catalog'
+            );
+        }
+    }
+
+    /** Only ALL and ANY mean anything; anything else is a mistake, said out loud. */
+    @IsTest
+    static void setRuleMatchLogicRejectsAnythingButAllOrAny() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+        V360_Tab__c tab = V360TestDataFactory.insertTab('V360Test_BadLogic_Tab', 'Account');
+        V360_Card__c card = V360TestDataFactory.insertCard(
+            tab.Id,
+            'V360Test_BadLogic_Card',
+            new V360_Card__c(ComponentType__c = 'LWC', ComponentName__c = 'v360AccountSnapshot', Order__c = 1)
+        );
+
+        System.runAs(admin) {
+            Boolean rejected = false;
+            Test.startTest();
+            try {
+                V360AdminController.setRuleMatchLogic(card.Id, 'SOMETIMES');
+            } catch (Exception expected) {
+                rejected = true;
+            }
+            Test.stopTest();
+
+            Assert.isTrue(rejected, 'An unrecognised combinator must be refused rather than quietly stored');
         }
     }
 
@@ -235,10 +376,22 @@ private class V360AdminControllerTest {
 
             Assert.isTrue(good.isValid, 'A well-formed formula must validate: ' + good.message);
             Assert.isFalse(bad.isValid, 'A malformed formula must be rejected');
+            // What matters is that the engine's own sentence survives to the
+            // admin, not that a layer of our own prefixes wraps it. The
+            // previous assertion pinned the prefix, which is how the message
+            // ended up reading "Formula failed to validate: Formula failed to
+            // build: Syntax error".
             Assert.isTrue(
-                bad.message.startsWith('Formula failed to validate'),
-                'The rejection carries the engine message: ' + bad.message
+                bad.message.contains('Syntax error'),
+                'The rejection must carry what the engine actually objected to: ' + bad.message
             );
+            Assert.isFalse(
+                bad.message.contains('failed to validate: Formula failed to build'),
+                'The rejection must not stack one prefix on another: ' + bad.message
+            );
+            // The platform writes its build errors for the Setup UI, anchor tag
+            // and all. None of that markup may reach a client.
+            Assert.isFalse(bad.message.contains('<'), 'The rejection must carry no markup: ' + bad.message);
         }
     }
 
@@ -507,24 +660,21 @@ private class V360AdminControllerTest {
             createInput.developerName = 'V360Test_TabAbm';
             createInput.sObjectApiName = 'Case';
             createInput.sequence = 5;
-            createInput.active = true;
             V360AdminController.saveTab(createInput);
 
-            V360_Tab__c created = [SELECT Id, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'];
+            V360_Tab__c created = [SELECT Id FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'];
             V360AdminController.TabInput updateInput = new V360AdminController.TabInput();
             updateInput.tabId = created.Id;
             updateInput.developerName = 'V360Test_TabAbm';
             updateInput.sObjectApiName = 'Case';
             updateInput.sequence = 6;
-            updateInput.active = false;
             V360AdminController.saveTab(updateInput);
             Test.stopTest();
 
             V360_Tab__c updated = [
-                SELECT Sequence__c, Active__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'
+                SELECT Sequence__c FROM V360_Tab__c WHERE DeveloperName__c = 'V360Test_TabAbm'
             ];
             Assert.areEqual(6, updated.Sequence__c, 'The sequence must round-trip on update');
-            Assert.isFalse(updated.Active__c, 'The active flag must round-trip on update');
         }
     }
 
@@ -540,7 +690,6 @@ private class V360AdminControllerTest {
                 input.developerName = 'V360Test_BadAnchor';
                 input.sObjectApiName = 'No_Such_Object__c';
                 input.sequence = 1;
-                input.active = true;
                 V360AdminController.saveTab(input);
             } catch (AuraHandledException expected) {
                 threw = true;

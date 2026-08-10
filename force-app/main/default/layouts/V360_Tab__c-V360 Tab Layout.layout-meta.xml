@@ -64,7 +64,6 @@
         <fields>ComponentType__c</fields>
         <fields>ComponentName__c</fields>
         <fields>Order__c</fields>
-        <fields>Active__c</fields>
         <relatedList>V360_Card__c.Tab__c</relatedList>
     </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>

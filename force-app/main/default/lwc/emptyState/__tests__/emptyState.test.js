@@ -1,14 +1,14 @@
 import { createElement } from 'lwc';
-import V360EmptyState from 'c/v360EmptyState';
+import EmptyState from 'c/emptyState';
 
 function createEmptyState(props) {
-    const element = createElement('c-v360-empty-state', { is: V360EmptyState });
+    const element = createElement('c-empty-state', { is: EmptyState });
     Object.assign(element, props);
     document.body.appendChild(element);
     return element;
 }
 
-describe('c-v360-empty-state', () => {
+describe('c-empty-state', () => {
     afterEach(() => {
         while (document.body.firstChild) {
             document.body.removeChild(document.body.firstChild);

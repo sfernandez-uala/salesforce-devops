@@ -1,0 +1,62 @@
+/**
+ * Almost nothing lives here on purpose. Sizing comes from the dropdown
+ * blueprint's own modifiers (slds-dropdown_medium, slds-dropdown_length-10),
+ * spacing and type from SLDS utility classes in the template, and colour from
+ * the dropdown component's own hooks. What remains is the three things SLDS
+ * has no expression for.
+ */
+@import 'c/v360Styles';
+
+/* The trigger and its dropdown need a shared positioning context; the
+   blueprint assumes the trigger provides one. */
+.v360-formula-menu {
+    position: relative;
+    display: inline-block;
+}
+
+/* An option carries a value and what that value is, so it stacks two lines
+   where slds-dropdown__item expects one anchor. Its colours are the
+   dropdown's own component hooks rather than anything of ours, so a theme
+   change reaches this list too. */
+.v360-formula-option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: var(--slds-c-dropdown-item-color, inherit);
+}
+
+.v360-formula-option:hover,
+.v360-formula-option:focus {
+    background: var(--slds-c-dropdown-item-color-background-hover, var(--v360-color-surface-hover));
+}
+
+.v360-formula-option:focus-visible {
+    outline: 2px solid var(--v360-color-brand);
+    outline-offset: -2px;
+}
+
+/* The insertable value is tinted so it reads apart from the grey detail under
+   it -- but it is not a link and must not behave like one. slds-text-link
+   carried an underline on hover and focus, which read as navigation on a row
+   whose whole surface is already the button. */
+.v360-formula-option-label {
+    color: var(--v360-color-brand);
+    text-decoration: none;
+}
+
+/* Formulas and API names read as code. */
+.v360-formula-mono {
+    font-family: var(--v360-font-family-mono);
+}
+
+/* A formula is edited across lines, and only the block axis may grow: a
+   horizontal resize would push past the pane it sits in. */
+.v360-formula-input {
+    font-family: var(--v360-font-family-mono);
+    resize: vertical;
+}

@@ -50,8 +50,30 @@ public with sharing class V360FormulaGateway implements IFormulaEngine {
                 .build();
         } catch (Exception buildException) {
             this.builtFormula = null;
-            throw new V360FormulaGatewayException('Formula failed to build: ' + buildException.getMessage(), buildException);
+            throw new V360FormulaGatewayException(readable(buildException.getMessage()), buildException);
         }
+    }
+
+    /**
+     * The platform's build error is written for the Setup UI, not for an API
+     * caller: it carries an anchor tag whose href is a javascript: call into
+     * Setup's own popup helper. Rendered anywhere else that markup is either
+     * escaped into a wall of text or, worse, live. Tags are stripped, the
+     * now-orphaned "Tell me more" goes with them, and the whitespace the tag
+     * left behind is collapsed, so what reaches an admin is the sentence that
+     * actually says what is wrong.
+     *
+     * @param platformMessage the raw message from the formula engine
+     * @return the same message with the Setup-only markup removed
+     */
+    private static String readable(String platformMessage) {
+        if (String.isBlank(platformMessage)) {
+            return 'Formula failed to build.';
+        }
+        String stripped = platformMessage.replaceAll('<[^>]*>', ' ');
+        stripped = stripped.replaceAll('(?i)\\s*Tell me more\\s*$', '');
+        stripped = stripped.replaceAll('\\s+', ' ').trim();
+        return String.isBlank(stripped) ? 'Formula failed to build.' : stripped;
     }
 
     public Boolean evaluate(SObject record) {

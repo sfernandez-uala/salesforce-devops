@@ -13,12 +13,20 @@
             <objects>
                 <object>Account</object>
             </objects>
+            <!-- No default on purpose: a fallback would leave a newly placed
+                 component rendering another tab's cards and looking configured
+                 while nobody had chosen anything.
+
+                 Not marked required either, though it is: Salesforce refuses to
+                 change a property's requiredness once the component sits on a
+                 Lightning page, so the component enforces it itself by
+                 rendering a state that names the gap. -->
             <property
                 name="tabApiName"
                 type="String"
-                default="AccountOverview"
-                label="Tab Developer Name"
-                description="The V360_Tab__c.DeveloperName__c whose visible cards this shell renders."
+                label="Tab"
+                datasource="apex://V360TabPicklist"
+                description="Which configured Vista 360 tab this placement renders. The list offers the tabs anchored on this page's object; without one the component renders nothing."
             />
         </targetConfig>
     </targetConfigs>

@@ -1,0 +1,114 @@
+<template>
+    <div class="slds-form-element">
+        <span class="slds-form-element__label slds-show slds-m-bottom_x-small">Visibility formula</span>
+
+        <!-- Insert helpers. Each writes at the caret, so a formula can be built
+             from the middle out the way one is actually written. They are the
+             button variant of the shared picker: the choice is an action, not a
+             value the control keeps. -->
+        <div class="slds-grid slds-wrap slds-m-bottom_x-small" role="group" aria-label="Insert into formula">
+            <c-search-picker
+                variant="button"
+                trigger-label="Field"
+                label="Insert a field"
+                placeholder="Search by label or API name"
+                options={fieldOptions}
+                disabled={busy}
+                class="slds-m-right_x-small slds-m-bottom_xx-small"
+                data-id="menu-field"
+                onselect={handleInsertSelection}
+            ></c-search-picker>
+
+            <c-search-picker
+                variant="button"
+                trigger-label="Identity"
+                label="Insert an identity value"
+                placeholder="Custom permission, profile, user field"
+                options={identityOptions}
+                disabled={busy}
+                class="slds-m-right_x-small slds-m-bottom_xx-small"
+                data-id="menu-identity"
+                onselect={handleInsertSelection}
+            ></c-search-picker>
+
+            <c-search-picker
+                variant="button"
+                trigger-label="Function"
+                label="Insert a function"
+                placeholder="Search functions"
+                options={functionOptions}
+                disabled={busy}
+                class="slds-m-right_x-small slds-m-bottom_xx-small"
+                data-id="menu-function"
+                onselect={handleInsertSelection}
+            ></c-search-picker>
+
+            <c-search-picker
+                variant="button"
+                trigger-label="Operator"
+                label="Insert an operator"
+                placeholder="Search operators"
+                options={operatorOptions}
+                disabled={busy}
+                class="slds-m-right_x-small slds-m-bottom_xx-small"
+                data-id="menu-operator"
+                onselect={handleInsertSelection}
+            ></c-search-picker>
+        </div>
+
+        <!-- A native textarea, not lightning-textarea: inserting at the caret
+             needs selectionStart, which lives in the base component's own
+             shadow root and cannot be reached from here. -->
+        <div class="slds-form-element__control">
+            <textarea
+                class="slds-textarea v360-formula-input"
+                spellcheck="false"
+                rows="6"
+                aria-label="Visibility formula"
+                data-id="formula"
+                disabled={busy}
+                oninput={handleInput}
+            ></textarea>
+        </div>
+
+        <div class="slds-grid slds-grid_vertical-align-start slds-m-top_xx-small">
+            <!-- How this rule combines with the others is the card's business
+                 and is stated once, beside the control that sets it. Saying it
+                 again here made this editor claim every rule must pass, which
+                 stopped being true the moment a card could say otherwise. -->
+            <p class="slds-text-body_small slds-text-color_weak slds-grow">
+                Evaluated against <strong>{anchorLabel}</strong>.
+                Permission sets are not readable from a formula — use the required access below.
+            </p>
+            <p class={countClass} data-id="char-count">{characterCount}</p>
+        </div>
+
+        <template lwc:if={isOverLength}>
+            <p class="slds-text-body_small slds-text-color_error" data-id="over-length">
+                The platform rejects a formula longer than 3900 characters, so this one cannot be
+                saved as it stands.
+            </p>
+        </template>
+
+        <template lwc:if={feedbackMessage}>
+            <p class={feedbackClass} data-id="feedback">{feedbackMessage}</p>
+        </template>
+
+        <div class="slds-m-top_x-small">
+            <lightning-button
+                label="Check syntax"
+                data-id="validate"
+                disabled={busy}
+                onclick={handleValidate}
+                class="slds-m-right_x-small"
+            ></lightning-button>
+            <lightning-button
+                variant="brand"
+                label="Save rule"
+                data-id="save"
+                disabled={busy}
+                onclick={handleSave}
+            ></lightning-button>
+        </div>
+    </div>
+</template>

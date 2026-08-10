@@ -1,7 +1,7 @@
 <template>
     <div class="slds-p-horizontal_medium slds-p-bottom_small">
         <template lwc:if={hasError}>
-            <c-v360-empty-state
+            <c-empty-state
                 data-id="error-state"
                 title="Something went wrong"
                 illustration-name="error:recoverable"
@@ -9,7 +9,7 @@
                 description="Unable to load account details right now."
                 retry-label="Retry"
                 onretry={handleRetry}
-            ></c-v360-empty-state>
+            ></c-empty-state>
         </template>
         <template lwc:elseif={isSkeleton}>
             <div class="slds-form" role="presentation" data-id="skeleton-state" aria-hidden="true">
@@ -43,13 +43,13 @@
                 </template>
             </div>
             <template lwc:if={hasNoVisibleFields}>
-                <c-v360-empty-state
+                <c-empty-state
                     data-id="no-fields-state"
                     title="No account details available"
                     illustration-name="access:request"
                     alternative-text="No access illustration"
                     description="No account details are available for this user."
-                ></c-v360-empty-state>
+                ></c-empty-state>
             </template>
         </template>
     </div>
