@@ -20,6 +20,7 @@
     -->
     <types>
         <members>v360EmptyState</members>
+        <members>v360IconCatalog</members>
         <members>v360AdminConsole</members>
         <name>LightningComponentBundle</name>
     </types>

@@ -1,6 +1,6 @@
-import { getCategories } from 'c/v360IconCatalog';
+import { getCategories } from 'c/iconCatalog';
 
-describe('c/v360IconCatalog', () => {
+describe('c/iconCatalog', () => {
     it('returns the five SLDS icon categories, each with names', () => {
         const categories = getCategories();
 

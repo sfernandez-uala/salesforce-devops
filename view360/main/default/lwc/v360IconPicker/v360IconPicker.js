@@ -1,5 +1,5 @@
 import { LightningElement, api } from 'lwc';
-import { getCategories } from 'c/v360IconCatalog';
+import { getCategories } from 'c/iconCatalog';
 
 const MAX_VISIBLE_WHEN_BROWSING = 120;
 const DEFAULT_CATEGORY = 'standard';

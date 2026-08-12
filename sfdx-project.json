@@ -3,6 +3,15 @@
     {
       "path": "force-app",
       "default": true
+    },
+    {
+      "path": "shared"
+    },
+    {
+      "path": "view360"
+    },
+    {
+      "path": "demo" 
     }
   ],
   "name": "developer",

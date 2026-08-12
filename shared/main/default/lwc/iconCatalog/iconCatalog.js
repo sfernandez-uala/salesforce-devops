@@ -4,6 +4,11 @@
  * reference so every listed name is a real, renderable icon -- the icon
  * picker never has to guess a name. Bare names only; callers compose the
  * `category:name` form lightning-icon expects.
+ *
+ * Named for what it holds rather than for the feature that first needed it:
+ * an inventory of platform icons belongs to no domain, and the custom icons
+ * an org adds later will belong to no domain either. Lives in the shared
+ * package directory for the same reason.
  */
 const CATEGORIES = [
     {

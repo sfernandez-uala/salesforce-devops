@@ -1,13 +1,22 @@
 import fs from 'fs';
 import path from 'path';
-import PipelineProbe from 'c/pipelineProbe';
 import V360AccountSnapshot from 'c/v360AccountSnapshot';
 import { has, load } from 'c/v360CardRegistry';
 
 describe('c-v360-card-registry', () => {
     it('knows its registered component names', () => {
-        expect(has('pipelineProbe')).toBe(true);
         expect(has('v360AccountSnapshot')).toBe(true);
+    });
+
+    /**
+     * The decoupling this package depends on: naming a component here obliges
+     * every org receiving this file to have it, and Salesforce enforces that
+     * at deploy time. So nothing from the demo package directory may appear.
+     */
+    it('names nothing from the demo package directory', () => {
+        expect(has('pipelineProbe')).toBe(false);
+        expect(has('v360LifecycleDemo')).toBe(false);
+        expect(has('v360StateProbe')).toBe(false);
     });
 
     it('does not know unknown, blank, or missing component names', () => {
@@ -17,7 +26,6 @@ describe('c-v360-card-registry', () => {
     });
 
     it('loads a known component name to its constructor', async () => {
-        await expect(load('pipelineProbe')).resolves.toBe(PipelineProbe);
         await expect(load('v360AccountSnapshot')).resolves.toBe(V360AccountSnapshot);
     });
 
