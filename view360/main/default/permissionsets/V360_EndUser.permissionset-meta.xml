@@ -1,10 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <label>V360 End User</label>
-    <description>Vista 360 shell access for end users. Grants Apex access to V360VisibilityController (the read-only visibility boundary) for v360Shell. Grants no permission on the Vista 360 configuration objects — the core security boundary for this feature.</description>
+    <description>Vista 360 shell access for end users: Apex access to V360VisibilityController, and Read on V360_ConfigChange__e so an open shell hears that its catalog changed. No permission on the configuration objects — the core security boundary here.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <classAccesses>
         <apexClass>V360VisibilityController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
+    <!--
+        Read on the event, and only Read: subscribing through empApi is checked
+        against object access, so without this an end user's shell fails to
+        subscribe and simply never hears that an admin activated a card. It is
+        not Create, because nothing an end user does announces a config change.
+
+        Read here grants no access to configuration: a V360_ConfigChange__e
+        carries a tab's developer name and a change type, which the shell was
+        already given in its own page property.
+    -->
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>V360_ConfigChange__e</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
 </PermissionSet>
