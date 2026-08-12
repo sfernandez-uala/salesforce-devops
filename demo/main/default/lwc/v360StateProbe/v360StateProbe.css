@@ -1,0 +1,26 @@
+/* Figures are read by comparing them against each other, so they line up
+   like a column of numbers rather than flowing like prose. */
+.v360-probe-figure {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.25rem;
+    line-height: 1.2;
+}
+
+/* A fixed width keeps every entry's text starting at the same column, which
+   is what makes a log scannable. */
+.v360-probe-time {
+    flex: 0 0 4.5rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    padding-top: 0.125rem;
+}
+
+.v360-probe-entry {
+    padding: 0.5rem 0;
+}
+
+.v360-probe-entry_error {
+    color: var(--slds-g-color-error-base-40, #ea001e);
+}

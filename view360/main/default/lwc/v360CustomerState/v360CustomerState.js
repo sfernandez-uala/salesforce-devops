@@ -59,9 +59,26 @@ const defineCustomerState = defineState(
         const statusAtom = atom('unconfigured');
         const dataAtom = atom(null);
         const errorAtom = atom(null);
+        // Which tab the held cards belong to. The dedupe map already keys on
+        // it, so the manager knew it and simply threw it away; retaining it
+        // lets a card ask what it is rendering inside, which nothing else can
+        // tell it -- the shell hands a card its record and nothing more.
+        const tabApiNameAtom = atom(null);
+        /**
+         * Whether this record's shell is hearing about config changes:
+         * 'unknown' before it tries, 'live' once subscribed, 'unavailable'
+         * when the subscription failed.
+         *
+         * Kept here rather than inside the shell because a swallowed failure
+         * is indistinguishable from a working subscription that nothing has
+         * happened on yet -- and that is precisely the state someone is in
+         * when they activate a card and the page does not move.
+         */
+        const liveUpdatesAtom = atom('unknown');
 
         async function resolveVisibleCards(tabApiName, forceFresh) {
             setAtom(statusAtom, 'loading');
+            setAtom(tabApiNameAtom, tabApiName);
             try {
                 const decisions = await requestVisibleCards(recordId, tabApiName, forceFresh);
                 setAtom(dataAtom, decisions);
@@ -81,12 +98,19 @@ const defineCustomerState = defineState(
             return resolveVisibleCards(tabApiName, true);
         }
 
+        function reportLiveUpdates(state) {
+            setAtom(liveUpdatesAtom, state);
+        }
+
         return {
             status: statusAtom,
             data: dataAtom,
             error: errorAtom,
+            tabApiName: tabApiNameAtom,
+            liveUpdates: liveUpdatesAtom,
             load,
-            refresh
+            refresh,
+            reportLiveUpdates
         };
     },
     { metadata: { definedBy: 'v360CustomerState', type: 'external' } }
@@ -98,7 +122,8 @@ const defineCustomerState = defineState(
  *
  * @param {string} recordId - the anchor record Id this state manager owns.
  * @returns {Signal} a state manager signal whose .value exposes
- * { status, data, error, load, refresh }.
+ * { status, data, error, tabApiName, liveUpdates, load, refresh,
+ * reportLiveUpdates }.
  */
 export default function v360CustomerState(recordId) {
     if (!instances.has(recordId)) {

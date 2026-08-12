@@ -131,10 +131,16 @@ export default class V360Shell extends LightningElement {
                     this.customerState.value.refresh(this.tabApiName);
                 }
             });
+            this.customerState.value.reportLiveUpdates('live');
         } catch (error) {
-            // No live updates is a degradation, not a failure: the catalog
-            // still loads and still refreshes on the next page visit.
+            // Still a degradation rather than a failure -- the catalog loads,
+            // and reloads on the next visit -- but it is recorded rather than
+            // swallowed. Subscribing through empApi is checked against Read on
+            // the event, so the usual cause is a user whose permission set
+            // does not grant it, and the symptom is a page that never moves
+            // when an admin activates a card. Silence made that unanswerable.
             this.configSubscription = undefined;
+            this.customerState.value.reportLiveUpdates('unavailable');
         }
     }
 
