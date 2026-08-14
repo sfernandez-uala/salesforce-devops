@@ -3,11 +3,19 @@
  * @lwc/state's defineState so it exposes the uniform
  * { status, data, error } contract shared with platform state managers.
  *
- * There is exactly one instance per recordId (a module-level registry
- * enforces that), and concurrent load requests for the same
- * (recordId, tabApiName) pair share a single underlying service call rather
- * than each issuing their own — the dedupe map below is what makes that
- * true, independent of anything @lwc/state itself provides.
+ * There is exactly one instance per (recordId, tabApiName) pair — a
+ * module-level registry enforces that — and concurrent load requests for that
+ * same pair share a single underlying service call rather than each issuing
+ * their own, which the dedupe map below is what makes true, independent of
+ * anything @lwc/state itself provides.
+ *
+ * The pair, not the record. A record page may carry several Vista 360 tabs,
+ * each pointed at its own configured tab, and the card list belongs to the
+ * combination. Keying the registry on the record alone while the dedupe map
+ * keyed on both meant the second tab's load overwrote the first tab's cards,
+ * and the first shell — subscribed to that very instance — re-rendered
+ * someone else's answer: leaving a three-card tab for a one-card tab and
+ * coming back showed one card.
  *
  * Scope note: this module only owns the visible-card list returned by
  * v360Service. It does not compose record-field state (e.g. LDS identity
@@ -121,13 +129,16 @@ const defineCustomerState = defineState(
  * it on first access.
  *
  * @param {string} recordId - the anchor record Id this state manager owns.
+ * @param {string} tabApiName - the configured tab whose cards it holds; part
+ * of the identity, because one record can show several tabs at once.
  * @returns {Signal} a state manager signal whose .value exposes
  * { status, data, error, tabApiName, liveUpdates, load, refresh,
  * reportLiveUpdates }.
  */
-export default function v360CustomerState(recordId) {
-    if (!instances.has(recordId)) {
-        instances.set(recordId, defineCustomerState(recordId));
+export default function v360CustomerState(recordId, tabApiName) {
+    const key = requestKey(recordId, tabApiName);
+    if (!instances.has(key)) {
+        instances.set(key, defineCustomerState(recordId));
     }
-    return instances.get(recordId);
+    return instances.get(key);
 }

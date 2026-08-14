@@ -14,4 +14,17 @@
     <targets>
         <target>lightning__RecordPage</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <!-- Must match the shell it is meant to observe: the state it reads
+                 is identified by the record AND the tab. -->
+            <property
+                name="tabApiName"
+                type="String"
+                label="Tab to observe"
+                datasource="apex://V360TabPicklist"
+                description="The same tab the neighbouring c/v360Shell renders. Without it the probe has no shell to report on."
+            />
+        </targetConfig>
+    </targetConfigs>
 </LightningComponentBundle>

@@ -119,11 +119,16 @@ const defineShellState = defineState(
  * { selectedCard, openCards, subtabs, headerActions, selectCard, openCard,
  * closeCard, setSubtabs, registerHeaderActions }.
  */
-export default function v360ShellState(recordId) {
-    if (!instances.has(recordId)) {
-        instances.set(recordId, defineShellState(recordId));
+export default function v360ShellState(recordId, tabApiName) {
+    // Keyed on the pair for the same reason c/v360CustomerState is: two Vista
+    // 360 tabs on one record are two shells, and a card selected in one is not
+    // selected in the other -- sharing this would have each shell trying to
+    // open a card the other one listed.
+    const key = `${recordId}::${tabApiName}`;
+    if (!instances.has(key)) {
+        instances.set(key, defineShellState(recordId));
     }
-    return instances.get(recordId);
+    return instances.get(key);
 }
 
 /**

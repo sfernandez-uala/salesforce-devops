@@ -104,8 +104,8 @@ export default class V360Shell extends LightningElement {
             return;
         }
         this.pinnedKeys = getPinnedKeys(this.tabApiName);
-        this.customerState = v360CustomerState(this.recordId);
-        this.shellState = v360ShellState(this.recordId);
+        this.customerState = v360CustomerState(this.recordId, this.tabApiName);
+        this.shellState = v360ShellState(this.recordId, this.tabApiName);
         this.unsubscribeCustomerState = this.customerState.subscribe(() => this.syncFromCustomerState());
         this.unsubscribeShellState = this.shellState.subscribe(() => this.syncFromShellState());
         this.syncFromCustomerState();

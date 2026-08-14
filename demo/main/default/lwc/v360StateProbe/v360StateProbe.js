@@ -44,6 +44,14 @@ const MAX_ENTRIES = 40;
 export default class V360StateProbe extends LightningElement {
     @api recordId;
 
+    /**
+     * Which shell to observe. The store's identity is the record AND the tab,
+     * because a record page can carry several Vista 360 tabs, so a probe that
+     * knew only the record would attach to whichever instance happened to
+     * exist -- or mint an empty one of its own.
+     */
+    @api tabApiName;
+
     instanceNumber = nextInstanceNumber++;
     entries = [];
     storeStatus = 'unread';
@@ -58,7 +66,7 @@ export default class V360StateProbe extends LightningElement {
         mountsSincePageLoad++;
         // Reading shared state costs nothing: the instance already exists for
         // this record and holds whatever the shell fetched. No request here.
-        this.customerState = v360CustomerState(this.recordId);
+        this.customerState = v360CustomerState(this.recordId, this.observedTab);
         this.unsubscribe = this.customerState.subscribe(() => this.handleStoreChange());
         this.readStoreInto();
         this.log(
@@ -113,7 +121,7 @@ export default class V360StateProbe extends LightningElement {
         this.readStoreInto();
         this.log(
             'read the store',
-            `${this.storeCardCount} card(s), status "${this.storeStatus}", tab "${this.tabApiName}". Zero network calls — the answer was already here.`
+            `${this.storeCardCount} card(s), status "${this.storeStatus}", tab "${this.observedTab}". Zero network calls — the answer was already here.`
         );
     }
 
@@ -125,7 +133,7 @@ export default class V360StateProbe extends LightningElement {
         this.busy = true;
         this.log('asked the store to refresh', 'One request, and every card reading this store gets the result.');
         try {
-            await this.customerState.value.refresh(this.tabApiName);
+            await this.customerState.value.refresh(this.observedTab);
         } finally {
             this.busy = false;
         }
@@ -143,7 +151,7 @@ export default class V360StateProbe extends LightningElement {
         this.busy = true;
         try {
             directServiceCalls++;
-            const decisions = await getVisibleCards(this.recordId, this.tabApiName);
+            const decisions = await getVisibleCards(this.recordId, this.observedTab);
             this.log(
                 'called the server myself',
                 `${(decisions ?? []).length} card(s) — the same answer the store already had. ${directServiceCalls} direct call(s) so far. Every card doing this pays separately, on every mount.`
@@ -182,15 +190,16 @@ export default class V360StateProbe extends LightningElement {
 
     // ---- what the header shows -------------------------------------------
 
-    get tabApiName() {
-        return this.customerState?.value?.tabApiName ?? '';
-    }
-
     /**
      * Whether this page would hear about an admin activating a card. The shell
      * records it on the store; before this existed a failed subscription
      * looked exactly like a working one that nothing had happened on.
      */
+    /** What the page said, or what the store loaded if the page said nothing. */
+    get observedTab() {
+        return this.tabApiName || this.customerState?.value?.tabApiName || '';
+    }
+
     get liveUpdates() {
         return this.customerState?.value?.liveUpdates ?? 'unknown';
     }
