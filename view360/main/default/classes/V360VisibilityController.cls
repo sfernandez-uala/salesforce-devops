@@ -19,23 +19,28 @@ public with sharing class V360VisibilityController {
 
     @AuraEnabled(cacheable=true)
     public static List<V360CardDecision> getVisibleCards(Id recordId, String tabApiName) {
-        return resolveVisibleCards(recordId, tabApiName);
+        // A cacheable method may not perform DML, and publishing a diagnostic
+        // is DML -- so this path collects diagnostics and publishes none.
+        // Publishing here did not lose a diagnostic, it failed the whole read.
+        return resolveVisibleCards(recordId, tabApiName, false);
     }
 
     @AuraEnabled
     public static List<V360CardDecision> getVisibleCardsFresh(Id recordId, String tabApiName) {
-        return resolveVisibleCards(recordId, tabApiName);
+        // Not cacheable, so this is where a fail-closed decision gets recorded.
+        // The shell calls it on retry and whenever an admin changes the tab.
+        return resolveVisibleCards(recordId, tabApiName, true);
     }
 
-    private static List<V360CardDecision> resolveVisibleCards(Id recordId, String tabApiName) {
+    private static List<V360CardDecision> resolveVisibleCards(Id recordId, String tabApiName, Boolean publishDiagnostics) {
         try {
-            return evaluate(recordId, tabApiName);
+            return evaluate(recordId, tabApiName, publishDiagnostics);
         } catch (Exception unexpected) {
             throw new AuraHandledException('Unable to resolve visible cards for this tab.');
         }
     }
 
-    private static List<V360CardDecision> evaluate(Id recordId, String tabApiName) {
+    private static List<V360CardDecision> evaluate(Id recordId, String tabApiName, Boolean publishDiagnostics) {
         if (recordId == null || String.isBlank(tabApiName)) {
             return new List<V360CardDecision>();
         }
@@ -50,7 +55,7 @@ public with sharing class V360VisibilityController {
         Map<Id, V360RuleGraph> ruleGraphsByCardId = ruleSource.getRulesForCards(collectCardIds(cards));
 
         IFormulaEngine formulaEngine = new V360FormulaGateway();
-        V360Diagnostics diagnostics = new V360Diagnostics();
+        V360Diagnostics diagnostics = new V360Diagnostics(publishDiagnostics);
 
         V360RecordSelector.Request request = new V360RecordSelector.Request();
         request.recordId = recordId;

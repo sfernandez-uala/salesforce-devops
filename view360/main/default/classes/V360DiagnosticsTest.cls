@@ -71,6 +71,47 @@ private class V360DiagnosticsTest {
         }
     }
 
+    /**
+     * The read path that a user actually lands on is cacheable, and a cacheable
+     * method may not perform DML. Publishing there did not lose a diagnostic --
+     * it threw, and took the whole visible-card read down with it, so one card
+     * failing closed showed an error panel instead of a hidden card.
+     *
+     * An instance told it may not publish therefore has to stay silent even
+     * with entries in hand, and say so by returning nothing.
+     */
+    @IsTest
+    static void anInstanceThatMayNotPublishStaysSilentEvenWithEntries() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            V360Diagnostics diagnostics = new V360Diagnostics(false);
+            V360Diagnostics.Entry entry = new V360Diagnostics.Entry();
+            entry.reason = V360Diagnostics.Reason.UNKNOWN_FIELD;
+            entry.detail = 'Industry is not readable by this user';
+
+            Test.startTest();
+            List<Database.SaveResult> results = diagnostics.publishAll(new List<V360Diagnostics.Entry>{ entry });
+            Test.stopTest();
+
+            Assert.areEqual(0, results.size(), 'A suppressed instance must publish nothing at all');
+        }
+    }
+
+    /** The default stays the publishing one, so no existing caller changes. */
+    @IsTest
+    static void theDefaultInstancePublishes() {
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            V360Diagnostics.Entry entry = new V360Diagnostics.Entry();
+            entry.reason = V360Diagnostics.Reason.UNKNOWN_FIELD;
+
+            Test.startTest();
+            List<Database.SaveResult> results = new V360Diagnostics()
+                .publishAll(new List<V360Diagnostics.Entry>{ entry });
+            Test.stopTest();
+
+            Assert.areEqual(1, results.size(), 'The no-argument constructor must still publish');
+        }
+    }
+
     @IsTest
     static void publishAllRejectsAnEntryWithNoReason() {
         System.runAs(new User(Id = UserInfo.getUserId())) {

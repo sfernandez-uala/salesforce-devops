@@ -10,6 +10,34 @@
  */
 public with sharing class V360Diagnostics {
 
+    /**
+     * Whether this instance may actually publish.
+     *
+     * Publishing a platform event is DML, and an @AuraEnabled(cacheable=true)
+     * method may not perform DML — so on that path the attempt does not merely
+     * fail to record a diagnostic, it fails the entire read. A card that failed
+     * closed would take the whole panel down with it, turning "one card is
+     * hidden" into "Vista 360 is broken", which is the worse outcome by a wide
+     * margin and the exact opposite of what fail-closed is for.
+     *
+     * It only bit users who produce a diagnostic at all: an admin who can read
+     * every field referenced by every formula generates no entries, so the
+     * publish was skipped and the path looked healthy.
+     */
+    private final Boolean canPublish;
+
+    /** Publishes, for the callers that are allowed to. */
+    public V360Diagnostics() {
+        this(true);
+    }
+
+    /**
+     * @param canPublish false on a cacheable read path, where DML is forbidden
+     */
+    public V360Diagnostics(Boolean canPublish) {
+        this.canPublish = canPublish == true;
+    }
+
     public enum Reason {
         FORMULA_INVALID,
         FORMULA_EVAL_ERROR,
@@ -41,11 +69,12 @@ public with sharing class V360Diagnostics {
     }
 
     /**
-     * @param entries the diagnostics to publish; a null or empty list is a no-op
+     * @param entries the diagnostics to publish; a null or empty list is a no-op,
+     *        and so is any list at all on an instance that may not publish
      * @return the publish result per entry, in the same order as entries
      */
     public List<Database.SaveResult> publishAll(List<Entry> entries) {
-        if (entries == null || entries.isEmpty()) {
+        if (entries == null || entries.isEmpty() || !canPublish) {
             return new List<Database.SaveResult>();
         }
 
