@@ -6,6 +6,7 @@
     <template lwc:if={hasNoTab}>
         <lightning-card title="Vista 360" icon-name="standard:account">
             <c-empty-state
+                boxed
                 data-id="no-tab-state"
                 title="No tab selected"
                 illustration-name="noresults:unknown"
@@ -26,6 +27,7 @@
     <template lwc:elseif={isError}>
         <lightning-card title="Vista 360" icon-name="standard:account">
             <c-empty-state
+                boxed
                 data-id="error-state"
                 title="Something went wrong"
                 illustration-name="error:recoverable"
@@ -40,6 +42,7 @@
     <template lwc:elseif={isEmpty}>
         <lightning-card title="Vista 360" icon-name="standard:account">
             <c-empty-state
+                boxed
                 data-id="empty-state"
                 title="No cards to show"
                 illustration-name="noresults:unknown"
