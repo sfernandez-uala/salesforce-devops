@@ -1,0 +1,84 @@
+<template>
+    <div class="slds-p-around_medium">
+        <!-- The one thing no button can reveal, so it is stated up front:
+             whether this page would even hear about a card being activated. -->
+        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_x-small">
+            <span class={liveUpdatesClass} data-id="live-badge">{liveUpdatesLabel}</span>
+            <span class="slds-text-body_small slds-text-color_weak slds-m-left_small">
+                Tab <strong>{observedTab}</strong> · record <strong>{recordId}</strong>
+            </span>
+        </div>
+        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_medium" data-id="live-note">
+            {liveUpdatesNote}
+        </p>
+
+        <div class="slds-grid slds-wrap slds-gutters_x-small slds-m-bottom_medium">
+            <template for:each={counters} for:item="counter">
+                <div key={counter.key} class="slds-col">
+                    <div class="slds-box slds-box_xx-small slds-text-align_center">
+                        <p class="v360-probe-figure" data-id="counter-value" data-counter={counter.key}>
+                            {counter.value}
+                        </p>
+                        <p class="slds-text-body_small slds-text-color_weak">{counter.label}</p>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div class="slds-grid slds-wrap slds-gutters_xx-small slds-m-bottom_small">
+            <div class="slds-col slds-m-bottom_xx-small">
+                <lightning-button
+                    label="Read the store"
+                    title="Answers from memory. Costs nothing."
+                    data-id="read-store"
+                    onclick={handleReadStore}
+                ></lightning-button>
+            </div>
+            <div class="slds-col slds-m-bottom_xx-small">
+                <lightning-button
+                    label="Ask the store to refresh"
+                    title="One request, shared by every card reading this store."
+                    data-id="refresh-store"
+                    disabled={busy}
+                    onclick={handleRefreshStore}
+                ></lightning-button>
+            </div>
+            <div class="slds-col slds-m-bottom_xx-small">
+                <!-- Deliberately styled as the costly one: pressing it is what
+                     a card that fetches for itself does on every mount. -->
+                <lightning-button
+                    variant="destructive-text"
+                    label="Call the server myself"
+                    title="What a card that does its own fetching costs."
+                    data-id="direct-call"
+                    disabled={busy}
+                    onclick={handleDirectCall}
+                ></lightning-button>
+            </div>
+            <div class="slds-col slds-m-bottom_xx-small">
+                <lightning-button
+                    variant="base"
+                    label="Clear log"
+                    data-id="clear-log"
+                    onclick={handleClearLog}
+                ></lightning-button>
+            </div>
+        </div>
+
+        <template lwc:if={hasEntries}>
+            <ul class="slds-has-dividers_bottom-space" data-id="log">
+                <template for:each={entries} for:item="entry">
+                    <li key={entry.id} class={entry.rowClass} data-id="log-entry">
+                        <div class="slds-grid slds-grid_vertical-align-start">
+                            <span class="v360-probe-time slds-text-color_weak">{entry.at}</span>
+                            <div class="slds-col slds-m-left_small">
+                                <p class="slds-text-title_bold" data-id="log-action">{entry.action}</p>
+                                <p class="slds-text-body_small" data-id="log-detail">{entry.detail}</p>
+                            </div>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </template>
+    </div>
+</template>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Vista 360 State Probe</masterLabel>
+    <description>Diagnostic panel for Vista 360: reports mounts, renders, whether this page is hearing config changes, and what reading the shared store costs against fetching per card. Place it beside c/v360Shell on a record page.</description>
+    <!--
+        Placed on the page rather than registered as a card, deliberately. The
+        per-record store is a module-level instance, so a component standing
+        next to the shell observes exactly what a card inside it would - and
+        this way c/v360CardRegistry, which ships to every org, never names
+        anything from the demo package directory.
+    -->
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <!-- Must match the shell it is meant to observe: the state it reads
+                 is identified by the record AND the tab. -->
+            <property
+                name="tabApiName"
+                type="String"
+                label="Tab to observe"
+                datasource="apex://V360TabPicklist"
+                description="The same tab the neighbouring c/v360Shell renders. Without it the probe has no shell to report on."
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

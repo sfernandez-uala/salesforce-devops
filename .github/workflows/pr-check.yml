@@ -26,9 +26,15 @@ jobs:
           echo y | sf plugins install @salesforce/plugin-code-analyzer@5.14.0
       - name: PMD on delta files only
         run: |
-          CHANGED=$(git diff --name-only --diff-filter=ACMRT \
+          # R100 is a pure rename: same content at a new path. Moving a file
+          # introduces no code to analyse, and a restructure that moves every
+          # class would otherwise put the whole codebase in the delta and fail
+          # the gate on pre-existing debt. Renames WITH edits keep an R0xx
+          # score and stay in scope.
+          CHANGED=$(git diff --name-status -M --diff-filter=ACMRT \
             origin/${{ github.base_ref }}...HEAD \
-            | grep -E '^force-app/.*\.(cls|trigger|page)$' | paste -sd, -)
+            | grep -v '^R100' | awk '{print $NF}' \
+            | grep -E '^(force-app|shared|view360|demo)/.*\.(cls|trigger|page)$' | paste -sd, -)
           if [ -n "$CHANGED" ]; then
             sf code-analyzer run --workspace "$CHANGED" \
               --rule-selector pmd --severity-threshold 3 \
@@ -90,7 +96,7 @@ jobs:
         id: delta
         run: |
           CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
-            | grep -E '^(force-app|manifest|config)/' || true)
+            | grep -E '^(force-app|shared|view360|demo|manifest|config)/' || true)
           if [ -z "$CHANGED" ]; then
             echo "deployable=false" >> "$GITHUB_OUTPUT"
             echo "No deployable metadata changes - org simulation not required."
@@ -232,7 +238,7 @@ jobs:
       - name: Detect relevant test classes
         id: tests
         run: |
-          DIR="force-app/main/default/classes"
+          DIR="view360/main/default/classes"
           CHANGED=$(git diff --name-only --diff-filter=ACMRT \
             "origin/${{ github.base_ref }}...HEAD" \
             | grep -E "^${DIR}/.*\.cls$" || true)
