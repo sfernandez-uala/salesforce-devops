@@ -24,18 +24,33 @@ public with sharing class V360Diagnostics {
      * every field referenced by every formula generates no entries, so the
      * publish was skipped and the path looked healthy.
      */
-    private final Boolean canPublish;
+    /**
+     * Named rather than a boolean, because `new V360Diagnostics(false)` at a
+     * call site says nothing about which half of the rule it is choosing.
+     */
+    public enum Delivery {
+        PUBLISH,
+        COLLECT_ONLY
+    }
+
+    // Not named `delivery`: Apex identifiers are case-insensitive, so a field
+    // of that name shadows the Delivery enum and every Delivery.PUBLISH inside
+    // this class stops compiling. Same trap as ChangeType in V360ConfigChange.
+    private final Delivery deliveryMode;
 
     /** Publishes, for the callers that are allowed to. */
     public V360Diagnostics() {
-        this(true);
+        this(Delivery.PUBLISH);
     }
 
     /**
-     * @param canPublish false on a cacheable read path, where DML is forbidden
+     * @param requested COLLECT_ONLY on a cacheable read path, where DML is forbidden
      */
-    public V360Diagnostics(Boolean canPublish) {
-        this.canPublish = canPublish == true;
+    public V360Diagnostics(Delivery requested) {
+        // Not `delivery`: a parameter of that name shadows the enum here too,
+        // one level below the field. The same fix as ChangeType in
+        // V360ConfigChange -- name the parameter for what it is, a request.
+        this.deliveryMode = requested == null ? Delivery.PUBLISH : requested;
     }
 
     public enum Reason {
@@ -74,7 +89,7 @@ public with sharing class V360Diagnostics {
      * @return the publish result per entry, in the same order as entries
      */
     public List<Database.SaveResult> publishAll(List<Entry> entries) {
-        if (entries == null || entries.isEmpty() || !canPublish) {
+        if (entries == null || entries.isEmpty() || deliveryMode == Delivery.COLLECT_ONLY) {
             return new List<Database.SaveResult>();
         }
 

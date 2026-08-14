@@ -83,7 +83,7 @@ private class V360DiagnosticsTest {
     @IsTest
     static void anInstanceThatMayNotPublishStaysSilentEvenWithEntries() {
         System.runAs(new User(Id = UserInfo.getUserId())) {
-            V360Diagnostics diagnostics = new V360Diagnostics(false);
+            V360Diagnostics diagnostics = new V360Diagnostics(V360Diagnostics.Delivery.COLLECT_ONLY);
             V360Diagnostics.Entry entry = new V360Diagnostics.Entry();
             entry.reason = V360Diagnostics.Reason.UNKNOWN_FIELD;
             entry.detail = 'Industry is not readable by this user';

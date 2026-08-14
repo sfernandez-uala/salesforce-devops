@@ -26,8 +26,14 @@ jobs:
           echo y | sf plugins install @salesforce/plugin-code-analyzer@5.14.0
       - name: PMD on delta files only
         run: |
-          CHANGED=$(git diff --name-only --diff-filter=ACMRT \
+          # R100 is a pure rename: same content at a new path. Moving a file
+          # introduces no code to analyse, and a restructure that moves every
+          # class would otherwise put the whole codebase in the delta and fail
+          # the gate on pre-existing debt. Renames WITH edits keep an R0xx
+          # score and stay in scope.
+          CHANGED=$(git diff --name-status -M --diff-filter=ACMRT \
             origin/${{ github.base_ref }}...HEAD \
+            | grep -v '^R100' | awk '{print $NF}' \
             | grep -E '^(force-app|shared|view360|demo)/.*\.(cls|trigger|page)$' | paste -sd, -)
           if [ -n "$CHANGED" ]; then
             sf code-analyzer run --workspace "$CHANGED" \
