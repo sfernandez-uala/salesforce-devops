@@ -251,6 +251,36 @@
     min-width: 0;
 }
 
+/* ---- Toolbar: what is true of the whole tab ---- */
+
+/* SLDS's builder-toolbar names a group for the left side and none for the
+   right -- the __utilities classes are the header's, and the linter rejects
+   them here -- so the group holding the tab's status and actions pushes itself
+   over. */
+.v360-builder-toolbar-end {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+/* The exposure warning is a status first: it reads as a count beside its glyph
+   rather than as a button waiting to be pressed, and it is absent entirely at
+   zero. It is still a button, because the useful thing to do with it is go to
+   the card it counts. */
+.v360-builder-exposure {
+    display: inline-flex;
+    align-items: center;
+    color: var(--v360-color-text-subtle);
+    font-weight: 600;
+}
+
+/* The record picker sits in the modal header, where it is not on the scrolling
+   content that would clip the list it opens. Bounded so a wide dialog does not
+   stretch a single lookup across the whole header. */
+.v360-builder-preview-picker {
+    max-width: 24rem;
+}
+
 /* A combobox opens a list that is laid out inside the field, not over the page,
    and slds-modal__content scrolls -- so the list would be cut off at the modal's
    footer instead of opening past it. The tab modal holds two fields and has

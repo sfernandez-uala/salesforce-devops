@@ -107,6 +107,9 @@ export default class V360AdminBuilder extends LightningElement {
     tileIconDraft;
     deleteTarget = null;
     helpOpen = false;
+    previewOpen = false;
+    /** The record the preview is mounted on; null until one is chosen. */
+    previewRecordId = null;
     formulaFeedback = {};
 
     /**
@@ -412,6 +415,72 @@ export default class V360AdminBuilder extends LightningElement {
 
     get hasNoTabMatch() {
         return this.tabFilter.trim() !== '' && this.menuGroups.length === 0;
+    }
+
+    // ---- toolbar ------------------------------------------------------
+
+    /**
+     * The cards on this tab that reach everyone: live, not killed, and with no
+     * rule the evaluator will actually enforce.
+     *
+     * The same judgement the open card's own banner makes, applied across the
+     * tab -- which is the part that exists nowhere else. Every other surface in
+     * the builder reports on one card, so a tab whose exposure sits on a card
+     * nobody has opened reports nothing at all.
+     */
+    get exposedCards() {
+        return this.cards.filter((card) => this.presentation(card).isOpenToEveryone);
+    }
+
+    get exposedCardCount() {
+        return this.exposedCards.length;
+    }
+
+    get hasExposedCards() {
+        return this.exposedCardCount > 0;
+    }
+
+    get exposureTitle() {
+        const count = this.exposedCardCount;
+        return count === 1
+            ? '1 live card is visible to everyone — no active rule restricts it'
+            : `${count} live cards are visible to everyone — no active rule restricts them`;
+    }
+
+    /**
+     * Takes the admin to the exposure rather than only reporting it. The rules
+     * section, because that is the question the warning raises.
+     */
+    handleOpenFirstExposedCard() {
+        const first = this.exposedCards[0];
+        if (!first) {
+            return;
+        }
+        this.selectedCardId = first.cardId;
+        this.selectedSection = SECTION_RULES;
+    }
+
+    // ---- preview ------------------------------------------------------
+
+    get previewTabApiName() {
+        return this.tab?.developerName;
+    }
+
+    handleOpenPreview() {
+        this.previewOpen = true;
+    }
+
+    /**
+     * Clearing the record clears the preview with it: a shell left mounted on a
+     * record that is no longer chosen keeps answering for it.
+     */
+    handlePreviewRecordChange(event) {
+        this.previewRecordId = event.detail?.recordId ?? null;
+    }
+
+    handleClosePreview() {
+        this.previewOpen = false;
+        this.previewRecordId = null;
     }
 
     get switcherExpanded() {

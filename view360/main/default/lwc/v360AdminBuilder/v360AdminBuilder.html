@@ -287,6 +287,66 @@
                         </div>
                     </div>
                 </header>
+
+                <!-- The toolbar: what is true of the whole tab, and what can be
+                     done to it. Everything above this line names the open
+                     document; everything below edits one card at a time. This
+                     row is the only place the tab is addressed as a whole.
+
+                     Save and Save As are deliberately absent. The blueprint
+                     carries them because a builder holds an unsaved document;
+                     this one does not -- every action here writes through on
+                     its own -- and a Save button over a builder that has already
+                     saved is a button that lies. Undo and redo are absent for
+                     the same reason: there is no in-memory document to step
+                     back through. -->
+                <div
+                    class="slds-builder-toolbar"
+                    role="toolbar"
+                    aria-label="Tab actions"
+                    data-id="builder-toolbar"
+                >
+                    <div class="slds-builder-toolbar__item-group slds-builder-toolbar__actions"></div>
+
+                    <div class="slds-builder-toolbar__item-group v360-builder-toolbar-end">
+                        <!-- A live card no active rule restricts is visible to
+                             everyone, which is this product's one real hazard.
+                             Every other surface reports it for the open card
+                             only, so the tab's own count exists nowhere else. -->
+                        <template lwc:if={hasExposedCards}>
+                            <button
+                                class="slds-button v360-builder-exposure"
+                                type="button"
+                                title={exposureTitle}
+                                data-id="exposure-indicator"
+                                onclick={handleOpenFirstExposedCard}
+                            >
+                                <lightning-icon
+                                    icon-name="utility:warning"
+                                    size="x-small"
+                                    variant="warning"
+                                    class="slds-m-right_xx-small"
+                                ></lightning-icon>
+                                <span aria-hidden="true">{exposedCardCount}</span>
+                                <span class="slds-assistive-text">{exposureTitle}</span>
+                            </button>
+                        </template>
+
+                        <button
+                            class="slds-button slds-button_neutral slds-m-left_x-small"
+                            type="button"
+                            data-id="preview"
+                            onclick={handleOpenPreview}
+                        >
+                            <lightning-icon
+                                icon-name="utility:preview"
+                                size="xx-small"
+                                class="slds-m-right_xx-small"
+                            ></lightning-icon>
+                            Preview
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="v360-builder-body">
@@ -975,6 +1035,75 @@
                         <lightning-button label="Cancel" data-id="nt-cancel" onclick={handleCloseModals}></lightning-button>
                         <lightning-button variant="brand" label="Save tab" class="slds-m-left_x-small" data-id="nt-save" disabled={busy} onclick={handleSaveTab}></lightning-button>
                     </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <!-- The preview mounts the shell itself rather than redrawing what it would
+         look like. A copy of the gallery would drift from the real one and
+         would answer only "does this read right"; the shell answers "does this
+         work" -- a card bound to a component the registry does not carry, or one
+         that fails on mount, shows up here instead of on a record page.
+
+         Which means it needs a record: the shell reads one, and the visibility
+         engine decides against it. So the record is asked for first, and nothing
+         renders until there is one. -->
+    <template lwc:if={previewOpen}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="pv-title"
+            class="slds-modal slds-modal_large slds-fade-in-open"
+            data-id="preview-modal"
+        >
+            <div class="slds-modal__container">
+                <!-- Both the notice and the record picker sit in the header, out
+                     of the scrolling content: the picker opens a dropdown that
+                     the content would clip, and the notice has to stay readable
+                     however far down the preview is scrolled. -->
+                <div class="slds-modal__header">
+                    <h2 id="pv-title" class="slds-modal__title">Preview {documentName}</h2>
+                    <p
+                        class="slds-text-body_small slds-text-color_weak slds-m-top_x-small"
+                        data-id="preview-notice"
+                    >
+                        This runs the real visibility rules, for you. Cards a rule keeps from
+                        you are missing here too, so this is your view of the tab and not
+                        everyone's.
+                    </p>
+                    <div class="slds-m-top_small v360-builder-preview-picker">
+                        <lightning-record-picker
+                            label="Preview on record"
+                            placeholder="Search records"
+                            object-api-name={anchorSObject}
+                            data-id="preview-record"
+                            onchange={handlePreviewRecordChange}
+                        ></lightning-record-picker>
+                    </div>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <template lwc:if={previewRecordId}>
+                        <c-v360-shell
+                            data-id="preview-shell"
+                            record-id={previewRecordId}
+                            tab-api-name={previewTabApiName}
+                        ></c-v360-shell>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center slds-p-vertical_large">
+                            Choose a {anchorSObject} record to preview this tab on.
+                        </p>
+                    </template>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button
+                        label="Close"
+                        data-id="preview-close"
+                        onclick={handleClosePreview}
+                    ></lightning-button>
                 </div>
             </div>
         </section>
