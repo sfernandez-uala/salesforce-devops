@@ -73,14 +73,23 @@
 
                     <nav class="slds-builder-header__item slds-builder-header__nav">
                         <ul class="slds-builder-header__nav-list">
+                            <!-- The tab switcher is a menu, not a list of links, so it
+                                 carries the menu button contract end to end: the trigger
+                                 owns aria-haspopup/expanded and points at the menu it
+                                 controls, the options are single-choice items that say
+                                 which one is open, and the whole thing is driven from the
+                                 keyboard. Options and actions are two different kinds of
+                                 row, so a divider separates them. -->
                             <li class={switcherClass} onfocusout={handleSwitcherFocusOut}>
                                 <button
                                     class="slds-button slds-builder-header__item-action slds-media slds-media_center"
-                                    aria-haspopup="true"
-                                    aria-expanded={switcherOpen}
+                                    aria-haspopup="menu"
+                                    aria-expanded={switcherExpanded}
+                                    aria-controls="tab-menu"
                                     title="Switch tab"
                                     data-id="tab-switcher"
                                     onclick={handleToggleSwitcher}
+                                    onkeydown={handleTriggerKeyDown}
                                 >
                                     <span class="slds-media__figure">
                                         <lightning-icon
@@ -99,44 +108,134 @@
                                         ></lightning-icon>
                                     </span>
                                 </button>
-                                <div class="slds-dropdown slds-dropdown_left slds-dropdown_actions">
-                                    <ul class="slds-dropdown__list" role="menu" aria-label="Tabs">
-                                        <template for:each={tabGroups} for:item="group">
+                                <div
+                                    id="tab-menu"
+                                    class="slds-dropdown slds-dropdown_left slds-dropdown_small"
+                                    role="menu"
+                                    aria-label="Tabs"
+                                    data-id="tab-menu"
+                                    onkeydown={handleMenuKeyDown}
+                                >
+                                    <!-- The search field appears only once the list stops
+                                         being readable at a glance. Above three tabs it is
+                                         a box to skip past; above a screenful it is the
+                                         only way to reach the bottom of the list quickly. -->
+                                    <template lwc:if={isTabMenuSearchable}>
+                                        <div class="slds-dropdown__header slds-p-horizontal_x-small slds-p-vertical_xx-small">
+                                            <div class="slds-form-element">
+                                                <label class="slds-form-element__label slds-assistive-text" for="tab-filter">
+                                                    Search tabs
+                                                </label>
+                                                <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_left">
+                                                    <lightning-icon
+                                                        icon-name="utility:search"
+                                                        size="x-small"
+                                                        class="slds-input__icon slds-input__icon_left slds-icon-text-default"
+                                                    ></lightning-icon>
+                                                    <input
+                                                        id="tab-filter"
+                                                        type="text"
+                                                        class="slds-input"
+                                                        placeholder="Search tabs"
+                                                        autocomplete="off"
+                                                        data-id="tab-filter"
+                                                        value={tabFilter}
+                                                        oninput={handleTabFilter}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <ul
+                                        class="slds-dropdown__list slds-dropdown_length-with-icon-10"
+                                        role="presentation"
+                                    >
+                                        <template for:each={menuGroups} for:item="group">
                                             <li
                                                 key={group.sObjectApiName}
                                                 class="slds-dropdown__header slds-truncate"
                                                 role="separator"
                                             >
-                                                <span title={group.sObjectApiName}>{group.sObjectApiName}</span>
+                                                <span data-id="tab-group" title={group.sObjectApiName}>
+                                                    {group.sObjectApiName}
+                                                </span>
                                             </li>
                                             <template for:each={group.tabs} for:item="groupTab">
                                                 <li
                                                     key={groupTab.tabId}
-                                                    class="slds-dropdown__item"
+                                                    class={groupTab.itemClass}
                                                     role="presentation"
                                                 >
                                                     <a
-                                                        role="menuitem"
+                                                        role="menuitemradio"
+                                                        aria-checked={groupTab.ariaChecked}
                                                         tabindex="-1"
+                                                        data-menu-item="true"
                                                         data-id="tab-option"
                                                         data-tab-id={groupTab.tabId}
                                                         onclick={handleTabPick}
                                                     >
                                                         <span class="slds-truncate" title={groupTab.developerName}>
+                                                            <lightning-icon
+                                                                icon-name="utility:check"
+                                                                size="xx-small"
+                                                                class={groupTab.checkClass}
+                                                            ></lightning-icon>
                                                             {groupTab.developerName}
                                                         </span>
                                                     </a>
                                                 </li>
                                             </template>
                                         </template>
-                                        <li class="slds-dropdown__item" role="presentation">
-                                            <a role="menuitem" tabindex="-1" data-id="edit-tab" onclick={handleEditTab}>
-                                                <span class="slds-truncate" title="Edit this tab">Edit this tab…</span>
+
+                                        <!-- A menu that goes blank reads as broken; say what
+                                             happened instead. -->
+                                        <template lwc:if={hasNoTabMatch}>
+                                            <li class="slds-dropdown__item" role="presentation">
+                                                <span
+                                                    class="slds-p-horizontal_small slds-p-vertical_x-small slds-text-body_small slds-text-color_weak"
+                                                    data-id="tab-menu-empty"
+                                                >
+                                                    No tab matches “{tabFilter}”.
+                                                </span>
+                                            </li>
+                                        </template>
+
+                                        <li class="slds-dropdown__item slds-has-divider_top-space" role="presentation">
+                                            <a
+                                                role="menuitem"
+                                                tabindex="-1"
+                                                data-menu-item="true"
+                                                data-id="edit-tab"
+                                                onclick={handleEditTab}
+                                            >
+                                                <span class="slds-truncate" title="Edit this tab">
+                                                    <lightning-icon
+                                                        icon-name="utility:edit"
+                                                        size="xx-small"
+                                                        class="slds-icon-text-default slds-m-right_x-small"
+                                                    ></lightning-icon>
+                                                    Edit this tab…
+                                                </span>
                                             </a>
                                         </li>
                                         <li class="slds-dropdown__item" role="presentation">
-                                            <a role="menuitem" tabindex="-1" data-id="new-tab" onclick={handleNewTab}>
-                                                <span class="slds-truncate" title="New tab">New tab…</span>
+                                            <a
+                                                role="menuitem"
+                                                tabindex="-1"
+                                                data-menu-item="true"
+                                                data-id="new-tab"
+                                                onclick={handleNewTab}
+                                            >
+                                                <span class="slds-truncate" title="New tab">
+                                                    <lightning-icon
+                                                        icon-name="utility:add"
+                                                        size="xx-small"
+                                                        class="slds-icon-text-default slds-m-right_x-small"
+                                                    ></lightning-icon>
+                                                    New tab…
+                                                </span>
                                             </a>
                                         </li>
                                     </ul>

@@ -53,6 +53,16 @@ const MATCH_ANY = 'ANY';
 const PREDICATE_PERMISSION_SET = 'PERMISSION_SET';
 const PREDICATE_FLS_READ = 'FLS_READ';
 
+/**
+ * How many tabs an org has to configure before the switcher grows a search
+ * field. Ten is what slds-dropdown_length-with-icon-10 shows without
+ * scrolling, so the field appears exactly when the list stops fitting.
+ */
+const TAB_MENU_SEARCH_THRESHOLD = 10;
+
+/** The switcher's search field, by data-id; the keyboard handler defers to it. */
+const TAB_FILTER_ID = 'tab-filter';
+
 const SECTION_TILE = 'tile';
 const SECTION_RULES = 'rules';
 const SECTION_RELEASE = 'release';
@@ -84,6 +94,8 @@ export default class V360AdminBuilder extends LightningElement {
     busy = false;
     refreshing = false;
     switcherOpen = false;
+    /** The switcher's search term; cleared on every open so the menu starts whole. */
+    tabFilter = '';
     newCardOpen = false;
     newCardType = COMPONENT_TYPE_LWC;
     newCardIcon = '';
@@ -162,10 +174,29 @@ export default class V360AdminBuilder extends LightningElement {
                 this.fullBleedWrapper = wrapper;
             }
         }
+        if (this.pendingMenuFocus) {
+            this.pendingMenuFocus = false;
+            this.focusOpenMenu();
+        }
         this.measureTopOffset();
         this.observeViewport();
         this.syncTabLabel();
         this.syncTabIcon();
+    }
+
+    /**
+     * Lands focus inside the switcher the render after it opens: on the search
+     * field when the list is long enough to have one, on the first row
+     * otherwise. Both only exist once the dropdown has rendered, which is why
+     * this waits for renderedCallback rather than running from the click.
+     */
+    focusOpenMenu() {
+        const search = this.template.querySelector(`[data-id="${TAB_FILTER_ID}"]`);
+        if (search) {
+            search.focus();
+            return;
+        }
+        this.focusMenuItem(0);
     }
 
     /**
@@ -335,18 +366,56 @@ export default class V360AdminBuilder extends LightningElement {
         return tab ? `${tab.sObjectApiName} · ${this.cards.length} cards` : '';
     }
 
-    /** Tabs grouped under their anchor object, for the header switcher. */
-    get tabGroups() {
+    /**
+     * Tabs grouped under their anchor object and narrowed by the search term,
+     * for the header switcher. A group whose tabs all fall outside the term
+     * drops out with them: a heading over nothing is a dead row to scroll past.
+     */
+    get menuGroups() {
+        const term = this.tabFilter.trim().toLowerCase();
         const groups = [];
         for (const tab of this.data?.tabs ?? []) {
+            if (term && !tab.developerName.toLowerCase().includes(term)) {
+                continue;
+            }
             let group = groups.find((candidate) => candidate.sObjectApiName === tab.sObjectApiName);
             if (!group) {
                 group = { sObjectApiName: tab.sObjectApiName, tabs: [] };
                 groups.push(group);
             }
-            group.tabs.push({ ...tab, cardCount: `${tab.cards.length}` });
+            const isSelected = tab.tabId === this.selectedTabId;
+            group.tabs.push({
+                ...tab,
+                cardCount: `${tab.cards.length}`,
+                ariaChecked: isSelected ? 'true' : 'false',
+                itemClass: isSelected
+                    ? 'slds-dropdown__item slds-is-selected'
+                    : 'slds-dropdown__item',
+                // The check keeps its slot on every row, shown or not, so the
+                // labels line up instead of shifting under the selected one.
+                checkClass: isSelected
+                    ? 'v360-menu-check v360-menu-check_on slds-m-right_x-small'
+                    : 'v360-menu-check slds-m-right_x-small'
+            });
         }
         return groups;
+    }
+
+    /**
+     * The search field earns its place only past a screenful of tabs. Over
+     * three of them it is a box to skip; over ten it is the only quick way to
+     * the bottom of a list that now scrolls.
+     */
+    get isTabMenuSearchable() {
+        return (this.data?.tabs?.length ?? 0) > TAB_MENU_SEARCH_THRESHOLD;
+    }
+
+    get hasNoTabMatch() {
+        return this.tabFilter.trim() !== '' && this.menuGroups.length === 0;
+    }
+
+    get switcherExpanded() {
+        return this.switcherOpen ? 'true' : 'false';
     }
 
     get switcherClass() {
@@ -354,8 +423,38 @@ export default class V360AdminBuilder extends LightningElement {
         return this.switcherOpen ? `${base} slds-is-open` : base;
     }
 
+    /** Every focusable row of the open menu, options and actions alike, in view order. */
+    get menuItems() {
+        return Array.from(this.template.querySelectorAll('[data-menu-item]'));
+    }
+
     handleToggleSwitcher() {
-        this.switcherOpen = !this.switcherOpen;
+        if (this.switcherOpen) {
+            this.closeSwitcher();
+        } else {
+            this.openSwitcher();
+        }
+    }
+
+    /**
+     * Opens the menu with focus already inside it -- on the search field when
+     * there is one, on the first row otherwise. A menu button that opens and
+     * leaves focus behind is one the keyboard never reaches.
+     */
+    openSwitcher() {
+        this.tabFilter = '';
+        this.switcherOpen = true;
+        this.pendingMenuFocus = true;
+    }
+
+    /** Closes the menu and, unless focus has already moved on, hands it back to the trigger. */
+    closeSwitcher(returnFocus = false) {
+        this.switcherOpen = false;
+        this.tabFilter = '';
+        this.pendingMenuFocus = false;
+        if (returnFocus) {
+            this.template.querySelector('[data-id="tab-switcher"]')?.focus();
+        }
     }
 
     /**
@@ -365,15 +464,102 @@ export default class V360AdminBuilder extends LightningElement {
      */
     handleSwitcherFocusOut(event) {
         if (!event.currentTarget.contains(event.relatedTarget)) {
-            this.switcherOpen = false;
+            this.closeSwitcher();
         }
+    }
+
+    /**
+     * The arrow keys open the menu from its trigger and land on the first row.
+     * Enter and Space already reach handleToggleSwitcher as a native button
+     * click, so they are deliberately not handled twice here.
+     */
+    handleTriggerKeyDown(event) {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+            return;
+        }
+        event.preventDefault();
+        this.openSwitcher();
+    }
+
+    /**
+     * The menu button keyboard contract: the arrows walk the rows and wrap,
+     * Home and End jump to the ends, Enter and Space pick, Escape closes and
+     * returns focus, Tab leaves. Inside the search field the text-editing keys
+     * stay with the field -- only the keys that navigate out of it are taken.
+     */
+    handleMenuKeyDown(event) {
+        const inSearch = event.target?.dataset?.id === TAB_FILTER_ID;
+        switch (event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                this.moveMenuFocus(1);
+                break;
+            case 'ArrowUp':
+                event.preventDefault();
+                this.moveMenuFocus(-1);
+                break;
+            case 'Home':
+                if (inSearch) return;
+                event.preventDefault();
+                this.focusMenuItem(0);
+                break;
+            case 'End':
+                if (inSearch) return;
+                event.preventDefault();
+                this.focusMenuItem(this.menuItems.length - 1);
+                break;
+            case 'Enter':
+            case ' ':
+                if (inSearch) return;
+                event.preventDefault();
+                // The row the key landed on, not whatever the shadow root
+                // reports as focused: an anchor is not a button, so nothing
+                // turns Enter into a click for us.
+                event.target?.closest?.('[data-menu-item]')?.click();
+                break;
+            case 'Escape':
+                event.preventDefault();
+                this.closeSwitcher(true);
+                break;
+            case 'Tab':
+                this.closeSwitcher();
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * Moves focus by one row, wrapping at both ends. Focus sitting in the
+     * search field counts as before the first row, so one ArrowDown enters
+     * the list rather than skipping its first entry.
+     */
+    moveMenuFocus(offset) {
+        const items = this.menuItems;
+        if (items.length === 0) {
+            return;
+        }
+        const current = items.indexOf(this.template.activeElement);
+        if (current < 0) {
+            this.focusMenuItem(offset > 0 ? 0 : items.length - 1);
+            return;
+        }
+        this.focusMenuItem((current + offset + items.length) % items.length);
+    }
+
+    focusMenuItem(index) {
+        this.menuItems[index]?.focus();
+    }
+
+    handleTabFilter(event) {
+        this.tabFilter = event.target.value;
     }
 
     handleTabPick(event) {
         this.selectedTabId = event.currentTarget.dataset.tabId;
         this.selectedCardId = undefined;
         this.formulaFeedback = {};
-        this.switcherOpen = false;
+        this.closeSwitcher(true);
         this.ensureSelection();
     }
 
@@ -995,16 +1181,18 @@ export default class V360AdminBuilder extends LightningElement {
         this.newRuleOpen = true;
     }
 
+    // Focus is not handed back to the trigger here: both of these open a modal,
+    // which takes focus itself.
     handleNewTab() {
         this.editingTabId = null;
         this.tabModalOpen = true;
-        this.switcherOpen = false;
+        this.closeSwitcher();
     }
 
     handleEditTab() {
         this.editingTabId = this.selectedTabId;
         this.tabModalOpen = true;
-        this.switcherOpen = false;
+        this.closeSwitcher();
     }
 
     get tabModalTitle() {
