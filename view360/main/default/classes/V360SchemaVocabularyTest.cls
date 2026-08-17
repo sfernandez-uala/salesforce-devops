@@ -81,6 +81,43 @@ private class V360SchemaVocabularyTest {
         );
     }
 
+    /**
+     * Every object the query finds is returned -- nothing is dropped on the way
+     * out.
+     *
+     * This is deliberately not the guard for the failure that shipped here. The
+     * options were once read straight out of a SOQL for-loop, which pages
+     * through queryMore in batches of 200, and EntityDefinition supports no
+     * queryMore at all; the picker was dead in the org while all of these tests
+     * were green. It cannot be reproduced from a test: test context sees ~190
+     * layoutable objects where the same org serves ~800 at runtime, so the
+     * second batch that triggers it is never reached here.
+     *
+     * That failure is caught by running the method against a real org, not by
+     * this class. What this one pins is that the mapping loop returns as many
+     * options as the query returned rows, which is the part a test can see.
+     */
+    @IsTest
+    static void returnsEveryRowTheQueryFinds() {
+        User admin = V360TestDataFactory.insertUserWithAccess(TEST_PROFILE, new List<String>{ 'V360_Admin' });
+
+        List<V360SchemaVocabulary.ObjectOption> options;
+        Integer expected;
+        System.runAs(admin) {
+            Test.startTest();
+            options = V360SchemaVocabulary.getAnchorObjectOptions();
+            expected = [
+                SELECT COUNT()
+                FROM EntityDefinition
+                WHERE IsLayoutable = TRUE AND IsQueryable = TRUE AND IsDeprecatedAndHidden = FALSE
+                LIMIT 2000
+            ];
+            Test.stopTest();
+        }
+
+        Assert.areEqual(expected, options.size(), 'Every row the query finds must come back as an option');
+    }
+
     /** A list an admin scans has to be in the order they read it. */
     @IsTest
     static void ordersOptionsByLabel() {
