@@ -262,6 +262,9 @@
     align-items: center;
     color: var(--v360-color-text-subtle);
     font-weight: 600;
+    /* The toolbar is one row and this sentence is the longest thing in it;
+       wrapping would push the row's height around as cards come and go. */
+    white-space: nowrap;
 }
 
 /* The record picker sits in the modal header, where it is not on the scrolling

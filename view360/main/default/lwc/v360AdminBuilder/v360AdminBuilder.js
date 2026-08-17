@@ -440,10 +440,21 @@ export default class V360AdminBuilder extends LightningElement {
         return this.exposedCardCount > 0;
     }
 
+    /**
+     * What the toolbar shows. A warning glyph beside a bare number asks the
+     * reader to already know what is being counted, which is the one thing a
+     * status line cannot assume.
+     */
+    get exposureLabel() {
+        const count = this.exposedCardCount;
+        return `${count} card${count === 1 ? '' : 's'} visible to everyone`;
+    }
+
+    /** The same fact with its reason, for the hover. */
     get exposureTitle() {
         const count = this.exposedCardCount;
         return count === 1
-            ? '1 live card is visible to everyone — no active rule restricts it'
+            ? 'One live card is visible to everyone — no active rule restricts it'
             : `${count} live cards are visible to everyone — no active rule restricts them`;
     }
 

@@ -176,6 +176,27 @@ describe('c-v360-admin-builder toolbar', () => {
         expect(indicator(element).textContent).toContain('1');
     });
 
+    /**
+     * A glyph beside a number says nothing on its own -- the reader has to
+     * already know what is being counted. The toolbar states it.
+     */
+    it('says what it is counting rather than standing as a bare icon', async () => {
+        const element = await createBuilder([
+            card('c1', 'Snapshot'),
+            card('c2', 'Risk', EXPOSED),
+            card('c3', 'Timeline', EXPOSED)
+        ]);
+
+        expect(indicator(element).textContent).toMatch(/2 cards visible to everyone/i);
+    });
+
+    it('counts one card in the singular', async () => {
+        const element = await createBuilder([card('c1', 'Risk', EXPOSED)]);
+
+        expect(indicator(element).textContent).toMatch(/1 card visible to everyone/i);
+        expect(indicator(element).textContent).not.toMatch(/cards/i);
+    });
+
     it('opens the first exposed card when the warning is clicked', async () => {
         const element = await createBuilder([
             card('c1', 'Snapshot'),
