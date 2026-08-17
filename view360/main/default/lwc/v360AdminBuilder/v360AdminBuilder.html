@@ -947,9 +947,19 @@
                 <div class="slds-modal__header">
                     <h2 id="nt-title" class="slds-modal__title">{tabModalTitle}</h2>
                 </div>
-                <div class="slds-modal__content slds-p-around_medium">
+                <div class="slds-modal__content slds-p-around_medium v360-modal-content_overflowing">
                     <lightning-input label="Developer name" required value={tabForm.developerName} disabled={isEditingTab} data-id="nt-devname" field-level-help="Locked after creation. Record pages reference it by name through the shell's tabApiName, and configuration is upserted between orgs on it, so renaming would break the page and duplicate the tab."></lightning-input>
-                    <lightning-input label="Anchor object" required placeholder="Account" value={tabForm.sObjectApiName} data-id="nt-anchor" field-level-help="API name of the object whose record pages host this tab; validated on save."></lightning-input>
+                    <!-- The object is a closed list this org already knows, so it is
+                         picked rather than typed. The free-text box this replaces
+                         made every typo something the server had to catch on save. -->
+                    <c-v360-object-picker
+                        label="Anchor object"
+                        required
+                        placeholder="Search objects"
+                        value={tabForm.sObjectApiName}
+                        data-id="nt-anchor"
+                        field-level-help="The object whose record pages host this tab. Search by label or API name; the API name is what gets stored."
+                    ></c-v360-object-picker>
                     <template lwc:if={isEditingTab}>
                         <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
                             Placement is not configured here: the shell takes one tab per FlexiPage

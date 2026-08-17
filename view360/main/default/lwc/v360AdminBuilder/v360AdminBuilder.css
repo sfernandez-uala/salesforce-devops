@@ -251,6 +251,15 @@
     min-width: 0;
 }
 
+/* A combobox opens a list that is laid out inside the field, not over the page,
+   and slds-modal__content scrolls -- so the list would be cut off at the modal's
+   footer instead of opening past it. The tab modal holds two fields and has
+   nothing to scroll, so it gives its overflow back. Only for modals that
+   actually contain a dropdown; the rest keep the blueprint's scrolling. */
+.v360-modal-content_overflowing {
+    overflow: visible;
+}
+
 /* The tick that marks the open tab in the switcher menu. SLDS ships the
    selected-item pattern for a sprite <use> element, which an LWC cannot
    reference; lightning-icon is the platform stand-in, and it has no
