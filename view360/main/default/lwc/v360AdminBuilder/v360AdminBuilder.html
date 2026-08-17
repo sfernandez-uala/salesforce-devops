@@ -306,45 +306,50 @@
                     aria-label="Tab actions"
                     data-id="builder-toolbar"
                 >
-                    <div class="slds-builder-toolbar__item-group slds-builder-toolbar__actions"></div>
+                    <!-- __actions is the blueprint's right-hand region and pushes
+                         itself over; __item-group is the row of controls inside
+                         it. The left group the blueprint fills with undo and redo
+                         is absent, not empty -- see above. -->
+                    <div class="slds-builder-toolbar__actions">
+                        <div class="slds-builder-toolbar__item-group">
+                            <!-- A live card no active rule restricts is visible
+                                 to everyone, which is this product's one real
+                                 hazard. Every other surface reports it for the
+                                 open card only, so the tab's own count exists
+                                 nowhere else. -->
+                            <template lwc:if={hasExposedCards}>
+                                <button
+                                    class="slds-button v360-builder-exposure"
+                                    type="button"
+                                    title={exposureTitle}
+                                    data-id="exposure-indicator"
+                                    onclick={handleOpenFirstExposedCard}
+                                >
+                                    <lightning-icon
+                                        icon-name="utility:warning"
+                                        size="x-small"
+                                        variant="warning"
+                                        class="slds-m-right_xx-small"
+                                    ></lightning-icon>
+                                    <span aria-hidden="true">{exposedCardCount}</span>
+                                    <span class="slds-assistive-text">{exposureTitle}</span>
+                                </button>
+                            </template>
 
-                    <div class="slds-builder-toolbar__item-group v360-builder-toolbar-end">
-                        <!-- A live card no active rule restricts is visible to
-                             everyone, which is this product's one real hazard.
-                             Every other surface reports it for the open card
-                             only, so the tab's own count exists nowhere else. -->
-                        <template lwc:if={hasExposedCards}>
                             <button
-                                class="slds-button v360-builder-exposure"
+                                class="slds-button slds-button_neutral slds-m-left_x-small"
                                 type="button"
-                                title={exposureTitle}
-                                data-id="exposure-indicator"
-                                onclick={handleOpenFirstExposedCard}
+                                data-id="preview"
+                                onclick={handleOpenPreview}
                             >
                                 <lightning-icon
-                                    icon-name="utility:warning"
-                                    size="x-small"
-                                    variant="warning"
+                                    icon-name="utility:preview"
+                                    size="xx-small"
                                     class="slds-m-right_xx-small"
                                 ></lightning-icon>
-                                <span aria-hidden="true">{exposedCardCount}</span>
-                                <span class="slds-assistive-text">{exposureTitle}</span>
+                                Preview
                             </button>
-                        </template>
-
-                        <button
-                            class="slds-button slds-button_neutral slds-m-left_x-small"
-                            type="button"
-                            data-id="preview"
-                            onclick={handleOpenPreview}
-                        >
-                            <lightning-icon
-                                icon-name="utility:preview"
-                                size="xx-small"
-                                class="slds-m-right_xx-small"
-                            ></lightning-icon>
-                            Preview
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>

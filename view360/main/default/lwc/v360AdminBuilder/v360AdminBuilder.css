@@ -253,16 +253,6 @@
 
 /* ---- Toolbar: what is true of the whole tab ---- */
 
-/* SLDS's builder-toolbar names a group for the left side and none for the
-   right -- the __utilities classes are the header's, and the linter rejects
-   them here -- so the group holding the tab's status and actions pushes itself
-   over. */
-.v360-builder-toolbar-end {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-}
-
 /* The exposure warning is a status first: it reads as a count beside its glyph
    rather than as a button waiting to be pressed, and it is absent entirely at
    zero. It is still a button, because the useful thing to do with it is go to
