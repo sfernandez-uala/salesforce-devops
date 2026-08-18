@@ -251,6 +251,52 @@
     min-width: 0;
 }
 
+/* ---- Toolbar: what is true of the whole tab ---- */
+
+/* The exposure warning is a status first: it reads as a count beside its glyph
+   rather than as a button waiting to be pressed, and it is absent entirely at
+   zero. It is still a button, because the useful thing to do with it is go to
+   the card it counts. */
+.v360-builder-exposure {
+    display: inline-flex;
+    align-items: center;
+    color: var(--v360-color-text-subtle);
+    font-weight: 600;
+    /* The toolbar is one row and this sentence is the longest thing in it;
+       wrapping would push the row's height around as cards come and go. */
+    white-space: nowrap;
+}
+
+/* The record picker sits in the modal header, where it is not on the scrolling
+   content that would clip the list it opens. Bounded so a wide dialog does not
+   stretch a single lookup across the whole header. */
+.v360-builder-preview-picker {
+    max-width: 24rem;
+}
+
+/* A combobox opens a list that is laid out inside the field, not over the page,
+   and slds-modal__content scrolls -- so the list would be cut off at the modal's
+   footer instead of opening past it. The tab modal holds two fields and has
+   nothing to scroll, so it gives its overflow back. Only for modals that
+   actually contain a dropdown; the rest keep the blueprint's scrolling. */
+.v360-modal-content_overflowing {
+    overflow: visible;
+}
+
+/* The tick that marks the open tab in the switcher menu. SLDS ships the
+   selected-item pattern for a sprite <use> element, which an LWC cannot
+   reference; lightning-icon is the platform stand-in, and it has no
+   equivalent of slds-icon_selected. Hiding rather than omitting it keeps the
+   glyph's width on every row, so the labels stay on one left edge instead of
+   stepping in under whichever tab happens to be open. */
+.v360-menu-check {
+    visibility: hidden;
+}
+
+.v360-menu-check_on {
+    visibility: visible;
+}
+
 /* Formulas are code and read as code. */
 .v360-builder-formula {
     --slds-c-textarea-font-family: ui-monospace, Menlo, Consolas, monospace;

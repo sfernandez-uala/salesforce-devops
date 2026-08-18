@@ -73,14 +73,23 @@
 
                     <nav class="slds-builder-header__item slds-builder-header__nav">
                         <ul class="slds-builder-header__nav-list">
+                            <!-- The tab switcher is a menu, not a list of links, so it
+                                 carries the menu button contract end to end: the trigger
+                                 owns aria-haspopup/expanded and points at the menu it
+                                 controls, the options are single-choice items that say
+                                 which one is open, and the whole thing is driven from the
+                                 keyboard. Options and actions are two different kinds of
+                                 row, so a divider separates them. -->
                             <li class={switcherClass} onfocusout={handleSwitcherFocusOut}>
                                 <button
                                     class="slds-button slds-builder-header__item-action slds-media slds-media_center"
-                                    aria-haspopup="true"
-                                    aria-expanded={switcherOpen}
+                                    aria-haspopup="menu"
+                                    aria-expanded={switcherExpanded}
+                                    aria-controls="tab-menu"
                                     title="Switch tab"
                                     data-id="tab-switcher"
                                     onclick={handleToggleSwitcher}
+                                    onkeydown={handleTriggerKeyDown}
                                 >
                                     <span class="slds-media__figure">
                                         <lightning-icon
@@ -99,44 +108,134 @@
                                         ></lightning-icon>
                                     </span>
                                 </button>
-                                <div class="slds-dropdown slds-dropdown_left slds-dropdown_actions">
-                                    <ul class="slds-dropdown__list" role="menu" aria-label="Tabs">
-                                        <template for:each={tabGroups} for:item="group">
+                                <div
+                                    id="tab-menu"
+                                    class="slds-dropdown slds-dropdown_left slds-dropdown_small"
+                                    role="menu"
+                                    aria-label="Tabs"
+                                    data-id="tab-menu"
+                                    onkeydown={handleMenuKeyDown}
+                                >
+                                    <!-- The search field appears only once the list stops
+                                         being readable at a glance. Above three tabs it is
+                                         a box to skip past; above a screenful it is the
+                                         only way to reach the bottom of the list quickly. -->
+                                    <template lwc:if={isTabMenuSearchable}>
+                                        <div class="slds-dropdown__header slds-p-horizontal_x-small slds-p-vertical_xx-small">
+                                            <div class="slds-form-element">
+                                                <label class="slds-form-element__label slds-assistive-text" for="tab-filter">
+                                                    Search tabs
+                                                </label>
+                                                <div class="slds-form-element__control slds-input-has-icon slds-input-has-icon_left">
+                                                    <lightning-icon
+                                                        icon-name="utility:search"
+                                                        size="x-small"
+                                                        class="slds-input__icon slds-input__icon_left slds-icon-text-default"
+                                                    ></lightning-icon>
+                                                    <input
+                                                        id="tab-filter"
+                                                        type="text"
+                                                        class="slds-input"
+                                                        placeholder="Search tabs"
+                                                        autocomplete="off"
+                                                        data-id="tab-filter"
+                                                        value={tabFilter}
+                                                        oninput={handleTabFilter}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <ul
+                                        class="slds-dropdown__list slds-dropdown_length-with-icon-10"
+                                        role="presentation"
+                                    >
+                                        <template for:each={menuGroups} for:item="group">
                                             <li
                                                 key={group.sObjectApiName}
                                                 class="slds-dropdown__header slds-truncate"
                                                 role="separator"
                                             >
-                                                <span title={group.sObjectApiName}>{group.sObjectApiName}</span>
+                                                <span data-id="tab-group" title={group.sObjectApiName}>
+                                                    {group.sObjectApiName}
+                                                </span>
                                             </li>
                                             <template for:each={group.tabs} for:item="groupTab">
                                                 <li
                                                     key={groupTab.tabId}
-                                                    class="slds-dropdown__item"
+                                                    class={groupTab.itemClass}
                                                     role="presentation"
                                                 >
                                                     <a
-                                                        role="menuitem"
+                                                        role="menuitemradio"
+                                                        aria-checked={groupTab.ariaChecked}
                                                         tabindex="-1"
+                                                        data-menu-item="true"
                                                         data-id="tab-option"
                                                         data-tab-id={groupTab.tabId}
                                                         onclick={handleTabPick}
                                                     >
                                                         <span class="slds-truncate" title={groupTab.developerName}>
+                                                            <lightning-icon
+                                                                icon-name="utility:check"
+                                                                size="xx-small"
+                                                                class={groupTab.checkClass}
+                                                            ></lightning-icon>
                                                             {groupTab.developerName}
                                                         </span>
                                                     </a>
                                                 </li>
                                             </template>
                                         </template>
-                                        <li class="slds-dropdown__item" role="presentation">
-                                            <a role="menuitem" tabindex="-1" data-id="edit-tab" onclick={handleEditTab}>
-                                                <span class="slds-truncate" title="Edit this tab">Edit this tab…</span>
+
+                                        <!-- A menu that goes blank reads as broken; say what
+                                             happened instead. -->
+                                        <template lwc:if={hasNoTabMatch}>
+                                            <li class="slds-dropdown__item" role="presentation">
+                                                <span
+                                                    class="slds-p-horizontal_small slds-p-vertical_x-small slds-text-body_small slds-text-color_weak"
+                                                    data-id="tab-menu-empty"
+                                                >
+                                                    No tab matches “{tabFilter}”.
+                                                </span>
+                                            </li>
+                                        </template>
+
+                                        <li class="slds-dropdown__item slds-has-divider_top-space" role="presentation">
+                                            <a
+                                                role="menuitem"
+                                                tabindex="-1"
+                                                data-menu-item="true"
+                                                data-id="edit-tab"
+                                                onclick={handleEditTab}
+                                            >
+                                                <span class="slds-truncate" title="Edit this tab">
+                                                    <lightning-icon
+                                                        icon-name="utility:edit"
+                                                        size="xx-small"
+                                                        class="slds-icon-text-default slds-m-right_x-small"
+                                                    ></lightning-icon>
+                                                    Edit this tab…
+                                                </span>
                                             </a>
                                         </li>
                                         <li class="slds-dropdown__item" role="presentation">
-                                            <a role="menuitem" tabindex="-1" data-id="new-tab" onclick={handleNewTab}>
-                                                <span class="slds-truncate" title="New tab">New tab…</span>
+                                            <a
+                                                role="menuitem"
+                                                tabindex="-1"
+                                                data-menu-item="true"
+                                                data-id="new-tab"
+                                                onclick={handleNewTab}
+                                            >
+                                                <span class="slds-truncate" title="New tab">
+                                                    <lightning-icon
+                                                        icon-name="utility:add"
+                                                        size="xx-small"
+                                                        class="slds-icon-text-default slds-m-right_x-small"
+                                                    ></lightning-icon>
+                                                    New tab…
+                                                </span>
                                             </a>
                                         </li>
                                     </ul>
@@ -188,6 +287,70 @@
                         </div>
                     </div>
                 </header>
+
+                <!-- The toolbar: what is true of the whole tab, and what can be
+                     done to it. Everything above this line names the open
+                     document; everything below edits one card at a time. This
+                     row is the only place the tab is addressed as a whole.
+
+                     Save and Save As are deliberately absent. The blueprint
+                     carries them because a builder holds an unsaved document;
+                     this one does not -- every action here writes through on
+                     its own -- and a Save button over a builder that has already
+                     saved is a button that lies. Undo and redo are absent for
+                     the same reason: there is no in-memory document to step
+                     back through. -->
+                <div
+                    class="slds-builder-toolbar"
+                    role="toolbar"
+                    aria-label="Tab actions"
+                    data-id="builder-toolbar"
+                >
+                    <!-- __actions is the blueprint's right-hand region and pushes
+                         itself over; __item-group is the row of controls inside
+                         it. The left group the blueprint fills with undo and redo
+                         is absent, not empty -- see above. -->
+                    <div class="slds-builder-toolbar__actions">
+                        <div class="slds-builder-toolbar__item-group">
+                            <!-- A live card no active rule restricts is visible
+                                 to everyone, which is this product's one real
+                                 hazard. Every other surface reports it for the
+                                 open card only, so the tab's own count exists
+                                 nowhere else. -->
+                            <template lwc:if={hasExposedCards}>
+                                <button
+                                    class="slds-button v360-builder-exposure"
+                                    type="button"
+                                    title={exposureTitle}
+                                    data-id="exposure-indicator"
+                                    onclick={handleOpenFirstExposedCard}
+                                >
+                                    <lightning-icon
+                                        icon-name="utility:warning"
+                                        size="x-small"
+                                        variant="warning"
+                                        class="slds-m-right_xx-small"
+                                    ></lightning-icon>
+                                    <span>{exposureLabel}</span>
+                                </button>
+                            </template>
+
+                            <button
+                                class="slds-button slds-button_neutral slds-m-left_x-small"
+                                type="button"
+                                data-id="preview"
+                                onclick={handleOpenPreview}
+                            >
+                                <lightning-icon
+                                    icon-name="utility:preview"
+                                    size="xx-small"
+                                    class="slds-m-right_xx-small"
+                                ></lightning-icon>
+                                Preview
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="v360-builder-body">
@@ -848,9 +1011,19 @@
                 <div class="slds-modal__header">
                     <h2 id="nt-title" class="slds-modal__title">{tabModalTitle}</h2>
                 </div>
-                <div class="slds-modal__content slds-p-around_medium">
+                <div class="slds-modal__content slds-p-around_medium v360-modal-content_overflowing">
                     <lightning-input label="Developer name" required value={tabForm.developerName} disabled={isEditingTab} data-id="nt-devname" field-level-help="Locked after creation. Record pages reference it by name through the shell's tabApiName, and configuration is upserted between orgs on it, so renaming would break the page and duplicate the tab."></lightning-input>
-                    <lightning-input label="Anchor object" required placeholder="Account" value={tabForm.sObjectApiName} data-id="nt-anchor" field-level-help="API name of the object whose record pages host this tab; validated on save."></lightning-input>
+                    <!-- The object is a closed list this org already knows, so it is
+                         picked rather than typed. The free-text box this replaces
+                         made every typo something the server had to catch on save. -->
+                    <c-v360-object-picker
+                        label="Anchor object"
+                        required
+                        placeholder="Search objects"
+                        value={tabForm.sObjectApiName}
+                        data-id="nt-anchor"
+                        field-level-help="The object whose record pages host this tab. Search by label or API name; the API name is what gets stored."
+                    ></c-v360-object-picker>
                     <template lwc:if={isEditingTab}>
                         <p class="slds-text-body_small slds-text-color_weak slds-m-top_small">
                             Placement is not configured here: the shell takes one tab per FlexiPage
@@ -866,6 +1039,75 @@
                         <lightning-button label="Cancel" data-id="nt-cancel" onclick={handleCloseModals}></lightning-button>
                         <lightning-button variant="brand" label="Save tab" class="slds-m-left_x-small" data-id="nt-save" disabled={busy} onclick={handleSaveTab}></lightning-button>
                     </div>
+                </div>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+    </template>
+
+    <!-- The preview mounts the shell itself rather than redrawing what it would
+         look like. A copy of the gallery would drift from the real one and
+         would answer only "does this read right"; the shell answers "does this
+         work" -- a card bound to a component the registry does not carry, or one
+         that fails on mount, shows up here instead of on a record page.
+
+         Which means it needs a record: the shell reads one, and the visibility
+         engine decides against it. So the record is asked for first, and nothing
+         renders until there is one. -->
+    <template lwc:if={previewOpen}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="pv-title"
+            class="slds-modal slds-modal_large slds-fade-in-open"
+            data-id="preview-modal"
+        >
+            <div class="slds-modal__container">
+                <!-- Both the notice and the record picker sit in the header, out
+                     of the scrolling content: the picker opens a dropdown that
+                     the content would clip, and the notice has to stay readable
+                     however far down the preview is scrolled. -->
+                <div class="slds-modal__header">
+                    <h2 id="pv-title" class="slds-modal__title">Preview {documentName}</h2>
+                    <p
+                        class="slds-text-body_small slds-text-color_weak slds-m-top_x-small"
+                        data-id="preview-notice"
+                    >
+                        This runs the real visibility rules, for you. Cards a rule keeps from
+                        you are missing here too, so this is your view of the tab and not
+                        everyone's.
+                    </p>
+                    <div class="slds-m-top_small v360-builder-preview-picker">
+                        <lightning-record-picker
+                            label="Preview on record"
+                            placeholder="Search records"
+                            object-api-name={anchorSObject}
+                            data-id="preview-record"
+                            onchange={handlePreviewRecordChange}
+                        ></lightning-record-picker>
+                    </div>
+                </div>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <template lwc:if={previewRecordId}>
+                        <c-v360-shell
+                            data-id="preview-shell"
+                            record-id={previewRecordId}
+                            tab-api-name={previewTabApiName}
+                        ></c-v360-shell>
+                    </template>
+                    <template lwc:else>
+                        <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center slds-p-vertical_large">
+                            Choose a {anchorSObject} record to preview this tab on.
+                        </p>
+                    </template>
+                </div>
+                <div class="slds-modal__footer">
+                    <lightning-button
+                        label="Close"
+                        data-id="preview-close"
+                        onclick={handleClosePreview}
+                    ></lightning-button>
                 </div>
             </div>
         </section>

@@ -1,0 +1,108 @@
+<template>
+    <div class="slds-form-element">
+        <label class="slds-form-element__label" for="combobox-input">
+            <template lwc:if={required}>
+                <abbr class="slds-required" title="required">*</abbr>
+            </template>
+            {label}
+        </label>
+        <template lwc:if={fieldLevelHelp}>
+            <lightning-helptext content={fieldLevelHelp}></lightning-helptext>
+        </template>
+
+        <div class="slds-form-element__control">
+            <div class="slds-combobox_container">
+                <div class={comboboxClass}>
+                    <div
+                        class="slds-combobox__form-element slds-input-has-icon slds-input-has-icon_right"
+                        role="none"
+                    >
+                        <input
+                            id="combobox-input"
+                            type="text"
+                            class="slds-input slds-combobox__input"
+                            role="combobox"
+                            autocomplete="off"
+                            aria-autocomplete="list"
+                            aria-controls="listbox"
+                            aria-expanded={expanded}
+                            aria-activedescendant={activeOptionId}
+                            placeholder={placeholder}
+                            value={displayValue}
+                            disabled={disabled}
+                            data-id="combobox-input"
+                            onfocus={handleFocus}
+                            onblur={handleBlur}
+                            oninput={handleInput}
+                            onkeydown={handleKeyDown}
+                        />
+                        <lightning-icon
+                            icon-name="utility:search"
+                            size="x-small"
+                            class="slds-input__icon slds-input__icon_right slds-icon-text-default"
+                        ></lightning-icon>
+                    </div>
+
+                    <div
+                        id="listbox"
+                        class="slds-dropdown slds-dropdown_fluid slds-dropdown_length-with-icon-7"
+                        role="listbox"
+                        data-id="listbox"
+                    >
+                        <ul class="slds-listbox slds-listbox_vertical" role="presentation">
+                            <template for:each={visibleOptions} for:item="option">
+                                <li key={option.apiName} class="slds-listbox__item" role="presentation">
+                                    <!-- mousedown, not click, cancels the blur: the input
+                                         would otherwise lose focus and close the listbox
+                                         before the click ever landed on the option. -->
+                                    <div
+                                        id={option.apiName}
+                                        class={option.itemClass}
+                                        role="option"
+                                        aria-selected={option.ariaSelected}
+                                        data-id="object-option"
+                                        data-api-name={option.apiName}
+                                        onmousedown={handleOptionMouseDown}
+                                        onclick={handleOptionClick}
+                                    >
+                                        <span class="slds-media__body">
+                                            <!-- The label is what an admin knows the object
+                                                 by; the API name under it is what the tab
+                                                 actually stores. Both, so neither has to be
+                                                 guessed from the other. -->
+                                            <span class="slds-listbox__option-text slds-listbox__option-text_entity">
+                                                {option.label}
+                                            </span>
+                                            <span class="slds-listbox__option-meta slds-listbox__option-meta_entity">
+                                                {option.apiName}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </li>
+                            </template>
+
+                            <template lwc:if={hasNoMatch}>
+                                <li class="slds-listbox__item" role="presentation">
+                                    <div
+                                        class="slds-media slds-listbox__option slds-listbox__option_plain slds-text-color_weak"
+                                        data-id="no-results"
+                                    >
+                                        <span class="slds-truncate">No object matches “{searchTerm}”.</span>
+                                    </div>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- A picker that cannot read its list looks identical to an org with
+             no objects, so it says which one it is. -->
+        <template lwc:if={hasOptionsError}>
+            <div class="slds-form-element__help slds-text-color_error" data-id="options-error">
+                Unable to read the objects in this org. Type the API name instead.
+            </div>
+        </template>
+    </div>
+</template>
