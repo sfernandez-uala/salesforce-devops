@@ -6,6 +6,17 @@ jest.mock('c/v360Service', () => ({
     getVisibleCardsFresh: jest.fn()
 }));
 
+// Yields ten macrotask turns. Awaiting load() settles the fetch, but the
+// state manager's snapshot updates on its own notification turn -- reading
+// .value in the same turn as the awaited promise is the race CI caught.
+const flushPromises = async () => {
+    for (let turn = 0; turn < 10; turn += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((res) => setTimeout(res, 0));
+    }
+};
+
+
 const RECORD_ID = '001000000000801AAA';
 
 describe('c/v360CustomerState — one record, several tabs', () => {
@@ -33,7 +44,10 @@ describe('c/v360CustomerState — one record, several tabs', () => {
         const risk = v360CustomerState(RECORD_ID, 'RiskReview');
 
         await overview.value.load('AccountOverview');
+
+        await flushPromises();
         await risk.value.load('RiskReview');
+        await flushPromises();
 
         expect(overview.value.data.map((card) => card.cardName)).toEqual(['a', 'b', 'c']);
         expect(risk.value.data.map((card) => card.cardName)).toEqual(['z']);

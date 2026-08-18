@@ -6,6 +6,17 @@ jest.mock('c/v360Service', () => ({
     getVisibleCardsFresh: jest.fn()
 }));
 
+// Yields ten macrotask turns. Awaiting load() settles the fetch, but the
+// state manager's snapshot updates on its own notification turn -- reading
+// .value in the same turn as the awaited promise is the race CI caught.
+const flushPromises = async () => {
+    for (let turn = 0; turn < 10; turn += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((res) => setTimeout(res, 0));
+    }
+};
+
+
 /**
  * A promise this test can resolve/reject on demand, used to hold a service
  * call "in flight" long enough to prove concurrent loads share one call.
@@ -53,6 +64,7 @@ describe('c-v360-customer-state', () => {
 
         const state = v360CustomerState('001000000000105AAA');
         await state.value.load('AccountOverview');
+        await flushPromises();
 
         expect(state.value.status).toBe('loaded');
         expect(state.value.data).toBe(mockDecisions);
@@ -77,6 +89,7 @@ describe('c-v360-customer-state', () => {
 
         const state = v360CustomerState('001000000000107AAA');
         await state.value.load('AccountOverview');
+        await flushPromises();
 
         expect(state.value.status).toBe('error');
         expect(state.value.error).toBe(apexError);
@@ -110,6 +123,8 @@ describe('c-v360-customer-state', () => {
 
         await Promise.all([state.value.load('AccountOverview'), state.value.load('CreditCards')]);
 
+        await flushPromises();
+
         expect(getVisibleCards).toHaveBeenCalledTimes(2);
     });
 
@@ -118,6 +133,7 @@ describe('c-v360-customer-state', () => {
 
         const state = v360CustomerState('001000000000110AAA');
         await state.value.refresh('AccountOverview');
+        await flushPromises();
 
         expect(getVisibleCardsFresh).toHaveBeenCalledTimes(1);
         expect(getVisibleCardsFresh).toHaveBeenCalledWith('001000000000110AAA', 'AccountOverview');

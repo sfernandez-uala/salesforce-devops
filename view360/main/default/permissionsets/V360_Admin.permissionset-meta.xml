@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <label>V360 Admin</label>
-    <description>Full CRUD and field access on Vista 360 configuration objects (Tab, Card, CardRule, RulePredicate), the V360_ManageVisibilityRules custom permission, and access to the Vista 360 Admin console tab.</description>
+    <description>Full CRUD and field access on the Vista 360 configuration objects, the V360_ManageVisibilityRules custom permission, the Admin console tab, and every Apex class the console calls, including the visibility controller its preview mounts the shell through.</description>
     <hasActivationRequired>false</hasActivationRequired>
     <classAccesses>
         <apexClass>V360AdminController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <classAccesses>
+        <apexClass>V360RuleVocabulary</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
         <apexClass>V360SchemaVocabulary</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <classAccesses>
+        <apexClass>V360VisibilityController</apexClass>
         <enabled>true</enabled>
     </classAccesses>
     <customPermissions>
