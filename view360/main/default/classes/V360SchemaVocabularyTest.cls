@@ -49,7 +49,7 @@ private class V360SchemaVocabularyTest {
         Assert.isTrue(labels.containsKey('Account'), 'Account anchors record pages and must be offered');
         Assert.isTrue(labels.containsKey('Contact'), 'Contact anchors record pages and must be offered');
         Assert.areEqual(
-            Account.SObjectType.getDescribe().getLabel(),
+            Account.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED).getLabel(),
             labels.get('Account'),
             'The option carries the object label an admin reads, not just its API name'
         );
