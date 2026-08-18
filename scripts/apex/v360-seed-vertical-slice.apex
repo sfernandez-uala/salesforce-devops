@@ -60,7 +60,6 @@ tab.DeveloperName__c = tabDeveloperName;
 tab.Name = tabDeveloperName;
 tab.AnchorSObject__c = anchorSObjectApiName;
 tab.Sequence__c = 1;
-tab.Active__c = true;
 
 Database.UpsertResult tabResult = V360AdminService.saveTabs(new List<V360_Tab__c>{ tab })[0];
 if (!tabResult.isSuccess()) {
@@ -161,14 +160,9 @@ System.debug('Seeded V360_RulePredicate__c: ' + predicateResult.getId());
 // V360TestDataFactory and apply-progress.md); direct DML like the writes above is
 // the confirmed-reliable context. This script re-reads and corrects defensively
 // anyway, since it is meant to be re-run safely and unattended.
-List<V360_Tab__c> confirmedTabs = [SELECT Active__c FROM V360_Tab__c WHERE Id = :tabId];
 List<V360_Card__c> confirmedCards = [SELECT Active__c, KillSwitch__c FROM V360_Card__c WHERE Id = :cardId];
 List<V360_CardRule__c> confirmedRules = [SELECT Active__c FROM V360_CardRule__c WHERE Id = :ruleId];
 
-if (!confirmedTabs.isEmpty() && confirmedTabs[0].Active__c != true) {
-    System.debug(LoggingLevel.WARN, 'V360_Tab__c.Active__c did not persist as true on first write -- correcting.');
-    V360AdminService.saveTabs(new List<V360_Tab__c>{ new V360_Tab__c(Id = tabId, Active__c = true) });
-}
 if (!confirmedCards.isEmpty() && (confirmedCards[0].Active__c != true || confirmedCards[0].KillSwitch__c != false)) {
     System.debug(LoggingLevel.WARN, 'V360_Card__c checkbox fields did not persist as expected on first write -- correcting.');
     V360AdminService.saveCards(new List<V360_Card__c>{ new V360_Card__c(Id = cardId, Active__c = true, KillSwitch__c = false) });
