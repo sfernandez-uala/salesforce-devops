@@ -30,7 +30,17 @@ global.ResizeObserver = class {
     disconnect() {}
 };
 
-const flushPromises = () => new Promise((res) => setTimeout(res, 0));
+// Yields ten macrotask turns rather than one. The work a test waits on --
+// a wire emit, a state-manager notification, a re-render, a dynamic import --
+// often spans several chained turns, and a single setTimeout hop is exactly
+// the assumption that goes flaky on a loaded CI worker while passing on a
+// fast idle laptop. Ten is generous headroom, not a measured count.
+const flushPromises = async () => {
+    for (let turn = 0; turn < 10; turn += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((res) => setTimeout(res, 0));
+    }
+};
 
 function tab(tabId, developerName, sObjectApiName) {
     return { tabId, developerName, sObjectApiName, sequence: 1, cards: [] };
